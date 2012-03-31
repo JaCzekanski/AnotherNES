@@ -81,11 +81,16 @@ void PPU::Write( uint8_t reg, uint8_t data )
 		case 0x2007: //PPUDATA
 			// Access to PPU memory from CPU
 			addr = (PPUADDRhi<<8) | PPUADDRlo;
-			memory[ addr ] = data;
+			memory[ addr%0x4000 ] = data;
 			addr++;
 
 			PPUADDRhi = (addr>>8)&0xff;
 			PPUADDRlo = addr&0xff;
+			if ((addr%0x4000)<0x2000) 
+			{
+				log->Error("CPU write RO address");
+				break;
+			}
 			break;
 
 		default:
@@ -147,7 +152,10 @@ uint8_t PPU::Step( )
 	// 1 CPU cycles - 3 PPU cycles
 	// 1 scanline - 341 PPU cycles
 	cycles++;
-	if (cycles%341 == 0) scanline++;
+	if (cycles%341 == 0) 
+	{
+		scanline++;
+	}
 	if (scanline>260) 
 	{
 		scanline = 0;
@@ -164,8 +172,12 @@ uint8_t PPU::Step( )
 	}
 	if (scanline == 241) // Set vblank
 	{
-		VBLANK = true;
-		if (NMI_enabled) return 1;
+		if (!VBLANK) 
+		{
+			VBLANK = true;
+			return 1;
+		}
+		/*if (NMI_enabled)*/ 
 	}
 	return 0;
 }
@@ -177,30 +189,36 @@ void PPU::Render(SDL_Surface* s)
 	int y = 0;
 
 	uint8_t *PIXELS = (uint8_t*)s->pixels;
-	uint8_t color = 0;
-	for (int i = BaseNametable; i<BaseNametable+0x3DC; i++)
+	uint32_t color = 0;
+	for (int i = 0; i</*0x3DC*/512; i++)
 	{
-		if (x++ == 32)
+
+		// Assume that Surface is 256x240
+		uint16_t tile = i;//this->memory[i+BaseNametable];
+		uint32_t dt = (y*256*8*3) + (x*8*3);
+		uint8_t *PIXEL = PIXELS+dt;
+		for (uint8_t b = 0; b<8; b++) //Y
+		{
+			uint8_t tiledata = memory[ /*BackgroundPattenTable +*/ tile*16 + b];
+			uint8_t tiledata2 = memory[ /*BackgroundPattenTable +*/ tile*16 + b +8];
+			for (uint8_t a = 0; a<8; a++) //X
+			{
+				bool c1 = ( tiledata&(1<<(7-a)) )? true: false;
+				bool c2 = ( tiledata2&(1<<(7-a)) )? true: false;
+				if ( !c1 && !c2 ) color = 0x000000;
+				else if ( c1 && !c2  ) color = 0xff;
+				else if ( !c1 && c2  ) color = 0xff00;
+				else if ( c1 && c2  ) color = 0xff0000;
+
+				*(PIXEL+(b*256)*3+(a*3)) = color&0xff;
+				*(PIXEL+(b*256)*3+(a*3)+1) = (color>>8)&0xff;
+				*(PIXEL+(b*256)*3+(a*3)+2) = (color>>16)&0xff;
+			}
+		}
+		if (x++ == 31)
 		{
 			y++;
 			x = 0;
-		}
-
-		// Assume that Surface is 256x240
-		uint8_t tile = this->memory[i];
-		uint32_t dt = (y*256*8*3) + (x*8*3);
-		uint8_t *PIXEL = PIXELS+dt;
-		for (uint8_t b = 0; b<8; b++)
-		{
-			uint8_t tiledata = memory[ BackgroundPattenTable + b*16 ];
-			for (uint8_t a = 0; a<8; a++)
-			{
-				if ( tiledata&(1<<(7-a)) ) color = 0xff;
-				else color = 0x00;
-				*(PIXEL+(b*256+a)*3) = color;
-				*(PIXEL+(b*256+a)*3+1) = color;
-				*(PIXEL+(b*256+a)*3+2) = color;
-			}
 		}
 	}
 }

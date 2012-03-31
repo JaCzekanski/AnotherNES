@@ -8,7 +8,7 @@
 
 #define MAJOR_VERSION 0
 #define MINOR_VERSION 1
-#define ROM_NAME "rom/supermariobros.nes"
+#define ROM_NAME "rom/battlecity.nes"
 
 Logger* log;
 CPU* cpu;
@@ -27,6 +27,7 @@ int main()
 	log->Success("SDL_Init successful");
 
 	SDL_Surface* screen = SDL_SetVideoMode( 256, 240, 24, SDL_SWSURFACE );
+	//SDL_WM_IconifyWindow();
 	if ( screen == NULL )
 	{
 		log->Fatal("Cannot create window");
@@ -81,6 +82,7 @@ int main()
 	while(1)
 	{
 		SDL_PollEvent(&event);
+		if (event.type == SDL_QUIT) break;
 
 		for (int i = 0; i<3; i++)
 		{
