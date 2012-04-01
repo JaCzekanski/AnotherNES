@@ -41,6 +41,11 @@ void PPU::Write( uint8_t reg, uint8_t data )
 			// 3 - Sprite pattern table address for 8x8 sprites (0: $0000; 1: $1000; ignored in 8x16 mode)
 			if (data&0x08) SpritePattenTable = 0x1000;
 			else SpritePattenTable = 0;
+
+			// 2 - VRAM address increment per CPU read/write of PPUDATA 
+			//     (0: increment by 1, going across; 1: increment by 32, going down)
+			if (data&0x04) VRAMaddressIncrement = 32;
+			else VRAMaddressIncrement = 1;
 			
 			// 1:0 - Base nametable address
 			//     (0 = $2000; 1 = $2400; 2 = $2800; 3 = $2C00)
@@ -81,8 +86,14 @@ void PPU::Write( uint8_t reg, uint8_t data )
 		case 0x2007: //PPUDATA
 			// Access to PPU memory from CPU
 			addr = (PPUADDRhi<<8) | PPUADDRlo;
+
+			if (addr>=0x3f00 && addr<=0x3f1f)
+			{
+				log->Info("PPU: Palette change");
+			}
 			memory[ addr%0x4000 ] = data;
-			addr++;
+
+			addr+=VRAMaddressIncrement;
 
 			PPUADDRhi = (addr>>8)&0xff;
 			PPUADDRlo = addr&0xff;
@@ -133,7 +144,8 @@ uint8_t PPU::Read( uint8_t reg)
 			// Access to PPU memory from CPU,
 			addr = (PPUADDRhi<<8) | PPUADDRlo;
 			ret = memory[ addr ];
-			addr++;
+
+			addr+=VRAMaddressIncrement;
 
 			PPUADDRhi = (addr>>8)&0xff;
 			PPUADDRlo = addr&0xff;
@@ -172,7 +184,7 @@ uint8_t PPU::Step( )
 	}
 	if (scanline == 241) // Set vblank
 	{
-		if (!VBLANK) 
+		if (!VBLANK && NMI_enabled) 
 		{
 			VBLANK = true;
 			return 1;
@@ -190,29 +202,61 @@ void PPU::Render(SDL_Surface* s)
 
 	uint8_t *PIXELS = (uint8_t*)s->pixels;
 	uint32_t color = 0;
-	for (int i = 0; i</*0x3DC*/512; i++)
+	uint16_t Attribute = BaseNametable + 0x3c0;
+	for (int i = 0; i<960; i++)
 	{
 
 		// Assume that Surface is 256x240
-		uint16_t tile = i;//this->memory[i+BaseNametable];
+		uint16_t tile = this->memory[i+BaseNametable];
 		uint32_t dt = (y*256*8*3) + (x*8*3);
 		uint8_t *PIXEL = PIXELS+dt;
 		for (uint8_t b = 0; b<8; b++) //Y
 		{
-			uint8_t tiledata = memory[ /*BackgroundPattenTable +*/ tile*16 + b];
-			uint8_t tiledata2 = memory[ /*BackgroundPattenTable +*/ tile*16 + b +8];
+			uint8_t tiledata = memory[ BackgroundPattenTable + tile*16 + b];
+			uint8_t tiledata2 = memory[ BackgroundPattenTable + tile*16 + b +8];
 			for (uint8_t a = 0; a<8; a++) //X
 			{
 				bool c1 = ( tiledata&(1<<(7-a)) )? true: false;
 				bool c2 = ( tiledata2&(1<<(7-a)) )? true: false;
-				if ( !c1 && !c2 ) color = 0x000000;
-				else if ( c1 && !c2  ) color = 0xff;
-				else if ( !c1 && c2  ) color = 0xff00;
-				else if ( c1 && c2  ) color = 0xff0000;
 
-				*(PIXEL+(b*256)*3+(a*3)) = color&0xff;
-				*(PIXEL+(b*256)*3+(a*3)+1) = (color>>8)&0xff;
-				*(PIXEL+(b*256)*3+(a*3)+2) = (color>>16)&0xff;
+				uint8_t InfoByte = memory[Attribute+((y/4)*8)+(x/4)];
+				uint8_t infopal = 0;
+				if ( (y%4)<=1 ) //up
+				{
+					if ( (x%4)<=1 ) // left
+					{
+						infopal = InfoByte;
+					}
+					else
+					{
+						infopal = InfoByte>>2;
+					}
+				}
+				else 
+				{
+					if ( (x%4)<=1 ) // left
+					{
+						infopal = InfoByte>>4;
+					}
+					else
+					{
+						infopal = InfoByte>>6;
+					}
+				}
+
+				infopal = (infopal&0x03);
+
+				if ( !c1 && !c2 ) color = 0;
+				else if ( c1 && !c2  ) color = 1;
+				else if ( !c1 && c2  ) color = 2;
+				else if ( c1 && c2  ) color = 3;
+
+				//BG Palette + Infopal*4
+				Palette_entry e = nes_palette[ memory[0x3F00 + (infopal*4) + color] ];
+
+				*(PIXEL+(b*256)*3+(a*3)) = e.b;
+				*(PIXEL+(b*256)*3+(a*3)+1) = e.g;
+				*(PIXEL+(b*256)*3+(a*3)+2) = e.r;
 			}
 		}
 		if (x++ == 31)

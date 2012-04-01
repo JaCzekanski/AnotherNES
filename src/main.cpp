@@ -1,3 +1,5 @@
+bool debug = true;
+
 #include <iostream>
 #include <SDL.h>
 #undef main
@@ -8,7 +10,7 @@
 
 #define MAJOR_VERSION 0
 #define MINOR_VERSION 1
-#define ROM_NAME "rom/battlecity.nes"
+#define ROM_NAME "rom/background.nes"
 
 Logger* log;
 CPU* cpu;
@@ -79,11 +81,36 @@ int main()
 
 	SDL_Event event;
 
+	bool dostep = false;
+	bool prevstate = false;
 	while(1)
 	{
 		SDL_PollEvent(&event);
 		if (event.type == SDL_QUIT) break;
+		if (event.type == SDL_KEYDOWN) 
+		{
+			if (event.key.keysym.sym == SDLK_RETURN)
+			{
+				debug = !debug;
+			}
 
+			if (event.key.keysym.sym == SDLK_SPACE)
+			{
+				if (!prevstate)	dostep = true;
+				prevstate = true;
+			}
+			else prevstate = false;
+		}
+		if (event.type == SDL_KEYUP) 
+		{
+			if (event.key.keysym.sym == SDLK_SPACE)
+			{
+				prevstate = false;
+			}
+		}
+
+		//if (!dostep) continue;
+		//dostep = false;
 		for (int i = 0; i<3; i++)
 		{
 			if (cpu->ppu.Step()) // NMI requested

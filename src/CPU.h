@@ -3,6 +3,8 @@
 #include "CPU_ram.h"
 #include "PPU.h"
 
+#include <vector>
+using namespace std;
 
 // Flags
 #define CARRY_FLAG     (1<<0)
@@ -59,9 +61,11 @@ public:
 	uint16_t PC;// Program counter
 	uint8_t SP; // Stack pointer
 
+	vector<uint16_t> history;
 	CPU_ram memory;
 	PPU ppu;
 
+	bool PCchanged; // pc+opcode?
 	uint32_t virtaddr; // Seen by 6502
 	uint8_t* realaddr; // Seen by computer
 
@@ -79,6 +83,7 @@ public:
 
 	uint16_t Getv( )
 	{
+		PCchanged = true;
 		return this->virtaddr;
 	}
 

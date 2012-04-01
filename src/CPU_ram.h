@@ -48,7 +48,7 @@ public:
 		if (n < 0x4000) // PPU ports
 		{
 			//log->Debug("IO write at 0x%x: 0x%x", n, data);
-			ppu->Write( (n-0x2000)%8, data );
+  			ppu->Write( (n-0x2000)%8, data );
 			return ;
 		}
 		if (n < 0x4020) // IO / APU
