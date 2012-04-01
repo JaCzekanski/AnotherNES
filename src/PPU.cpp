@@ -3,11 +3,14 @@
 PPU::PPU(void)
 {
 	memset( this->memory, 0, 0x4000 );
+	memset( this->memory+0x2000 , 0xFF, 0xc00 );
 	cycles = 0;
 	scanline = 0;
 	NMI_enabled = false;
 	VBLANK = true;
 	PPUADDRhalf = true; // True - hi, false - lo
+	PPUADDRhi = 0;
+	PPUADDRlo = 0;
 	BackgroundPattenTable = 0;
 	SpritePattenTable = 0;
 	BaseNametable = 0x2000;
