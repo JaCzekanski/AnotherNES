@@ -59,7 +59,7 @@ void CPU::Reset()
 	this->A = 0;
 	this->X = 0;
 	this->Y = 0;
-	this->P = (1<<5) | INTERRUPT_FLAG;
+	this->P = INTERRUPT_FLAG | BREAK_FLAG | UNKNOWN_FLAG;
 	this->PC = this->memory[0xFFFD]<<8 | this->memory[0xFFFC];
 	this->SP = 0;
 }
@@ -213,17 +213,17 @@ void CPU::Step()
 		break;
 	}
 	// Page crossed + 1 to cycles
-//if (debug)
-//{
-//
-//	char hexvals[32];
-//	for (int i = 0; i<opsize; i++)
-//	{
-//		sprintf(hexvals+(i*3), "%.2x ", this->memory[this->PC+i] );
-//	}
-//
-//	log->Debug("0x%x: %s\t\t%s %s", this->PC, hexvals, op.mnemnic, buffer );
-//}
+if (debug)
+{
+
+	char hexvals[32];
+	for (int i = 0; i<opsize; i++)
+	{
+		sprintf(hexvals+(i*3), "%.2x ", this->memory[this->PC+i] );
+	}
+
+	log->Debug("0x%x: %s\t\t%s %s", this->PC, hexvals, op.mnemnic, buffer );
+}
 	uint16_t oldPC = this->PC;
 	PCchanged = false;
 
@@ -244,21 +244,21 @@ void CPU::Step()
 void CPU::LDA( CPU* c ) // Load Accumulator
 {
 	c->A = c->Readv();
-	c->ZERO( c->A );
+	c->ZERO( c->A?0:1 );
 	c->NEGATIVE( c->A&0x80 );
 }
 
 void CPU::LDX( CPU* c ) // Load X
 {
 	c->X = c->Readv();
-	c->ZERO( c->X );
+	c->ZERO( c->X?0:1 );
 	c->NEGATIVE( c->X&0x80 );
 }
 
 void CPU::LDY( CPU* c ) // Load Y
 {
 	c->Y = c->Readv();
-	c->ZERO( c->Y );
+	c->ZERO( c->Y?0:1 );
 	c->NEGATIVE( c->Y&0x80 );
 }
 
@@ -281,28 +281,28 @@ void CPU::STY( CPU* c ) // Store Y
 void CPU::TAX( CPU* c ) // Transfer accumulator to X
 {
 	c->X = c->A;
-	c->ZERO( c->X );
+	c->ZERO( c->X?0:1 );
 	c->NEGATIVE( c->X&0x80 );
 }
 
 void CPU::TAY( CPU* c ) // Transfer accumulator to Y
 {
 	c->Y = c->A;
-	c->ZERO( c->Y );
+	c->ZERO( c->Y?0:1 );
 	c->NEGATIVE( c->Y&0x80 );
 }
 
 void CPU::TXA( CPU* c ) // Transfer X to accumulator
 {
 	c->A = c->X;
-	c->ZERO( c->A );
+	c->ZERO( c->A?0:1 );
 	c->NEGATIVE( c->A&0x80 );
 }
 
 void CPU::TYA( CPU* c ) // Transfer y to accumulator
 {
 	c->A = c->Y;
-	c->ZERO( c->A );
+	c->ZERO( c->A?0:1 );
 	c->NEGATIVE( c->A&0x80 );
 }
 
@@ -311,7 +311,7 @@ void CPU::TYA( CPU* c ) // Transfer y to accumulator
 void CPU::TSX( CPU* c ) // Transfer stack pointer to X
 {
 	c->X = c->SP;
-	c->ZERO( c->X );
+	c->ZERO( c->X?0:1 );
 	c->NEGATIVE( c->X&0x80 );
 }
 
@@ -333,7 +333,7 @@ void CPU::PHP( CPU* c ) // Push processor status on stack
 void CPU::PLA( CPU* c ) // Pull accumulator from stack
 {
 	c->A = c->Pop();
-	c->ZERO( c->A );
+	c->ZERO( c->A?0:1 );
 	c->NEGATIVE( c->A&0x80 );
 }
 
@@ -347,28 +347,28 @@ void CPU::PLP( CPU* c ) // Pull processor status from stack
 void CPU::AND( CPU* c ) // Logical AND
 {
 	c->A = c->A & c->Readv();
-	c->ZERO( c->A );
+	c->ZERO( c->A?0:1 );
 	c->NEGATIVE( c->A&0x80 );
 }
 
 void CPU::EOR( CPU* c ) // Exclusive OR
 {
 	c->A = c->A ^ c->Readv();
-	c->ZERO( c->A );
+	c->ZERO( c->A?0:1 );
 	c->NEGATIVE( c->A&0x80 );
 }
 
 void CPU::ORA( CPU* c ) // Logical Inclusive OR
 {
 	c->A = c->A | c->Readv();
-	c->ZERO( c->A );
+	c->ZERO( c->A?0:1 );
 	c->NEGATIVE( c->A&0x80 );
 }
 
 void CPU::BIT( CPU* c ) // Bit Test
 {
 	uint8_t tmp =  c->Readv();
-	c->ZERO( c->A & tmp );
+	c->ZERO( (c->A & tmp)?0:1 );
 	c->OVERFLOW( tmp&0x40 );
 	c->NEGATIVE( tmp&0x80 );
 }
@@ -383,7 +383,7 @@ void CPU::ADC( CPU* c ) // Add with Carry
 
 	c->CARRY( ret>0xff );
 	c->OVERFLOW( !((c->A ^ c->Readv()) & 0x80) && ((c->A ^ ret) & 0x80 ));;//http://nesdev.parodius.com/6502.txt
-	c->ZERO( c->A );
+	c->ZERO( c->A?0:1 );
 	c->NEGATIVE( c->A&0x80 );
 }
 void CPU::SBC( CPU* c ) // Subtract with Carry
@@ -393,7 +393,7 @@ void CPU::SBC( CPU* c ) // Subtract with Carry
 
 	c->CARRY( ret < 0x100 );
 	c->OVERFLOW( ((c->A ^ ret) & 0x80) && ((c->A ^ c->Readv()) & 0x80 ));;//http://nesdev.parodius.com/6502.txt
-	c->ZERO( c->A );
+	c->ZERO( c->A?0:1 );
 	c->NEGATIVE( c->A&0x80 );
 }
 void CPU::CMP( CPU* c ) // Compare accumulator
@@ -428,21 +428,21 @@ void CPU::INC( CPU* c ) // Increment a memory location
 	
 	c->Writev( ret );
 
-	c->ZERO( ret );
+	c->ZERO( ret?0:1 );
 	c->NEGATIVE( ret&0x80 );
 }
 void CPU::INX( CPU* c ) // Increment the X register
 {
 	c->X = c->X+1;
 
-	c->ZERO( c->X );
+	c->ZERO( c->X?0:1 );
 	c->NEGATIVE( c->X&0x80 );
 }
 void CPU::INY( CPU* c ) // Increment the Y register
 {
 	c->Y = c->Y+1;
 
-	c->ZERO( c->Y );
+	c->ZERO( c->Y?0:1 );
 	c->NEGATIVE( c->Y&0x80 );
 }
 void CPU::DEC( CPU* c ) // Decrement a memory location
@@ -450,21 +450,21 @@ void CPU::DEC( CPU* c ) // Decrement a memory location
 	uint8_t ret = c->Readv()-1;
 	c->Writev( ret );
 
-	c->ZERO( ret );
+	c->ZERO( ret?0:1 );
 	c->NEGATIVE( ret&0x80 );
 }
 void CPU::DEX( CPU* c ) // Decrement the X register
 {
 	c->X = c->X-1;
 
-	c->ZERO( c->X );
+	c->ZERO( c->X?0:1 );
 	c->NEGATIVE( c->X&0x80 );
 }
 void CPU::DEY( CPU* c ) // Decrement the Y register
 {
 	c->Y = c->Y-1;
 
-	c->ZERO( c->Y );
+	c->ZERO( c->Y?0:1 );
 	c->NEGATIVE( c->Y&0x80 );
 }
 
@@ -477,7 +477,7 @@ void CPU::ASL( CPU* c ) // Arithmetic Shift Left
 	uint8_t ret = c->Readv()<<1;
 	c->Writev( ret );
 
-	c->ZERO( ret );
+	c->ZERO( ret?0:1 );
 	c->NEGATIVE( (ret&0x80) );
 }
 void CPU::LSR( CPU* c ) // Logical Shift Right
@@ -487,7 +487,7 @@ void CPU::LSR( CPU* c ) // Logical Shift Right
 	uint8_t ret = c->Readv()>>1;
 	c->Writev( ret );
 
-	c->ZERO( ret );
+	c->ZERO( ret?0:1 );
 	c->NEGATIVE( (ret&0x80) );
 }
 void CPU::ROL( CPU* c ) // Rotate Left
@@ -497,7 +497,7 @@ void CPU::ROL( CPU* c ) // Rotate Left
 	uint8_t ret = c->Readv()<<1 | c->P&CARRY_FLAG;
 	c->Writev( ret );
 
-	c->ZERO( ret );
+	c->ZERO( ret?0:1 );
 	c->NEGATIVE( (ret&0x80) );
 }
 void CPU::ROR( CPU* c ) // Rotate Right
@@ -507,7 +507,7 @@ void CPU::ROR( CPU* c ) // Rotate Right
 	uint8_t ret = c->Readv()>>1 | ((c->P&CARRY_FLAG)<<7);
 	c->Writev( ret );
 
-	c->ZERO( ret );
+	c->ZERO( ret?0:1 );
 	c->NEGATIVE( (ret&0x80) );
 }
 

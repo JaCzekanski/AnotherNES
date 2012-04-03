@@ -12,6 +12,7 @@ using namespace std;
 #define INTERRUPT_FLAG (1<<2) // 1 - disabled
 #define DECIMAL_FLAG   (1<<3)
 #define BREAK_FLAG     (1<<4)
+#define UNKNOWN_FLAG   (1<<5)
 #define OVERFLOW_FLAG  (1<<6)
 #define NEGATIVE_FLAG  (1<<7)
 

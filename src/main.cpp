@@ -10,7 +10,7 @@ bool debug = true;
 
 #define MAJOR_VERSION 0
 #define MINOR_VERSION 1
-#define ROM_NAME "rom/background.nes"
+#define ROM_NAME "rom/background3.nes"
 
 Logger* log;
 CPU* cpu;
