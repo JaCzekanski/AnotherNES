@@ -6,3 +6,4 @@ ROM
 *.user
 *.dll
 log.txt
+*.suo
