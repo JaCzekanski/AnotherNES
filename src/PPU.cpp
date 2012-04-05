@@ -208,10 +208,9 @@ void PPU::Render(SDL_Surface* s)
 	uint16_t Attribute = BaseNametable + 0x3c0;
 	for (int i = 0; i<960; i++)
 	{
-
 		// Assume that Surface is 256x240
 		uint16_t tile = this->memory[i+BaseNametable];
-		uint32_t dt = (y*256*8*3) + (x*8*3);
+		uint32_t dt = ( (y*256*8) + (x*8) ) * 4;
 		uint8_t *PIXEL = PIXELS+dt;
 		for (uint8_t b = 0; b<8; b++) //Y
 		{
@@ -222,44 +221,29 @@ void PPU::Render(SDL_Surface* s)
 				bool c1 = ( tiledata&(1<<(7-a)) )? true: false;
 				bool c2 = ( tiledata2&(1<<(7-a)) )? true: false;
 
-				uint8_t InfoByte = memory[Attribute+((y/4)*8)+(x/4)];
+				uint8_t InfoByte = memory[ Attribute + ((y/4)*8)+(x/4) ];
 				uint8_t infopal = 0;
 				if ( (y%4)<=1 ) //up
 				{
-					if ( (x%4)<=1 ) // left
-					{
-						infopal = InfoByte;
-					}
-					else
-					{
-						infopal = InfoByte>>2;
-					}
+					if ( (x%4)<=1 ) infopal = InfoByte; // up-left
+					else infopal = InfoByte>>2; // up-right
 				}
 				else 
 				{
-					if ( (x%4)<=1 ) // left
-					{
-						infopal = InfoByte>>4;
-					}
-					else
-					{
-						infopal = InfoByte>>6;
-					}
+					if ( (x%4)<=1 ) infopal = InfoByte>>4; // down-left
+					else infopal = InfoByte>>6; // down-right
 				}
 
 				infopal = (infopal&0x03);
 
-				if ( !c1 && !c2 ) color = 0;
-				else if ( c1 && !c2  ) color = 1;
-				else if ( !c1 && c2  ) color = 2;
-				else if ( c1 && c2  ) color = 3;
+				color = c1 | c2<<1;
 
 				//BG Palette + Infopal*4
 				Palette_entry e = nes_palette[ memory[0x3F00 + (infopal*4) + color] ];
 
-				*(PIXEL+(b*256)*3+(a*3)) = e.b;
-				*(PIXEL+(b*256)*3+(a*3)+1) = e.g;
-				*(PIXEL+(b*256)*3+(a*3)+2) = e.r;
+				*(PIXEL+((b*256)+a)*4) = e.b;
+				*(PIXEL+((b*256)+a)*4+1) = e.g;
+				*(PIXEL+((b*256)+a)*4+2) = e.r;
 			}
 		}
 		if (x++ == 31)

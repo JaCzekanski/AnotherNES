@@ -1,4 +1,4 @@
-bool debug = true;
+bool debug = false;
 
 #include <iostream>
 #include <SDL.h>
@@ -10,7 +10,7 @@ bool debug = true;
 
 #define MAJOR_VERSION 0
 #define MINOR_VERSION 1
-#define ROM_NAME "rom/background3.nes"
+#define ROM_NAME "rom/background.nes"
 
 Logger* log;
 CPU* cpu;
@@ -21,20 +21,42 @@ int main()
 	log = new Logger("log.txt");
 	log->Info("AnotherNES version %d.%d", MAJOR_VERSION, MINOR_VERSION);
 	
-	if ( SDL_Init( SDL_INIT_VIDEO ) == -1 )
+	if ( SDL_Init( SDL_INIT_VIDEO ) < 0 )
 	{
 		log->Fatal("SDL_Init failed");
 		return 1;
 	}
 	log->Success("SDL_Init successful");
 
-	SDL_Surface* screen = SDL_SetVideoMode( 256, 240, 24, SDL_SWSURFACE );
-	//SDL_WM_IconifyWindow();
-	if ( screen == NULL )
+	SDL_Window* MainWindow = SDL_CreateWindow( "AnotherNES", 
+		SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,
+		256, 240, SDL_WINDOW_SHOWN );
+
+	if ( MainWindow == NULL )
 	{
-		log->Fatal("Cannot create window");
+		log->Fatal("Cannot create main window");
+		return 1;
 	}
-	log->Success("Window created");
+	log->Success("Main window created");
+	
+	SDL_DisplayMode mode;
+	mode.format = SDL_PIXELFORMAT_RGB888;
+	mode.w = 256;
+	mode.h = 240;
+	mode.refresh_rate = 0;
+	mode.driverdata = 0;
+
+
+	if ( SDL_SetWindowDisplayMode( MainWindow, &mode ) < 0 )
+	{
+		log->Fatal("SDL_SetWindowDisplayMode error");
+		return 1;
+	}
+
+	SDL_Surface* screen = SDL_GetWindowSurface( MainWindow );
+
+
+	//SDL_WM_IconifyWindow();
 
 	log->Info("Creating CPU");
 	cpu = new CPU();
@@ -115,10 +137,12 @@ int main()
 		{
 			if (cpu->ppu.Step()) // NMI requested
 			{
+				
 				SDL_LockSurface( screen );
+				
 				cpu->ppu.Render( screen );
 				SDL_UnlockSurface( screen );
-				SDL_UpdateRect( screen, 0, 0, 0, 0 );
+				SDL_UpdateWindowSurface( MainWindow );
 				cpu->NMI();
 			}
 		}
@@ -128,6 +152,8 @@ int main()
 
 	delete rom;
 	delete cpu;
+	SDL_DestroyWindow( MainWindow );
+	SDL_Quit();
 	log->Info("Goodbye");
 	return 0;
 }

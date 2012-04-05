@@ -58,7 +58,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="sdl.lib"
+				AdditionalDependencies="sdl2.lib"
 				GenerateDebugInformation="true"
 				EntryPointSymbol="main"
 				TargetMachine="1"
