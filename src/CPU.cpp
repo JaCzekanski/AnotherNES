@@ -109,18 +109,17 @@ void CPU::Step()
 	uint8_t* arg2 = &this->memory[ this->PC+2 ];
 	switch (op.address)
 	{
-	case Implicit: // No args
+	case Implicit: // No args, Working
 		this->virtaddr = 0;
-		this->virtaddr = NULL;
 		opsize = 1;
 		DISASM("%c", 0);
 		break;
-	case Accumulator: // Accumulator
+	case Accumulator: // Accumulator, Working
 		opsize = 1;
 		this->virtaddr = 0xffff+1;
 		DISASM("%c", 'A');
 		break;
-	case Immediate: // imm8
+	case Immediate: // imm8 , Working
 		this->virtaddr = this->PC+1;
 		opsize = 2;
 		DISASM("#%.2x", Readv());
@@ -153,23 +152,24 @@ void CPU::Step()
 		this->virtaddr = (this->PC+opsize) + (signed char)(*arg1);
 		DISASM("$%.4x", virtaddr);
 		break;
-	case Absolute: // 16bit address
+	case Absolute: // 16bit address , Working
 		this->virtaddr = ((*arg2)<<8) | (*arg1);
 		opsize = 3;
 		DISASM("$%.4x", virtaddr );
 		break;
-	case Absolute_x: // 16bit address + X
+	case Absolute_x: // 16bit address + X, Working
 		this->virtaddr = ((*arg2<<8) | (*arg1)) + this->X;
 		opsize = 3;
 		DISASM("$%.4x,X", virtaddr-this->X );
 		break;
-	case Absolute_y: // 16bit address + Y
+	case Absolute_y: // 16bit address + Y, Working
 		this->virtaddr = ((*arg2<<8) | (*arg1)) + this->Y;
 		opsize = 3;
 		DISASM("$%.4x,Y", virtaddr- this->Y );
 		break;
 	case Indirect:
-		this->virtaddr = this->memory[ (*arg2<<8) | (*arg1) ];
+		this->virtaddr = this->memory[ (*arg2<<8) | (*arg1) ] | 
+						 this->memory[ ((*arg2<<8) | (*arg1)) +1 ]<<8;
 		opsize = 3;
 		DISASM("($%.4x)", virtaddr );
 		break;
@@ -193,13 +193,10 @@ void CPU::Step()
 		opsize += 2;
 		DISASM("($%.2x,X)", (*arg1) );
 		break;
-	case Indirect_indexed: // ($ad,Y), value at $ad, eg. $ad, $ae - 
-		                   // at $ad - $00
-		                   // at $ae - $b2
-		                   // combine = $b200 + Y = $b205
+	case Indirect_indexed: // Working!
 		opsize = 2;
 		low = this->memory[ *arg1 ] ;
-		high = this->memory[ *(arg1+1) ];
+		high = this->memory[ (*arg1)+1 ];
 		if (high>=0x100) 
 		{
 			high -= 0x100; // Page wrap
@@ -221,8 +218,12 @@ if (debug)
 	{
 		sprintf(hexvals+(i*3), "%.2x ", this->memory[this->PC+i] );
 	}
+	for (int i = 0; i<(3-opsize); i++)
+	{
+		sprintf(hexvals+((i+opsize)*3), "   "  );
+	}
 
-	log->Debug("0x%x: %s\t\t%s %s", this->PC, hexvals, op.mnemnic, buffer );
+	log->Debug("0x%x: %s\t%s %s", this->PC, hexvals, op.mnemnic, buffer );
 }
 	uint16_t oldPC = this->PC;
 	PCchanged = false;
@@ -492,9 +493,10 @@ void CPU::LSR( CPU* c ) // Logical Shift Right
 }
 void CPU::ROL( CPU* c ) // Rotate Left
 {
+	uint8_t ret = c->Readv()<<1 | c->P&CARRY_FLAG;
+
 	c->CARRY( c->Readv()&0x80 );
 
-	uint8_t ret = c->Readv()<<1 | c->P&CARRY_FLAG;
 	c->Writev( ret );
 
 	c->ZERO( ret?0:1 );
@@ -502,9 +504,10 @@ void CPU::ROL( CPU* c ) // Rotate Left
 }
 void CPU::ROR( CPU* c ) // Rotate Right
 {
+	uint8_t ret = c->Readv()>>1 | ((c->P&CARRY_FLAG)<<7);
+
 	c->CARRY( c->Readv()&0x1 );
 
-	uint8_t ret = c->Readv()>>1 | ((c->P&CARRY_FLAG)<<7);
 	c->Writev( ret );
 
 	c->ZERO( ret?0:1 );

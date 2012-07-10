@@ -10,7 +10,7 @@ bool debug = false;
 
 #define MAJOR_VERSION 0
 #define MINOR_VERSION 1
-#define ROM_NAME "rom/background.nes"
+#define ROM_NAME "rom/colours.nes"
 
 Logger* log;
 CPU* cpu;
@@ -105,6 +105,8 @@ int main()
 
 	bool dostep = false;
 	bool prevstate = false;
+
+	int64_t tick = 0;
 	while(1)
 	{
 		SDL_PollEvent(&event);
@@ -148,6 +150,8 @@ int main()
 		}
 
 		cpu->Step();
+		++tick;
+		if (tick%500 == 0 ) Sleep(1);
 	}
 
 	delete rom;
