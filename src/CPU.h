@@ -62,7 +62,6 @@ public:
 	uint16_t PC;// Program counter
 	uint8_t SP; // Stack pointer
 
-	vector<uint16_t> history;
 	CPU_ram memory;
 	PPU ppu;
 	uint32_t cycles;
@@ -227,6 +226,17 @@ public:
 	static void BRK( CPU* c ); // Force an interrupt
 	static void NOP( CPU* c ); // No Operation
 	static void RTI( CPU* c ); // Return from Interrupt
+
+	// Undocumented opcodes
+	static void LAX( CPU* c ); // Load A and X
+	static void SAX( CPU* c ); // AND X register with accumulator and store result in memory
+	static void DCP( CPU* c ); // Substract 1 from memory (without borrow)
+	static void ISC( CPU* c ); // Increase memory by one, then subtract memory from A (with borrow)
+	static void SLO( CPU* c ); // Shift left one bit in memory, then OR accumulator with memory
+	static void RLA( CPU* c ); // Rotate one bit left in memory, then AND accumulator with memory
+	static void SRE( CPU* c ); // Shift right one bit in memory, then EOR accumulator with memory
+	static void RRA( CPU* c ); // Rotate one bit right in memory, then add memory to accumulator
+
 
 	static void UNK(CPU* c); //DBG PURPOSES
 };
@@ -475,6 +485,109 @@ static OPCODE OpcodeTable[] =
 	{0x00, CPU::BRK, "BRK", 7, Implicit}, // Force an interrupt
 	{0xEA, CPU::NOP, "NOP", 2, Implicit}, // No Operation
 	{0x40, CPU::RTI, "RTI", 6, Implicit}, // Return from Interrupt
+
+	// Undocumented opcodes
+	{0x04, CPU::NOP, "N*P", 3, Zero_page},  // Double No Operation
+	{0x14, CPU::NOP, "N*P", 4, Zero_page_x},// Double No Operation
+	{0x34, CPU::NOP, "N*P", 4, Zero_page_x},// Double No Operation
+	{0x44, CPU::NOP, "N*P", 3, Zero_page},  // Double No Operation
+	{0x54, CPU::NOP, "N*P", 4, Zero_page_x},// Double No Operation
+	{0x64, CPU::NOP, "N*P", 3, Zero_page},  // Double No Operation
+	{0x74, CPU::NOP, "N*P", 4, Zero_page_x},// Double No Operation
+	{0x80, CPU::NOP, "N*P", 2, Immediate},  // Double No Operation
+	{0x82, CPU::NOP, "N*P", 2, Immediate},  // Double No Operation
+	{0x89, CPU::NOP, "N*P", 2, Immediate},  // Double No Operation
+	{0xC2, CPU::NOP, "N*P", 2, Immediate},  // Double No Operation
+	{0xD4, CPU::NOP, "N*P", 4, Zero_page_x},// Double No Operation
+	{0xE2, CPU::NOP, "N*P", 2, Immediate},  // Double No Operation
+	{0xF4, CPU::NOP, "N*P", 4, Zero_page_x},// Double No Operation
+
+	{0x1A, CPU::NOP, "N*P", 2, Implicit},   // No Operation
+	{0x3A, CPU::NOP, "N*P", 2, Implicit},   // No Operation
+	{0x5A, CPU::NOP, "N*P", 2, Implicit},   // No Operation
+	{0x7A, CPU::NOP, "N*P", 2, Implicit},   // No Operation
+	{0xDA, CPU::NOP, "N*P", 2, Implicit},   // No Operation
+	{0xFA, CPU::NOP, "N*P", 2, Implicit},   // No Operation
+
+
+	{0x0C, CPU::NOP, "N*P", 4, Absolute},     // Triple No Operation
+	{0x1C, CPU::NOP, "N*P", 4, Absolute_x},   // Triple No Operation
+	{0x3C, CPU::NOP, "N*P", 4, Absolute_x},   // Triple No Operation
+	{0x5C, CPU::NOP, "N*P", 4, Absolute_x},   // Triple No Operation
+	{0x7C, CPU::NOP, "N*P", 4, Absolute_x},   // Triple No Operation
+	{0xDC, CPU::NOP, "N*P", 4, Absolute_x},   // Triple No Operation
+	{0xFC, CPU::NOP, "N*P", 4, Absolute_x},   // Triple No Operation
+
+	{0xEB, CPU::SBC, "SBC", 2, Immediate},    // Substract
+
+	// Load A and X
+	{0xa7, CPU::LAX, "LAX", 3, Zero_page},
+	{0xb7, CPU::LAX, "LAX", 4, Zero_page_y},
+	{0xaf, CPU::LAX, "LAX", 4, Absolute},
+	{0xbf, CPU::LAX, "LAX", 4, Absolute_y},
+	{0xa3, CPU::LAX, "LAX", 6, Indexed_indirect},
+	{0xb3, CPU::LAX, "LAX", 5, Indirect_indexed},
+	
+	
+	// AND X register with accumulator and store result in memory
+	{0x87, CPU::SAX, "SAX", 3, Zero_page},
+	{0x97, CPU::SAX, "SAX", 4, Zero_page_y},
+	{0x83, CPU::SAX, "SAX", 6, Indexed_indirect},
+	{0x8f, CPU::SAX, "SAX", 4, Absolute},
+
+	// Substract 1 from memory (without borrow)
+	{0xc7, CPU::DCP, "DCP", 5, Zero_page},
+	{0xd7, CPU::DCP, "DCP", 6, Zero_page_x},
+	{0xcf, CPU::DCP, "DCP", 6, Absolute},
+	{0xdf, CPU::DCP, "DCP", 7, Absolute_x},
+	{0xdb, CPU::DCP, "DCP", 7, Absolute_y},
+	{0xc3, CPU::DCP, "DCP", 8, Indexed_indirect},
+	{0xd3, CPU::DCP, "DCP", 8, Indirect_indexed},
+
+	// Increase memory by one, then subtract memory from A (with borrow)
+	{0xe7, CPU::ISC, "ISC", 5, Zero_page},
+	{0xf7, CPU::ISC, "ISC", 6, Zero_page_x},
+	{0xef, CPU::ISC, "ISC", 6, Absolute},
+	{0xff, CPU::ISC, "ISC", 7, Absolute_x},
+	{0xfb, CPU::ISC, "ISC", 7, Absolute_y},
+	{0xe3, CPU::ISC, "ISC", 8, Indexed_indirect},
+	{0xf3, CPU::ISC, "ISC", 8, Indirect_indexed},
+
+	// Increase memory by one, then subtract memory from A (with borrow)
+	{0x07, CPU::SLO, "SLO", 5, Zero_page},
+	{0x17, CPU::SLO, "SLO", 6, Zero_page_x},
+	{0x0f, CPU::SLO, "SLO", 6, Absolute},
+	{0x1f, CPU::SLO, "SLO", 7, Absolute_x},
+	{0x1b, CPU::SLO, "SLO", 7, Absolute_y},
+	{0x03, CPU::SLO, "SLO", 8, Indexed_indirect},
+	{0x13, CPU::SLO, "SLO", 8, Indirect_indexed},
+	
+	// Rotate one bit left in memory, then AND accumulator with memory
+	{0x27, CPU::RLA, "RLA", 5, Zero_page},
+	{0x37, CPU::RLA, "RLA", 6, Zero_page_x},
+	{0x2f, CPU::RLA, "RLA", 6, Absolute},
+	{0x3f, CPU::RLA, "RLA", 7, Absolute_x},
+	{0x3b, CPU::RLA, "RLA", 7, Absolute_y},
+	{0x23, CPU::RLA, "RLA", 8, Indexed_indirect},
+	{0x33, CPU::RLA, "RLA", 8, Indirect_indexed},
+	
+	// Rotate one bit left in memory, then AND accumulator with memory
+	{0x47, CPU::SRE, "SRE", 5, Zero_page},
+	{0x57, CPU::SRE, "SRE", 6, Zero_page_x},
+	{0x4f, CPU::SRE, "SRE", 6, Absolute},
+	{0x5f, CPU::SRE, "SRE", 7, Absolute_x},
+	{0x5b, CPU::SRE, "SRE", 7, Absolute_y},
+	{0x43, CPU::SRE, "SRE", 8, Indexed_indirect},
+	{0x53, CPU::SRE, "SRE", 8, Indirect_indexed},
+
+	// Rotate one bit right in memory, then add memory to accumulator
+	{0x67, CPU::RRA, "RRA", 5, Zero_page},
+	{0x77, CPU::RRA, "RRA", 6, Zero_page_x},
+	{0x6f, CPU::RRA, "RRA", 6, Absolute},
+	{0x7f, CPU::RRA, "RRA", 7, Absolute_x},
+	{0x7b, CPU::RRA, "RRA", 7, Absolute_y},
+	{0x63, CPU::RRA, "RRA", 8, Indexed_indirect},
+	{0x73, CPU::RRA, "RRA", 8, Indirect_indexed},
 
 	{0x02, CPU::UNK, "GFOT"}
 

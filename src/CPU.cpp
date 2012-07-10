@@ -2,7 +2,6 @@
 
 CPU::CPU(void)
 {
-	history.resize( 512 );
 	OPCODE op = {0x00, CPU::UNK, "UNK"};
 	for (int i = 0; i< 256; i++)
 	{
@@ -133,24 +132,14 @@ void CPU::Step()
 		DISASM("$%.2X", virtaddr);
 		break;
 	case Zero_page_x: // $0000+arg1+X 00Ah - STY,X failure
-		this->virtaddr = *arg1 + this->X;
-		if (this->virtaddr>=0x100)
-		{
-			log->Error("Zero_page_x page wrap.");
-			this->virtaddr-=0x100;
-		}
+		this->virtaddr = (uint8_t) (*arg1 + this->X);
 		opsize = 2;
-		DISASM("$%.2X,X", this->memory[*arg1]);
+		DISASM("$%.2X,X", *arg1);
 		break;
 	case Zero_page_y: // $0000+arg1+Y
-		this->virtaddr = *arg1 + this->Y;
-		if (this->virtaddr>=0x100)
-		{
-			log->Error("Zero_page_y page wrap.");
-			this->virtaddr-=0x100;
-		}
+		this->virtaddr = (uint8_t) (*arg1 + this->Y);
 		opsize = 2;
-		DISASM("$%.2X,Y", this->memory[*arg1]);
+		DISASM("$%.2X,Y", *arg1);
 		break;
 	case Relative: // -128 to +127
 		opsize = 2;
@@ -175,25 +164,18 @@ void CPU::Step()
 		if (this->virtaddr>=0x10000) this->virtaddr-=0x10000;
 		break;
 	case Indirect:
-		this->virtaddr = this->memory[ ((*arg2)<<8) | (*arg1) ] | 
-						 this->memory[ (((*arg2)<<8) | (*arg1)) +1 ]<<8;
+		addrlo = ((*arg2)<<8) | (*arg1);
+		addrhi = ((*arg2)<<8) | (uint8_t)((*arg1) +1);
+		this->virtaddr = this->memory[ addrlo ] | 
+						 this->memory[ addrhi ]<<8;
 		opsize = 3;
 		DISASM("($%.4X)", ((*arg2)<<8) | (*arg1) );
 		break;
 	case Indexed_indirect: 
 		opsize = 2;
-		addrlo = *arg1 + this->X; 
-		addrhi = (*arg1+1) + this->X;
-		if (addrlo>=0x100) 
-		{
-			addrlo -= 0x100; // Page wrap
-			//opsize = 1;
-		}
-		if (addrhi>=0x100) 
-		{
-			addrhi -= 0x100; // Page wrap
-			//if (!opsize) opsize = 1;
-		}
+		addrlo = (uint8_t) ((*arg1) + this->X); 
+		addrhi = (uint8_t) ((*arg1+1) + this->X);
+
 		low = this->memory[ addrlo ] ;
 		high = this->memory[ addrhi ];
 		this->virtaddr = low | (high<<8);
@@ -201,24 +183,14 @@ void CPU::Step()
 		break;
 	case Indirect_indexed: // Working!
 		opsize = 2;
-		addrlo = *arg1; 
-		addrhi = (*arg1)+1;
-
-		if (addrlo>=0x100) 
-		{
-			addrlo -= 0x100; // Page wrap
-			//++opsize;
-		}
-		if (addrhi>=0x100) 
-		{
-			addrhi -= 0x100; // Page wrap
-			//++opsize;
-		}
+		addrlo = (uint8_t) (*arg1); 
+		addrhi = (uint8_t) ((*arg1)+1);
 
 		low = this->memory[ addrlo ] ;
 		high = this->memory[ addrhi ];
 
-		this->virtaddr = (low | (high<<8)) + this->Y ;
+		this->virtaddr = (uint16_t)( (low | (high<<8)) + this->Y) ;
+
 		DISASM("($%.2X),Y", (*arg1) );
 		break;
 	default:
@@ -247,14 +219,13 @@ if (debug)
 	}
 	buffer[++i] = 0;
 	//log->Debug("0x%x: %s\t%s %s", this->PC, hexvals, op.mnemnic, buffer );
-	log->Debug("%X  %s %s %s"
+	log->Debug("%.4X  %s %s %s"
 		"A:%.2X X:%.2X Y:%.2X P:%.2X SP:%.2X", this->PC, hexvals, op.mnemnic, buffer,
 		this->A, this->X, this->Y, this->P, this->SP);
 }
 	uint16_t oldPC = this->PC;
 	PCchanged = false;
 
-	history.push_back( this->PC );
 	op.inst(this);
 
 	if (PCchanged || oldPC != this->PC) 
@@ -649,6 +620,65 @@ void CPU::RTI( CPU* c ) // Return from Interrupt
 	c->P = c->Pop() | UNKNOWN_FLAG;
 	c->PC = c->Pop16();
 }
+
+
+// Undocumented opcodes
+void CPU::LAX( CPU* c ) // Load A and X
+{
+	c->A = c->Readv();
+	c->X = c->Readv();
+	c->ZERO( c->A?0:1 );
+	c->NEGATIVE( c->A&0x80 );
+}
+
+void CPU::SAX( CPU* c ) // AND X register with accumulator and store result in memory
+{
+	uint8_t ret = c->X & c->A;
+	c->Writev( ret );
+	c->ZERO( ret?0:1 );
+	c->NEGATIVE( ret&0x80 );
+
+}
+
+void CPU::DCP( CPU* c ) // Substract 1 from memory (without borrow)
+{
+	uint8_t ret = c->Readv() - 1;
+
+	
+	c->OVERFLOW(  ( ( c->Readv() ^ 1 ) & 0x80 )
+		      &&  ( ( c->Readv() ^ ret ) & 0x80)  );
+	
+}
+
+void CPU::ISC( CPU* c ) // Increase memory by one, then subtract memory from A (with borrow)
+{
+}
+
+void CPU::SLO( CPU* c ) // Shift left one bit in memory, then OR accumulator with memory
+{
+	c->CARRY( c->Readv()&0x80 );
+
+	uint8_t ret = c->Readv()<<1;
+	c->Writev( ret );
+
+	c->A = c->A | ret;
+
+	c->ZERO( ret?0:1 );
+	c->NEGATIVE( (ret&0x80) );
+}
+
+void CPU::RLA( CPU* c ) // Rotate one bit left in memory, then AND accumulator with memory
+{
+}
+
+void CPU::SRE( CPU* c ) // Shift right one bit in memory, then EOR accumulator with memory
+{
+}
+
+void CPU::RRA( CPU* c ) // Rotate one bit right in memory, then add memory to accumulator
+{
+}
+
 
 void CPU::UNK(CPU* c)
 {

@@ -10,7 +10,7 @@ int buttonState = 0;
 
 #define MAJOR_VERSION 0
 #define MINOR_VERSION 1
-#define ROM_NAME "rom/battlecity.nes"
+#define ROM_NAME "rom/cpu_test/nestest.nes"
 
 Logger* log;
 CPU* cpu;
