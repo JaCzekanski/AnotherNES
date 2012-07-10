@@ -1,5 +1,5 @@
 bool debug = false;
-
+int buttonState = 0;
 #include <iostream>
 #include <SDL.h>
 #undef main
@@ -10,7 +10,7 @@ bool debug = false;
 
 #define MAJOR_VERSION 0
 #define MINOR_VERSION 1
-#define ROM_NAME "rom/colours.nes"
+#define ROM_NAME "rom/battlecity.nes"
 
 Logger* log;
 CPU* cpu;
@@ -111,27 +111,19 @@ int main()
 	{
 		SDL_PollEvent(&event);
 		if (event.type == SDL_QUIT) break;
-		if (event.type == SDL_KEYDOWN) 
-		{
-			if (event.key.keysym.sym == SDLK_RETURN)
-			{
-				debug = !debug;
-			}
 
-			if (event.key.keysym.sym == SDLK_SPACE)
-			{
-				if (!prevstate)	dostep = true;
-				prevstate = true;
-			}
-			else prevstate = false;
-		}
-		if (event.type == SDL_KEYUP) 
-		{
-			if (event.key.keysym.sym == SDLK_SPACE)
-			{
-				prevstate = false;
-			}
-		}
+		Uint8 *keys = SDL_GetKeyboardState(NULL);
+		//A, B, Select, Start, Up, Down, Left, Right.
+		buttonState = 0;
+		if ( keys[SDL_SCANCODE_Z] ) buttonState |= 1<<7;
+		if ( keys[SDL_SCANCODE_X] ) buttonState |= 1<<6;
+		if ( keys[SDL_SCANCODE_A] ) buttonState |= 1<<5;
+		if ( keys[SDL_SCANCODE_S] ) buttonState |= 1<<4;
+		if ( keys[SDL_SCANCODE_UP] ) buttonState |= 1<<3;
+		if ( keys[SDL_SCANCODE_DOWN] ) buttonState |= 1<<2;
+		if ( keys[SDL_SCANCODE_LEFT] ) buttonState |= 1<<1;
+		if ( keys[SDL_SCANCODE_RIGHT] ) buttonState |= 1<<0;
+
 
 		//if (!dostep) continue;
 		//dostep = false;
@@ -139,19 +131,21 @@ int main()
 		{
 			if (cpu->ppu.Step()) // NMI requested
 			{
-				
-				SDL_LockSurface( screen );
-				
-				cpu->ppu.Render( screen );
-				SDL_UnlockSurface( screen );
-				SDL_UpdateWindowSurface( MainWindow );
-				cpu->NMI();
+				//if (tick%4 == 0)
+				{
+					SDL_LockSurface( screen );
+					
+					cpu->ppu.Render( screen );
+					SDL_UnlockSurface( screen );
+					SDL_UpdateWindowSurface( MainWindow );
+				}
+					cpu->NMI();
 			}
 		}
 
 		cpu->Step();
 		++tick;
-		if (tick%500 == 0 ) Sleep(1);
+		//if (tick%500 == 0 ) Sleep(1);
 	}
 
 	delete rom;

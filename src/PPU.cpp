@@ -90,9 +90,8 @@ void PPU::Write( uint8_t reg, uint8_t data )
 			// Access to PPU memory from CPU
 			addr = (PPUADDRhi<<8) | PPUADDRlo;
 
-			if (addr>=0x3f00 && addr<=0x3f1f)
+			if (addr>=0x3f00 && addr<=0x3f1f) //Palette
 			{
-				log->Info("PPU: Palette change");
 			}
 			memory[ addr%0x4000 ] = data;
 
@@ -100,11 +99,6 @@ void PPU::Write( uint8_t reg, uint8_t data )
 
 			PPUADDRhi = (addr>>8)&0xff;
 			PPUADDRlo = addr&0xff;
-			if ((addr%0x4000)<0x2000) 
-			{
-				log->Error("CPU write RO address");
-				break;
-			}
 			break;
 
 		default:
@@ -155,7 +149,7 @@ uint8_t PPU::Read( uint8_t reg)
 			break;
 
 		default:
-			log->Error("CPU read from wrong PPU address");
+			//log->Error("CPU read from wrong PPU address");
 			int a = 0;
 			break;
 	}
@@ -180,16 +174,17 @@ uint8_t PPU::Step( )
 	if (scanline<240) // rendering
 	{
 		return 0;
-	}
-	if (scanline == 240) // idle, no vblank yet
+	} 
+	else if (scanline == 240) // idle, no vblank yet
 	{
 		return 0;
 	}
-	if (scanline == 241) // Set vblank
+	else if (scanline == 241) // Set vblank
 	{
-		if (!VBLANK && NMI_enabled) 
+		if (!VBLANK) 
 		{
 			VBLANK = true;
+			if (NMI_enabled)
 			return 1;
 		}
 		/*if (NMI_enabled)*/ 

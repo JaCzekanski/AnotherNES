@@ -59,9 +59,11 @@ void CPU::Reset()
 	this->A = 0;
 	this->X = 0;
 	this->Y = 0;
-	this->P = INTERRUPT_FLAG | BREAK_FLAG | UNKNOWN_FLAG;
+	this->P = INTERRUPT_FLAG | UNKNOWN_FLAG;
 	this->PC = this->memory[0xFFFD]<<8 | this->memory[0xFFFC];
-	this->SP = 0;
+	//this->PC = 0xc000;
+	this->SP = 0xFD;
+	this->cycles = 0;
 }
 
 void CPU::Push( uint8_t v )
@@ -107,6 +109,7 @@ void CPU::Step()
 	uint8_t low,high; // Temporary variables for address calculations
 	uint8_t* arg1 = &this->memory[ this->PC+1 ];
 	uint8_t* arg2 = &this->memory[ this->PC+2 ];
+	uint16_t addrlo, addrhi;
 	switch (op.address)
 	{
 	case Implicit: // No args, Working
@@ -122,108 +125,131 @@ void CPU::Step()
 	case Immediate: // imm8 , Working
 		this->virtaddr = this->PC+1;
 		opsize = 2;
-		DISASM("#%.2x", Readv());
+		DISASM("#$%.2X", Readv());
 		break;
 	case Zero_page: // $0000+arg1
 		this->virtaddr = *arg1;
 		opsize = 2;
-		DISASM("$%.2x", virtaddr);
+		DISASM("$%.2X", virtaddr);
 		break;
-	case Zero_page_x: // $0000+arg1+X
-		this->virtaddr = *arg1+ this->X;
+	case Zero_page_x: // $0000+arg1+X 00Ah - STY,X failure
+		this->virtaddr = *arg1 + this->X;
 		if (this->virtaddr>=0x100)
 		{
 			log->Error("Zero_page_x page wrap.");
+			this->virtaddr-=0x100;
 		}
 		opsize = 2;
-		DISASM("$%.2x,X", this->memory[*arg1]);
+		DISASM("$%.2X,X", this->memory[*arg1]);
 		break;
 	case Zero_page_y: // $0000+arg1+Y
-		this->virtaddr = *arg1+ this->Y;
+		this->virtaddr = *arg1 + this->Y;
 		if (this->virtaddr>=0x100)
 		{
 			log->Error("Zero_page_y page wrap.");
+			this->virtaddr-=0x100;
 		}
 		opsize = 2;
-		DISASM("$%.2x,Y", this->memory[*arg1]);
+		DISASM("$%.2X,Y", this->memory[*arg1]);
 		break;
-	case Relative: // -128 to +127, not sure, HAXED
+	case Relative: // -128 to +127
 		opsize = 2;
 		this->virtaddr = (this->PC+opsize) + (signed char)(*arg1);
-		DISASM("$%.4x", virtaddr);
+		DISASM("$%.4X", virtaddr);
 		break;
 	case Absolute: // 16bit address , Working
 		this->virtaddr = ((*arg2)<<8) | (*arg1);
 		opsize = 3;
-		DISASM("$%.4x", virtaddr );
+		DISASM("$%.4X", virtaddr );
 		break;
 	case Absolute_x: // 16bit address + X, Working
-		this->virtaddr = ((*arg2<<8) | (*arg1)) + this->X;
+		this->virtaddr = (((*arg2)<<8) | (*arg1)) + this->X;
 		opsize = 3;
-		DISASM("$%.4x,X", virtaddr-this->X );
+		DISASM("$%.4X,X", virtaddr-this->X );
+		if (this->virtaddr>=0x10000) this->virtaddr-=0x10000;
 		break;
-	case Absolute_y: // 16bit address + Y, Working
-		this->virtaddr = ((*arg2<<8) | (*arg1)) + this->Y;
+	case Absolute_y: // 16bit address + Y, NOT Working 037h - LDA failure to wrap properly from ffffh to 0000h
+		this->virtaddr = (((*arg2)<<8) | (*arg1)) + this->Y;
 		opsize = 3;
-		DISASM("$%.4x,Y", virtaddr- this->Y );
+		DISASM("$%.4X,Y", virtaddr-this->Y );
+		if (this->virtaddr>=0x10000) this->virtaddr-=0x10000;
 		break;
 	case Indirect:
-		this->virtaddr = this->memory[ (*arg2<<8) | (*arg1) ] | 
-						 this->memory[ ((*arg2<<8) | (*arg1)) +1 ]<<8;
+		this->virtaddr = this->memory[ ((*arg2)<<8) | (*arg1) ] | 
+						 this->memory[ (((*arg2)<<8) | (*arg1)) +1 ]<<8;
 		opsize = 3;
-		DISASM("($%.4x)", virtaddr );
+		DISASM("($%.4X)", ((*arg2)<<8) | (*arg1) );
 		break;
-	case Indexed_indirect: // ($ad,X), value at $ad+x, eg. $af, b0 - 
-		                   // at $af - $c0 - low
-		                   // at $b0 - $f0 - high
-		                   // combine = $f0c0
-		low = this->memory[ *arg1 + this->X ] ;
-		high = this->memory[ *(arg1+1) + this->X ];
-		if (low>=0x100) 
+	case Indexed_indirect: 
+		opsize = 2;
+		addrlo = *arg1 + this->X; 
+		addrhi = (*arg1+1) + this->X;
+		if (addrlo>=0x100) 
 		{
-			low -= 0x100; // Page wrap
-			opsize = 1;
+			addrlo -= 0x100; // Page wrap
+			//opsize = 1;
 		}
-		if (high>=0x100) 
+		if (addrhi>=0x100) 
 		{
-			high -= 0x100; // Page wrap
-			if (!opsize) opsize = 1;
+			addrhi -= 0x100; // Page wrap
+			//if (!opsize) opsize = 1;
 		}
+		low = this->memory[ addrlo ] ;
+		high = this->memory[ addrhi ];
 		this->virtaddr = low | (high<<8);
-		opsize += 2;
-		DISASM("($%.2x,X)", (*arg1) );
+		DISASM("($%.2X,X)", (*arg1) );
 		break;
 	case Indirect_indexed: // Working!
 		opsize = 2;
-		low = this->memory[ *arg1 ] ;
-		high = this->memory[ (*arg1)+1 ];
-		if (high>=0x100) 
+		addrlo = *arg1; 
+		addrhi = (*arg1)+1;
+
+		if (addrlo>=0x100) 
 		{
-			high -= 0x100; // Page wrap
-			++opsize;
+			addrlo -= 0x100; // Page wrap
+			//++opsize;
 		}
+		if (addrhi>=0x100) 
+		{
+			addrhi -= 0x100; // Page wrap
+			//++opsize;
+		}
+
+		low = this->memory[ addrlo ] ;
+		high = this->memory[ addrhi ];
+
 		this->virtaddr = (low | (high<<8)) + this->Y ;
-		DISASM("($%.2x),Y", (*arg1) );
+		DISASM("($%.2X),Y", (*arg1) );
 		break;
 	default:
 		log->Error("CPU::Step(): Unknown addressing mode!");
 		break;
 	}
 	// Page crossed + 1 to cycles
+	cycles+= op.cycles;
 if (debug)
 {
 
 	char hexvals[32];
 	for (int i = 0; i<opsize; i++)
 	{
-		sprintf(hexvals+(i*3), "%.2x ", this->memory[this->PC+i] );
+		sprintf(hexvals+(i*3), "%.2X ", this->memory[this->PC+i] );
 	}
 	for (int i = 0; i<(3-opsize); i++)
 	{
 		sprintf(hexvals+((i+opsize)*3), "   "  );
 	}
-
-	log->Debug("0x%x: %s\t%s %s", this->PC, hexvals, op.mnemnic, buffer );
+	int i;
+	int len = strlen(buffer);
+	for ( i = len; i< 28; i++)
+	{
+		buffer[i] = ' ';
+	}
+	buffer[++i] = 0;
+	//log->Debug("0x%x: %s\t%s %s", this->PC, hexvals, op.mnemnic, buffer );
+	log->Debug("%X  %s %s %s"
+		"A:%.2X X:%.2X Y:%.2X P:%.2X SP:%.2X", this->PC, hexvals, op.mnemnic, buffer,
+		this->A, this->X, this->Y, this->P, this->SP);
 }
 	uint16_t oldPC = this->PC;
 	PCchanged = false;
@@ -328,7 +354,7 @@ void CPU::PHA( CPU* c ) // Push accumulator on stack
 
 void CPU::PHP( CPU* c ) // Push processor status on stack
 {
-	c->Push( c->P );
+	c->Push( c->P | BREAK_FLAG );
 }
 
 void CPU::PLA( CPU* c ) // Pull accumulator from stack
@@ -340,7 +366,8 @@ void CPU::PLA( CPU* c ) // Pull accumulator from stack
 
 void CPU::PLP( CPU* c ) // Pull processor status from stack
 {
-	c->P = c->Pop();
+	c->P = c->Pop() | UNKNOWN_FLAG;
+	c->P &= ~BREAK_FLAG;
 }
 
 
@@ -378,24 +405,30 @@ void CPU::BIT( CPU* c ) // Bit Test
 // TODO: NOT SURE IF WORKING
 void CPU::ADC( CPU* c ) // Add with Carry
 {
-	uint16_t ret = c->A + c->Readv() + ((c->P&CARRY_FLAG)?1:0);
+	uint16_t ret =  (uint16_t)c->Readv() + c->A + (c->P&CARRY_FLAG);
+
+	c->ZERO( (ret & 0xff)? 0 : 1 );
+	c->CARRY( ret > 0xff );
+	c->NEGATIVE( ret&0x80 );
+
+	c->OVERFLOW( ! ( ( c->A ^ c->Readv() ) & 0x80 )
+		      &&  ( ( c->A ^ ret ) & 0x80) );
+
+	
 	c->A = ret&0xff;
-
-
-	c->CARRY( ret>0xff );
-	c->OVERFLOW( !((c->A ^ c->Readv()) & 0x80) && ((c->A ^ ret) & 0x80 ));;//http://nesdev.parodius.com/6502.txt
-	c->ZERO( c->A?0:1 );
-	c->NEGATIVE( c->A&0x80 );
 }
-void CPU::SBC( CPU* c ) // Subtract with Carry
+void CPU::SBC( CPU* c ) // Subtract with Carry, WRONG
 {
-	uint16_t ret = c->A -  c->Readv() - ((c->P&CARRY_FLAG)?0:1);
-	c->A = ret&0xff;
+	uint16_t ret = (uint16_t)c->A - c->Readv() - ((c->P&CARRY_FLAG) ? 0 : 1);
 
+	c->ZERO( (ret & 0xff)? 0 : 1 );
 	c->CARRY( ret < 0x100 );
-	c->OVERFLOW( ((c->A ^ ret) & 0x80) && ((c->A ^ c->Readv()) & 0x80 ));;//http://nesdev.parodius.com/6502.txt
-	c->ZERO( c->A?0:1 );
-	c->NEGATIVE( c->A&0x80 );
+	c->NEGATIVE( ret&0x80 );
+
+	c->OVERFLOW(  ( ( c->A ^ c->Readv() ) & 0x80 )
+		      &&  ( ( c->A ^ ret ) & 0x80)  );
+	
+	c->A = ret&0xff;
 }
 void CPU::CMP( CPU* c ) // Compare accumulator
 {
@@ -521,15 +554,14 @@ void CPU::JMP( CPU* c ) // Jump to another location
 	c->PC = c->Getv();
 }
 
-// TODO: Dunno
 void CPU::JSR( CPU* c ) // Jump to a subroutine
 {
-	c->Push16(c->PC+3);
+	c->Push16(c->PC+2); // Corrected
 	c->PC = c->Getv();
 }
 void CPU::RTS( CPU* c ) // Return form subroutine
 {
-	c->PC = c->Pop16();
+	c->PC = c->Pop16()+1;
 }
 
 // Branches
@@ -614,7 +646,7 @@ void CPU::NOP( CPU* c ) // No Operation
 }
 void CPU::RTI( CPU* c ) // Return from Interrupt
 {
-	c->P = c->Pop();
+	c->P = c->Pop() | UNKNOWN_FLAG;
 	c->PC = c->Pop16();
 }
 

@@ -4,6 +4,10 @@ CPU_ram::CPU_ram(void)
 {
 	ZERO =  0;
 	memset( this->memory, 0, 0xffff );
+	this->memory[0x0008] = 0xf7;
+	this->memory[0x0009] = 0xef;
+	this->memory[0x000a] = 0xdf;
+	this->memory[0x000f] = 0xbf;
 	ppu = NULL;
 	log->Debug("CPU_ram: Created");
 }

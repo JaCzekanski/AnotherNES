@@ -65,6 +65,7 @@ public:
 	vector<uint16_t> history;
 	CPU_ram memory;
 	PPU ppu;
+	uint32_t cycles;
 
 	bool PCchanged; // pc+opcode?
 	uint32_t virtaddr; // Seen by 6502
@@ -312,7 +313,7 @@ static OPCODE OpcodeTable[] =
 	{0x3d, CPU::AND, "AND", 4, Absolute_x},
 	{0x39, CPU::AND, "AND", 4, Absolute_y},
 	{0x21, CPU::AND, "AND", 6, Indexed_indirect},
-	{0x21, CPU::AND, "AND", 5, Indirect_indexed},
+	{0x31, CPU::AND, "AND", 5, Indirect_indexed},
 
 	// Logical OR
 	{0x49, CPU::EOR, "EOR", 2, Immediate},
@@ -322,7 +323,7 @@ static OPCODE OpcodeTable[] =
 	{0x5d, CPU::EOR, "EOR", 4, Absolute_x},
 	{0x59, CPU::EOR, "EOR", 4, Absolute_y},
 	{0x41, CPU::EOR, "EOR", 6, Indexed_indirect},
-	{0x41, CPU::EOR, "EOR", 5, Indirect_indexed},
+	{0x51, CPU::EOR, "EOR", 5, Indirect_indexed},
 
 	// Logical Inclusive OR
 	{0x09, CPU::ORA, "ORA", 2, Immediate},
@@ -332,7 +333,7 @@ static OPCODE OpcodeTable[] =
 	{0x1d, CPU::ORA, "ORA", 4, Absolute_x},
 	{0x19, CPU::ORA, "ORA", 4, Absolute_y},
 	{0x01, CPU::ORA, "ORA", 6, Indexed_indirect},
-	{0x01, CPU::ORA, "ORA", 5, Indirect_indexed},
+	{0x11, CPU::ORA, "ORA", 5, Indirect_indexed},
 
 	// Bit Test
 	{0x24, CPU::BIT, "BIT", 3, Zero_page},
@@ -349,7 +350,7 @@ static OPCODE OpcodeTable[] =
 	{0x7d, CPU::ADC, "ADC", 4, Absolute_x},
 	{0x79, CPU::ADC, "ADC", 4, Absolute_y},
 	{0x61, CPU::ADC, "ADC", 6, Indexed_indirect},
-	{0x61, CPU::ADC, "ADC", 5, Indirect_indexed},
+	{0x71, CPU::ADC, "ADC", 5, Indirect_indexed},
 
 	// Subtract with Carry
 	{0xE9, CPU::SBC, "SBC", 2, Immediate},
@@ -359,7 +360,7 @@ static OPCODE OpcodeTable[] =
 	{0xFd, CPU::SBC, "SBC", 4, Absolute_x},
 	{0xF9, CPU::SBC, "SBC", 4, Absolute_y},
 	{0xE1, CPU::SBC, "SBC", 6, Indexed_indirect},
-	{0xE1, CPU::SBC, "SBC", 5, Indirect_indexed},
+	{0xF1, CPU::SBC, "SBC", 5, Indirect_indexed},
 
 	//  Compare accumulator
 	{0xC9, CPU::CMP, "CMP", 2, Immediate},

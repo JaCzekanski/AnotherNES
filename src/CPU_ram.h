@@ -2,7 +2,7 @@
 #include "headers.h"
 #include "PPU.h"
 
-
+extern int buttonState;
 /* Memory map
 
 $FFFA - $FFFB - NMI vector
@@ -32,6 +32,8 @@ public:
 	uint8_t ZERO;
 	uint8_t RET;
 
+	uint8_t bit;
+
 	PPU* ppu;
 
 	CPU_ram(void);
@@ -54,6 +56,11 @@ public:
 		if (n < 0x4020) // IO / APU
 		{
 			//log->Debug("IO write at 0x%x: 0x%x", n, data);
+			if (n == 0x4016) // Strobe
+			{
+				bit = 7;
+				return ;
+			}
 			memory[ n ] = data;
 			return;
 			// TODO: Interface with APU and IO
@@ -94,6 +101,14 @@ public:
 		if (n < 0x4020) // IO / APU
 		{
 			//log->Debug("IO read at 0x%x", n);
+			if (n == 0x4016) // Strobe
+			{
+				if ( buttonState & (1<<bit) ) RET = 1;
+				else RET = 0;
+				bit--;
+				return RET;
+			}
+			//A, B, Select, Start, Up, Down, Left, Right.
 			return ZERO;//memory[ n ]; 
 			// TODO: Interface with APU and IO
 		}
