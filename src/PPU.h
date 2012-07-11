@@ -48,6 +48,14 @@ static struct Palette_entry nes_palette[64] =
 	{0x92,0xDB,0xFF}, {0x92,0x92,0x92}, {0x00,0x00,0x00}, {0x00,0x00,0x00}
 };
 
+struct SPRITE 
+{
+	uint8_t y;
+	uint8_t index;
+	uint8_t attr;
+	uint8_t x;
+};
+
 class PPU
 {
 private:
@@ -55,16 +63,26 @@ private:
 	uint16_t scanline;
 	bool VBLANK;
 	bool NMI_enabled;
+	bool SpriteSize; // false - 8x8, true - 8x16
 	uint16_t BackgroundPattenTable;
 	uint16_t SpritePattenTable;
 	uint8_t VRAMaddressIncrement;
 	uint16_t BaseNametable;
 
+
+	bool ShowBackground;
+	bool ShowSprites;
+
+
 	bool PPUADDRhalf;
 	uint8_t PPUADDRhi;
 	uint8_t PPUADDRlo;
+	void RenderSprite(SDL_Surface* s);
+	void RenderBackground(SDL_Surface* s);
 public:
+	uint8_t OAMADDR;
 	uint8_t memory[0x4000]; // 16KB
+	SPRITE OAM[0xff]; // 64B*4
 	PPU(void);
 	~PPU(void);
 

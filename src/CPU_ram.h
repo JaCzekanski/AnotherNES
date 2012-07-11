@@ -55,10 +55,21 @@ public:
 		}
 		if (n < 0x4020) // IO / APU
 		{
-			//log->Debug("IO write at 0x%x: 0x%x", n, data);
-			if (n == 0x4016) // Strobe
+			if (n == 0x4014) // OAM_DMA 
 			{
-				bit = 7;
+				for (int i = ppu->OAMADDR; i<64; i++)
+				{
+					SPRITE spr;
+					spr.y =     memory[ data<<8 | i*4 + 0];
+					spr.index = memory[ data<<8 | i*4 + 1];
+					spr.attr =  memory[ data<<8 | i*4 + 2];
+					spr.x =     memory[ data<<8 | i*4 + 3];
+					ppu->OAM[i] = spr;
+				}
+			}
+			else if (n == 0x4016) // JOY1
+			{
+				bit = 7; // Strobe
 				return ;
 			}
 			memory[ n ] = data;
@@ -100,16 +111,15 @@ public:
 		}
 		if (n < 0x4020) // IO / APU
 		{
-			//log->Debug("IO read at 0x%x", n);
-			if (n == 0x4016) // Strobe
+			if (n == 0x4016) // JOY1 
 			{
-				if ( buttonState & (1<<bit) ) RET = 1;
+				//A, B, Select, Start, Up, Down, Left, Right.
+				if ( buttonState & (1<<bit) ) RET = 1; //Strobe
 				else RET = 0;
 				bit--;
 				return RET;
 			}
-			//A, B, Select, Start, Up, Down, Left, Right.
-			return ZERO;//memory[ n ]; 
+			return ZERO;
 			// TODO: Interface with APU and IO
 		}
 		if (n < 0x6000) // Expansion rom (Mappers not implemented, return 0)
