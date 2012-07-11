@@ -22,6 +22,10 @@ PPU::PPU(void)
 	BaseNametable = 0x2000;
 	VRAMaddressIncrement = 1;
 	OAMADDR = 0;
+
+	SCROLLhalf = true;
+	ScrollX = 0;
+	ScrollY = 0;
 	log->Debug("CPU_ram: Created");
 }
 
@@ -102,7 +106,22 @@ void PPU::Write( uint8_t reg, uint8_t data )
 			break;
 			
 		case 0x2005: //PPUSCROLL
-			// Scrolling, ignored, write x2
+			if (SCROLLhalf) 
+			{
+				_ScrollX = ScrollX;
+				ScrollX = data;
+			}
+			else 
+			{
+				_ScrollY = ScrollY;
+				ScrollY = data;
+			}
+			SCROLLhalf = ! SCROLLhalf;
+
+			if (_ScrollX!=ScrollX || _ScrollY!=ScrollY) 
+			{
+				log->Debug("PPU: Scroll {%.2x,%.2x}", ScrollX, ScrollY);
+			}
 			break;
 
 		case 0x2006: //PPUADDR
@@ -157,6 +176,7 @@ uint8_t PPU::Read( uint8_t reg)
 
 			// Reset PPUADDR latch to high
 			PPUADDRhalf  = true;
+			SCROLLhalf = true;
 			break;
 						
 		case 0x2004: //OAMDATA
@@ -327,10 +347,14 @@ void PPU::RenderSprite(SDL_Surface* s)
 }
 void PPU::RenderBackground(SDL_Surface* s)
 {
+	//Q&D scrolling 
+	SDL_Surface* bg = SDL_CreateRGBSurface( SDL_SWSURFACE, 256, 512, 32, 0, 0, 0, 0 );
+	if (!bg) log->Fatal("PPU: Cannot create BG surface!");
+	SDL_LockSurface( bg );
 	int x = 0;
 	int y = 0;
 
-	uint8_t *PIXELS = (uint8_t*)s->pixels;
+	uint8_t *PIXELS = (uint8_t*)bg->pixels;
 	uint32_t color = 0;
 	uint16_t Attribute = BaseNametable + 0x3c0;
 	for (int i = 0; i<960; i++)
@@ -378,5 +402,16 @@ void PPU::RenderBackground(SDL_Surface* s)
 			y++;
 			x = 0;
 		}
+
 	}
+	SDL_UnlockSurface( bg );
+	SDL_UnlockSurface( s );
+
+	SDL_Rect pos;
+	pos.x = -ScrollX;
+	pos.y = ScrollY;
+
+	SDL_BlitSurface( bg, NULL, s, &pos );
+	SDL_LockSurface( s );
+	SDL_FreeSurface( bg );
 }
