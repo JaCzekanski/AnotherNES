@@ -241,8 +241,60 @@ uint8_t PPU::Step( )
 void PPU::Render(SDL_Surface* s)
 {
 	SDL_FillRect( s, NULL, 0 );
-	/*if (ShowBackground) */this->RenderBackground(s);
-	/*if (ShowSprites) */this->RenderSprite(s);
+	if (ShowBackground) 
+	{
+		/* We have 2 types of mirroring:
+                         ______
+		   Vertical:    |11|11|
+		                |--+--| 
+						|22|22|
+                         ``````
+                         ______
+		   Vertical:    |11|22|
+		                |--+--| 
+						|11|22|
+                         ``````
+
+		  For loop to draw them all!
+                         ______
+		  iteration:    |00|11|
+		                |--+--| 
+						|22|33|
+                         ``````
+        */
+
+		uint8_t currentNametable = (BaseNametable-0x2000)/0x400;
+		uint8_t cnx = (currentNametable%2);
+		uint8_t cny = (currentNametable/2);
+		SDL_Surface* bg = SDL_CreateRGBSurface( SDL_SWSURFACE, 256, 512, 32, 0, 0, 0, 0 );
+		if (!bg) log->Fatal("PPU: Cannot create BG surface!");
+		SDL_UnlockSurface( s );
+		for (int i = 0; i<4; i++)
+		{
+			SDL_LockSurface( bg );
+			if (Mirroring == VERTICAL) // Vertical
+			{
+				if (i%2 == 0) RenderBackground(bg, cnx);
+				else RenderBackground(bg, !cnx);
+			}
+			else // Horizontal
+			{
+				if (i/2 == 0) RenderBackground(bg, (cny)*2);
+				else RenderBackground(bg, (!cny)*2);
+			}
+
+			SDL_Rect pos;
+			pos.x = (i%2)*256 - ScrollX;
+			pos.y = (i/2)*240 - ScrollY;
+
+			SDL_UnlockSurface( bg );
+			SDL_BlitSurface( bg, NULL, s, &pos );
+		}
+		SDL_FreeSurface( bg );
+
+		SDL_LockSurface( s );
+	}
+	if (ShowSprites) this->RenderSprite(s);
 }
 
 void PPU::RenderSprite(SDL_Surface* s)
@@ -345,22 +397,22 @@ void PPU::RenderSprite(SDL_Surface* s)
 	}
 
 }
-void PPU::RenderBackground(SDL_Surface* s)
+void PPU::RenderBackground(SDL_Surface* s, uint8_t nametable)
 {
 	//Q&D scrolling 
-	SDL_Surface* bg = SDL_CreateRGBSurface( SDL_SWSURFACE, 256, 512, 32, 0, 0, 0, 0 );
-	if (!bg) log->Fatal("PPU: Cannot create BG surface!");
-	SDL_LockSurface( bg );
 	int x = 0;
 	int y = 0;
 
-	uint8_t *PIXELS = (uint8_t*)bg->pixels;
+	uint8_t *PIXELS = (uint8_t*)s->pixels;
 	uint32_t color = 0;
-	uint16_t Attribute = BaseNametable + 0x3c0;
+
+	uint16_t NametableAddress = (0x2000 + 0x400 * (nametable&0x03));
+
+	uint16_t Attribute = NametableAddress + 0x3c0;
 	for (int i = 0; i<960; i++)
 	{
 		// Assume that Surface is 256x240
-		uint16_t tile = this->memory[i+BaseNametable];
+		uint16_t tile = this->memory[i+NametableAddress];
 		uint32_t dt = ( (y*256*8) + (x*8) ) * 4;
 		uint8_t *PIXEL = PIXELS+dt;
 		for (uint8_t b = 0; b<8; b++) //Y
@@ -404,14 +456,4 @@ void PPU::RenderBackground(SDL_Surface* s)
 		}
 
 	}
-	SDL_UnlockSurface( bg );
-	SDL_UnlockSurface( s );
-
-	SDL_Rect pos;
-	pos.x = -ScrollX;
-	pos.y = ScrollY;
-
-	SDL_BlitSurface( bg, NULL, s, &pos );
-	SDL_LockSurface( s );
-	SDL_FreeSurface( bg );
 }

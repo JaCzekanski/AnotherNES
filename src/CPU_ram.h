@@ -85,6 +85,10 @@ public:
 			memory[ n ] = data;
 			return;
 		}
+		else
+		{
+			log->Fatal("CPU_ram.h: Writing to ROM section!");
+		}
 		memory[ n ] = data;
 		return ; // Return PRG-ROM
 		

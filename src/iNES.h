@@ -11,6 +11,8 @@ public:
 	uint8_t* PRG_ROM;
 	uint8_t* CHR_ROM;
 
+	uint8_t Mirroring;
+
 
 	iNES(void);
 	~iNES(void);

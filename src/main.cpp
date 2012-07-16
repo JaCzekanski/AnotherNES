@@ -98,6 +98,7 @@ int main()
 
 	log->Info("CPU Reset");
 	cpu->memory.ppu = &cpu->ppu;
+	cpu->ppu.Mirroring = rom->Mirroring;
 	cpu->Reset();
 
 

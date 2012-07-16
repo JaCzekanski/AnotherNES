@@ -2,6 +2,9 @@
 #include "headers.h"
 #include <SDL.h>
 
+#define HORIZONTAL 0
+#define VERTICAL 1
+
 struct Palette_entry
 {
 	uint8_t r;
@@ -66,8 +69,9 @@ private:
 	uint8_t ScrollY, _ScrollY;
 
 	void RenderSprite(SDL_Surface* s);
-	void RenderBackground(SDL_Surface* s);
+	void RenderBackground(SDL_Surface* s, uint8_t nametable);
 public:
+	uint8_t Mirroring;
 	uint8_t OAMADDR;
 	uint8_t memory[0x4000]; // 16KB
 	SPRITE OAM[0xff]; // 64B*4
