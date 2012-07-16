@@ -4,17 +4,28 @@ PPU::PPU(void)
 {
 	memset( this->memory, 0, 0x4000 );
 	memset( this->memory+0x2000 , 0xFF, 0xc00 );
+	memset( this->OAM , 0, 0xff );
 	cycles = 0;
 	scanline = 0;
 	NMI_enabled = false;
 	VBLANK = true;
+	SpriteSize = false;
 	PPUADDRhalf = true; // True - hi, false - lo
+	
+	ShowBackground = false;
+	ShowSprites = false;
+
 	PPUADDRhi = 0;
 	PPUADDRlo = 0;
 	BackgroundPattenTable = 0;
 	SpritePattenTable = 0;
 	BaseNametable = 0x2000;
 	VRAMaddressIncrement = 1;
+	OAMADDR = 0;
+
+	SCROLLhalf = true;
+	ScrollX = 0;
+	ScrollY = 0;
 	log->Debug("CPU_ram: Created");
 }
 
@@ -36,6 +47,17 @@ void PPU::Write( uint8_t reg, uint8_t data )
 			// 6 - ppu slave/master, ignore
 
 			// 5 - Sprite size (0 - 8x8, 1 - 8x16), ignore
+			if (data&0x20) 
+			{
+				if (!SpriteSize) log->Debug("PPU: 8x16");
+				SpriteSize = true;
+			}
+			else
+			{
+				if (SpriteSize) log->Debug("PPU: 8x8");
+				SpriteSize = false;
+			}
+				
 
 			// 4 - Background pattern table address (0: $0000; 1: $1000)
 			if (data&0x10) BackgroundPattenTable = 0x1000;
@@ -60,23 +82,46 @@ void PPU::Write( uint8_t reg, uint8_t data )
 			// 7 - Intensify blues (and darken other colors)
 			// 6 - Intensify greens (and darken other colors)
 			// 5 - Intensify reds (and darken other colors)
-			// 4 - 1: Show sprites, ignored - off
-			// 3 - 1: Show background, ignored - on
+			// 4 - 1: Show sprites
+			// 3 - 1: Show background
 			// 2 - 1: Show sprites in leftmost 8 pixels of screen; 0: Hide, ignored
 			// 1 - 1: Show background in leftmost 8 pixels of screen; 0: Hide, ignored
 			// 0 - Grayscale (0: normal color; 1: produce a monochrome display), ignored
+			if (data&0x10) ShowSprites = true;
+			else ShowSprites = false;
+
+			if (data&0x08) ShowBackground = true;
+			else ShowBackground = false;
 			break;
 			
 		case 0x2003: //OAMADDR
+			//log->Debug("PPU: 0x2003 <- 0x%.2x", data);
+			OAMADDR = data;
 			// Object Attribute Memory (sprites), ignored
 			break;
 			
 		case 0x2004: //OAMDATA
+			log->Debug("PPU: 0x2004 <- 0x%.2x", data);
 			// Object Attribute Memory (sprites), ignored
 			break;
 			
 		case 0x2005: //PPUSCROLL
-			// Scrolling, ignored, write x2
+			if (SCROLLhalf) 
+			{
+				_ScrollX = ScrollX;
+				ScrollX = data;
+			}
+			else 
+			{
+				_ScrollY = ScrollY;
+				ScrollY = data;
+			}
+			SCROLLhalf = ! SCROLLhalf;
+
+			if (_ScrollX!=ScrollX || _ScrollY!=ScrollY) 
+			{
+				log->Debug("PPU: Scroll {%.2x,%.2x}", ScrollX, ScrollY);
+			}
 			break;
 
 		case 0x2006: //PPUADDR
@@ -131,6 +176,7 @@ uint8_t PPU::Read( uint8_t reg)
 
 			// Reset PPUADDR latch to high
 			PPUADDRhalf  = true;
+			SCROLLhalf = true;
 			break;
 						
 		case 0x2004: //OAMDATA
@@ -192,19 +238,181 @@ uint8_t PPU::Step( )
 	return 0;
 }
 
-
 void PPU::Render(SDL_Surface* s)
 {
+	SDL_FillRect( s, NULL, 0 );
+	if (ShowBackground) 
+	{
+		/* We have 2 types of mirroring:
+                         ______
+		   Vertical:    |11|11|
+		                |--+--| 
+						|22|22|
+                         ``````
+                         ______
+		   Vertical:    |11|22|
+		                |--+--| 
+						|11|22|
+                         ``````
+
+		  For loop to draw them all!
+                         ______
+		  iteration:    |00|11|
+		                |--+--| 
+						|22|33|
+                         ``````
+        */
+
+		uint8_t currentNametable = (BaseNametable-0x2000)/0x400;
+		uint8_t cnx = (currentNametable%2);
+		uint8_t cny = (currentNametable/2);
+		SDL_Surface* bg = SDL_CreateRGBSurface( SDL_SWSURFACE, 256, 512, 32, 0, 0, 0, 0 );
+		if (!bg) log->Fatal("PPU: Cannot create BG surface!");
+		SDL_UnlockSurface( s );
+		for (int i = 0; i<4; i++)
+		{
+			SDL_LockSurface( bg );
+			if (Mirroring == VERTICAL) // Vertical
+			{
+				if (i%2 == 0) RenderBackground(bg, cnx);
+				else RenderBackground(bg, !cnx);
+			}
+			else // Horizontal
+			{
+				if (i/2 == 0) RenderBackground(bg, (cny)*2);
+				else RenderBackground(bg, (!cny)*2);
+			}
+
+			SDL_Rect pos;
+			pos.x = (i%2)*256 - ScrollX;
+			pos.y = (i/2)*240 - ScrollY;
+
+			SDL_UnlockSurface( bg );
+			SDL_BlitSurface( bg, NULL, s, &pos );
+		}
+		SDL_FreeSurface( bg );
+
+		SDL_LockSurface( s );
+	}
+	if (ShowSprites) this->RenderSprite(s);
+}
+
+void PPU::RenderSprite(SDL_Surface* s)
+{
+	uint8_t *PIXELS = (uint8_t*)s->pixels;
+	uint32_t color = 0;
+
+	if (!SpriteSize)
+	{
+		for (int i = 0; i<64; i++)
+		{
+			SPRITE spr = this->OAM[i];
+			if (spr.y >= 0xEF) continue;
+
+			uint16_t spriteaddr = SpritePattenTable + spr.index*16;
+
+			// 8x8px
+			for (int y = 0; y<8; y++)
+			{
+				int sprite_y = y;
+				if ( spr.attr&0x40 ) sprite_y = 7 - sprite_y; //Hor flip
+
+				uint8_t spritedata = memory[ spriteaddr + sprite_y ];
+				uint8_t spritedata2 = memory[ spriteaddr + sprite_y + 8 ];
+				for (int x = 0; x<8; x++)
+				{
+					int sprite_x = x;
+					if ( spr.attr&0x80 ) sprite_x = 7 - sprite_x; //Ver flip
+
+					bool c1 = ( spritedata  &(1<<(7-sprite_x)) )? true: false;
+					bool c2 = ( spritedata2 &(1<<(7-sprite_x)) )? true: false;
+					
+					color = c1 | c2<<1;
+
+					if (color == 0) continue;
+
+					uint16_t _y = y+spr.y;
+					uint16_t _x = x+spr.x;
+
+					uint32_t dt = ( ( _y *256) +  _x  ) * 4;
+					uint8_t *PIXEL = PIXELS+dt;
+
+					Palette_entry e = nes_palette[ memory[0x3F10 + ((spr.attr&0x3)*4) + color] ];
+
+
+					*(PIXEL+0) = e.b;
+					*(PIXEL+1) = e.g;
+					*(PIXEL+2) = e.r;
+				}
+			}
+		}
+
+	}
+	else //8x16
+	{
+		for (int i = 0; i<64; i++)
+		{
+			SPRITE spr = this->OAM[i];
+			if (spr.y >= 0xEF) continue;
+
+
+			uint16_t spriteaddr = ( (spr.index&1) * 0x1000)  + ((spr.index>>1)*32);
+
+			// 8x16px
+			for (int y = 0; y<16; y++)
+			{
+				int sprite_y = y;
+				if (sprite_y>7) sprite_y+=8;
+
+				uint8_t spritedata = memory[ spriteaddr + sprite_y ];
+				uint8_t spritedata2 = memory[ spriteaddr + sprite_y + 8 ];
+				for (int x = 0; x<8; x++)
+				{
+					int sprite_x = x;
+					if ( spr.attr&0x80 ) sprite_x = 7 - sprite_x; //Ver flip
+
+					bool c1 = ( spritedata  &(1<<(7-sprite_x)) )? true: false;
+					bool c2 = ( spritedata2 &(1<<(7-sprite_x)) )? true: false;
+					
+					color = c1 | c2<<1;
+
+					if (color == 0) continue;
+
+					uint16_t _y = y+spr.y;
+					uint16_t _x = x+spr.x;
+
+					uint32_t dt = ( ( _y *256) +  _x  ) * 4;
+					uint8_t *PIXEL = PIXELS+dt;
+
+					Palette_entry e = nes_palette[ memory[0x3F10 + ((spr.attr&0x3)*4) + color] ];
+
+
+					*(PIXEL+0) = e.b;
+					*(PIXEL+1) = e.g;
+					*(PIXEL+2) = e.r;
+				}
+			}
+		}
+
+	}
+
+}
+void PPU::RenderBackground(SDL_Surface* s, uint8_t nametable)
+{
+	//Q&D scrolling 
 	int x = 0;
 	int y = 0;
 
 	uint8_t *PIXELS = (uint8_t*)s->pixels;
 	uint32_t color = 0;
-	uint16_t Attribute = BaseNametable + 0x3c0;
+
+	uint16_t NametableAddress = (0x2000 + 0x400 * (nametable&0x03));
+
+	uint16_t Attribute = NametableAddress + 0x3c0;
 	for (int i = 0; i<960; i++)
 	{
 		// Assume that Surface is 256x240
-		uint16_t tile = this->memory[i+BaseNametable];
+		uint16_t tile = this->memory[i+NametableAddress];
 		uint32_t dt = ( (y*256*8) + (x*8) ) * 4;
 		uint8_t *PIXEL = PIXELS+dt;
 		for (uint8_t b = 0; b<8; b++) //Y
@@ -246,5 +454,6 @@ void PPU::Render(SDL_Surface* s)
 			y++;
 			x = 0;
 		}
+
 	}
 }

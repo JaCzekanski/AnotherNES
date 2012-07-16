@@ -10,7 +10,7 @@ int buttonState = 0;
 
 #define MAJOR_VERSION 0
 #define MINOR_VERSION 1
-#define ROM_NAME "rom/cpu_test/nestest.nes"
+#define ROM_NAME "rom/battlecity.nes"
 
 Logger* log;
 CPU* cpu;
@@ -30,7 +30,7 @@ int main()
 
 	SDL_Window* MainWindow = SDL_CreateWindow( "AnotherNES", 
 		SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,
-		256, 240, SDL_WINDOW_SHOWN );
+		256, 512, SDL_WINDOW_SHOWN );
 
 	if ( MainWindow == NULL )
 	{
@@ -42,7 +42,7 @@ int main()
 	SDL_DisplayMode mode;
 	mode.format = SDL_PIXELFORMAT_RGB888;
 	mode.w = 256;
-	mode.h = 240;
+	mode.h = 512;
 	mode.refresh_rate = 0;
 	mode.driverdata = 0;
 
@@ -98,6 +98,7 @@ int main()
 
 	log->Info("CPU Reset");
 	cpu->memory.ppu = &cpu->ppu;
+	cpu->ppu.Mirroring = rom->Mirroring;
 	cpu->Reset();
 
 

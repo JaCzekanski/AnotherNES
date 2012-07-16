@@ -68,6 +68,17 @@ int iNES::Load( const char* name )
 	  Source: http://wiki.nesdev.com/w/index.php/INES
 	*/
 
+	if (flags6&0x01) 
+	{
+		log->Info("iNes.cpp: Vertical mirroring");
+		Mirroring = 1;
+	}
+	else 
+	{
+		log->Info("iNes.cpp: Horizontal mirroring");
+		Mirroring = 0;
+	}
+
 	uint8_t mapper = ((flags6&0xf0)>>8) |
 					 (flags7&0xf0);
 
