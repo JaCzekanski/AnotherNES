@@ -739,7 +739,30 @@ void CPU::RRA( CPU* c ) // Rotate one bit right in memory, then add memory to ac
 	c->A = ret;
 }
 
+// UNTESTED
+void CPU::ANC( CPU* c ) // AND byte with accumulator. If result is negative then carry is set.
+{
+	c->A = c->A & c->Readv();
+	c->ZERO( c->A?0:1 );
+	c->NEGATIVE( c->A&0x80 );
+	c->CARRY( c->A&0x80 );
+}
 
+// UNTESTED
+void CPU::ALR( CPU* c ) // AND byte with accumulator, then shift right one bit in accumulator.
+{
+	c->A = c->A & c->Readv();
+
+	c->CARRY( c->A&0x1 );
+
+	uint8_t ret = c->A>>1;
+	c->A = ret;
+
+	c->ZERO( ret?0:1 );
+	c->NEGATIVE( (ret&0x80) );
+}
+
+	
 void CPU::UNK(CPU* c)
 {
 	log->Debug("0x%x: Unknown instruction (0x%x), halting!", c->PC, c->memory[c->PC]);

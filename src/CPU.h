@@ -237,6 +237,9 @@ public:
 	static void SRE( CPU* c ); // Shift right one bit in memory, then EOR accumulator with memory
 	static void RRA( CPU* c ); // Rotate one bit right in memory, then add memory to accumulator
 
+	static void ANC( CPU* c ); // AND byte with accumulator. If result is negative then carry is set.
+	static void ALR( CPU* c ); // AND byte with accumulator, then shift right one bit in accumulator.
+
 
 	static void UNK(CPU* c); //DBG PURPOSES
 };
@@ -588,6 +591,13 @@ static OPCODE OpcodeTable[] =
 	{0x7b, CPU::RRA, "RRA", 7, Absolute_y},
 	{0x63, CPU::RRA, "RRA", 8, Indexed_indirect},
 	{0x73, CPU::RRA, "RRA", 8, Indirect_indexed},
+
+	// AND byte with accumulator. If result is negative then carry is set.
+	{0x0B, CPU::ANC, "ANC", 2, Immediate},
+	{0x2B, CPU::ANC, "ANC", 2, Immediate},
+
+	// AND byte with accumulator, then shift right one bit in accumulator.
+	{0x4B, CPU::ALR, "ALR", 2, Immediate},
 
 	{0x02, CPU::UNK, "GFOT"}
 
