@@ -231,7 +231,7 @@ public:
 	static void LAX( CPU* c ); // Load A and X
 	static void SAX( CPU* c ); // AND X register with accumulator and store result in memory
 	static void DCP( CPU* c ); // Substract 1 from memory (without borrow)
-	static void ISC( CPU* c ); // Increase memory by one, then subtract memory from A (with borrow)
+	static void ISB( CPU* c ); // Increase memory by one, then subtract memory from A (with borrow)
 	static void SLO( CPU* c ); // Shift left one bit in memory, then OR accumulator with memory
 	static void RLA( CPU* c ); // Rotate one bit left in memory, then AND accumulator with memory
 	static void SRE( CPU* c ); // Shift right one bit in memory, then EOR accumulator with memory
@@ -295,7 +295,7 @@ static OPCODE OpcodeTable[] =
 
 	// Store Y
 	{0x84, CPU::STY, "STY", 3, Zero_page},
-	{0x94, CPU::STY, "STY", 4, Zero_page_y},
+	{0x94, CPU::STY, "STY", 4, Zero_page_x},
 	{0x8c, CPU::STY, "STY", 4, Absolute},
 
 	
@@ -487,36 +487,36 @@ static OPCODE OpcodeTable[] =
 	{0x40, CPU::RTI, "RTI", 6, Implicit}, // Return from Interrupt
 
 	// Undocumented opcodes
-	{0x04, CPU::NOP, "N*P", 3, Zero_page},  // Double No Operation
-	{0x14, CPU::NOP, "N*P", 4, Zero_page_x},// Double No Operation
-	{0x34, CPU::NOP, "N*P", 4, Zero_page_x},// Double No Operation
-	{0x44, CPU::NOP, "N*P", 3, Zero_page},  // Double No Operation
-	{0x54, CPU::NOP, "N*P", 4, Zero_page_x},// Double No Operation
-	{0x64, CPU::NOP, "N*P", 3, Zero_page},  // Double No Operation
-	{0x74, CPU::NOP, "N*P", 4, Zero_page_x},// Double No Operation
-	{0x80, CPU::NOP, "N*P", 2, Immediate},  // Double No Operation
-	{0x82, CPU::NOP, "N*P", 2, Immediate},  // Double No Operation
-	{0x89, CPU::NOP, "N*P", 2, Immediate},  // Double No Operation
-	{0xC2, CPU::NOP, "N*P", 2, Immediate},  // Double No Operation
-	{0xD4, CPU::NOP, "N*P", 4, Zero_page_x},// Double No Operation
-	{0xE2, CPU::NOP, "N*P", 2, Immediate},  // Double No Operation
-	{0xF4, CPU::NOP, "N*P", 4, Zero_page_x},// Double No Operation
+	{0x04, CPU::NOP, "NOP", 3, Zero_page},  // Double No Operation
+	{0x14, CPU::NOP, "NOP", 4, Zero_page_x},// Double No Operation
+	{0x34, CPU::NOP, "NOP", 4, Zero_page_x},// Double No Operation
+	{0x44, CPU::NOP, "NOP", 3, Zero_page},  // Double No Operation
+	{0x54, CPU::NOP, "NOP", 4, Zero_page_x},// Double No Operation
+	{0x64, CPU::NOP, "NOP", 3, Zero_page},  // Double No Operation
+	{0x74, CPU::NOP, "NOP", 4, Zero_page_x},// Double No Operation
+	{0x80, CPU::NOP, "NOP", 2, Immediate},  // Double No Operation
+	{0x82, CPU::NOP, "NOP", 2, Immediate},  // Double No Operation
+	{0x89, CPU::NOP, "NOP", 2, Immediate},  // Double No Operation
+	{0xC2, CPU::NOP, "NOP", 2, Immediate},  // Double No Operation
+	{0xD4, CPU::NOP, "NOP", 4, Zero_page_x},// Double No Operation
+	{0xE2, CPU::NOP, "NOP", 2, Immediate},  // Double No Operation
+	{0xF4, CPU::NOP, "NOP", 4, Zero_page_x},// Double No Operation
 
-	{0x1A, CPU::NOP, "N*P", 2, Implicit},   // No Operation
-	{0x3A, CPU::NOP, "N*P", 2, Implicit},   // No Operation
-	{0x5A, CPU::NOP, "N*P", 2, Implicit},   // No Operation
-	{0x7A, CPU::NOP, "N*P", 2, Implicit},   // No Operation
-	{0xDA, CPU::NOP, "N*P", 2, Implicit},   // No Operation
-	{0xFA, CPU::NOP, "N*P", 2, Implicit},   // No Operation
+	{0x1A, CPU::NOP, "NOP", 2, Implicit},   // No Operation
+	{0x3A, CPU::NOP, "NOP", 2, Implicit},   // No Operation
+	{0x5A, CPU::NOP, "NOP", 2, Implicit},   // No Operation
+	{0x7A, CPU::NOP, "NOP", 2, Implicit},   // No Operation
+	{0xDA, CPU::NOP, "NOP", 2, Implicit},   // No Operation
+	{0xFA, CPU::NOP, "NOP", 2, Implicit},   // No Operation
 
 
-	{0x0C, CPU::NOP, "N*P", 4, Absolute},     // Triple No Operation
-	{0x1C, CPU::NOP, "N*P", 4, Absolute_x},   // Triple No Operation
-	{0x3C, CPU::NOP, "N*P", 4, Absolute_x},   // Triple No Operation
-	{0x5C, CPU::NOP, "N*P", 4, Absolute_x},   // Triple No Operation
-	{0x7C, CPU::NOP, "N*P", 4, Absolute_x},   // Triple No Operation
-	{0xDC, CPU::NOP, "N*P", 4, Absolute_x},   // Triple No Operation
-	{0xFC, CPU::NOP, "N*P", 4, Absolute_x},   // Triple No Operation
+	{0x0C, CPU::NOP, "NOP", 4, Absolute},     // Triple No Operation
+	{0x1C, CPU::NOP, "NOP", 4, Absolute_x},   // Triple No Operation
+	{0x3C, CPU::NOP, "NOP", 4, Absolute_x},   // Triple No Operation
+	{0x5C, CPU::NOP, "NOP", 4, Absolute_x},   // Triple No Operation
+	{0x7C, CPU::NOP, "NOP", 4, Absolute_x},   // Triple No Operation
+	{0xDC, CPU::NOP, "NOP", 4, Absolute_x},   // Triple No Operation
+	{0xFC, CPU::NOP, "NOP", 4, Absolute_x},   // Triple No Operation
 
 	{0xEB, CPU::SBC, "SBC", 2, Immediate},    // Substract
 
@@ -545,13 +545,13 @@ static OPCODE OpcodeTable[] =
 	{0xd3, CPU::DCP, "DCP", 8, Indirect_indexed},
 
 	// Increase memory by one, then subtract memory from A (with borrow)
-	{0xe7, CPU::ISC, "ISC", 5, Zero_page},
-	{0xf7, CPU::ISC, "ISC", 6, Zero_page_x},
-	{0xef, CPU::ISC, "ISC", 6, Absolute},
-	{0xff, CPU::ISC, "ISC", 7, Absolute_x},
-	{0xfb, CPU::ISC, "ISC", 7, Absolute_y},
-	{0xe3, CPU::ISC, "ISC", 8, Indexed_indirect},
-	{0xf3, CPU::ISC, "ISC", 8, Indirect_indexed},
+	{0xe7, CPU::ISB, "ISB", 5, Zero_page},
+	{0xf7, CPU::ISB, "ISB", 6, Zero_page_x},
+	{0xef, CPU::ISB, "ISB", 6, Absolute},
+	{0xff, CPU::ISB, "ISB", 7, Absolute_x},
+	{0xfb, CPU::ISB, "ISB", 7, Absolute_y},
+	{0xe3, CPU::ISB, "ISB", 8, Indexed_indirect},
+	{0xf3, CPU::ISB, "ISB", 8, Indirect_indexed},
 
 	// Increase memory by one, then subtract memory from A (with borrow)
 	{0x07, CPU::SLO, "SLO", 5, Zero_page},

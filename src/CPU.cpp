@@ -631,52 +631,112 @@ void CPU::LAX( CPU* c ) // Load A and X
 	c->NEGATIVE( c->A&0x80 );
 }
 
-void CPU::SAX( CPU* c ) // AND X register with accumulator and store result in memory
+void CPU::SAX( CPU* c ) //  AND X register with accumulator (without changing them) and store result in memory.
 {
 	uint8_t ret = c->X & c->A;
+	
 	c->Writev( ret );
-	c->ZERO( ret?0:1 );
+}
+
+void CPU::DCP( CPU* c ) // Substract 1 from memory and CMP acc with this
+{
+	uint16_t ret = c->Readv() - 1;
+
+	c->CARRY( ret < 0x100 );
+	c->ZERO( (ret & 0xff)? 0 : 1 );
+	
+	c->Writev( ret );
+
+	ret = c->A - c->Readv();
+
+	c->CARRY( (ret<256?1:0) ); // Set if A >= M
+	c->ZERO( (ret?0:1) );
+	c->NEGATIVE( ret&0x80 );
+}
+
+void CPU::ISB( CPU* c ) // Increase memory by one, then subtract memory from A (with borrow)
+{
+	// INC
+	uint16_t ret = (uint8_t) (c->Readv()+1);
+	
+	c->Writev( ret );
+
+	// SBC
+	ret = (uint16_t)c->A - c->Readv() - ((c->P&CARRY_FLAG) ? 0 : 1);
+
+	c->ZERO( (ret & 0xff)? 0 : 1 );
+	c->CARRY( ret < 0x100 );
 	c->NEGATIVE( ret&0x80 );
 
-}
-
-void CPU::DCP( CPU* c ) // Substract 1 from memory (without borrow)
-{
-	uint8_t ret = c->Readv() - 1;
-
+	c->OVERFLOW(  ( ( c->A ^ c->Readv() ) & 0x80 )
+		      &&  ( ( c->A ^ ret ) & 0x80)  );
 	
-	c->OVERFLOW(  ( ( c->Readv() ^ 1 ) & 0x80 )
-		      &&  ( ( c->Readv() ^ ret ) & 0x80)  );
-	
-}
-
-void CPU::ISC( CPU* c ) // Increase memory by one, then subtract memory from A (with borrow)
-{
+	c->A = ret;
 }
 
 void CPU::SLO( CPU* c ) // Shift left one bit in memory, then OR accumulator with memory
 {
+	// ASL
 	c->CARRY( c->Readv()&0x80 );
 
 	uint8_t ret = c->Readv()<<1;
 	c->Writev( ret );
 
-	c->A = c->A | ret;
-
-	c->ZERO( ret?0:1 );
-	c->NEGATIVE( (ret&0x80) );
+	// OR
+	c->A = c->A | c->Readv();
+	c->ZERO( c->A?0:1 );
+	c->NEGATIVE( c->A&0x80 );
 }
 
 void CPU::RLA( CPU* c ) // Rotate one bit left in memory, then AND accumulator with memory
 {
+	// ROL
+	uint8_t ret = c->Readv()<<1 | c->P&CARRY_FLAG;
+
+	c->CARRY( c->Readv()&0x80 );
+	c->Writev( ret );
+
+	// AND
+	c->A = c->A & c->Readv();
+	c->ZERO( c->A?0:1 );
+	c->NEGATIVE( c->A&0x80 );
 }
 
 void CPU::SRE( CPU* c ) // Shift right one bit in memory, then EOR accumulator with memory
 {
+	//LSR
+	c->CARRY( c->Readv()&0x1 );
+
+	uint8_t ret = c->Readv()>>1;
+	c->Writev( ret );
+
+	// EOR
+	c->A = c->A ^ c->Readv();
+	c->ZERO( c->A?0:1 );
+	c->NEGATIVE( c->A&0x80 );
 }
 
 void CPU::RRA( CPU* c ) // Rotate one bit right in memory, then add memory to accumulator
 {
+	// Rotate (ROR)
+	uint16_t ret = (uint8_t)( c->Readv()>>1 | ((c->P&CARRY_FLAG)<<7));
+
+	c->CARRY( c->Readv()&0x1 );
+	c->Writev( ret );
+
+
+	// ADC
+	ret = (uint16_t)c->Readv() + c->A + (c->P&CARRY_FLAG);
+
+	c->ZERO( (ret & 0xff)? 0 : 1 );
+	c->CARRY( ret > 0xff );
+	c->NEGATIVE( ret&0x80 );
+
+	c->OVERFLOW( ! ( ( c->A ^ c->Readv() ) & 0x80 )
+		      &&  ( ( c->A ^ ret ) & 0x80) );
+
+	
+	c->A = ret;
 }
 
 
