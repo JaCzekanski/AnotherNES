@@ -17,6 +17,7 @@ PPU::PPU(void)
 
 	PPUADDRhi = 0;
 	PPUADDRlo = 0;
+	PPUDATAbuffer = 0;
 	BackgroundPattenTable = 0;
 	SpritePattenTable = 0;
 	BaseNametable = 0x2000;
@@ -118,10 +119,10 @@ void PPU::Write( uint8_t reg, uint8_t data )
 			}
 			SCROLLhalf = ! SCROLLhalf;
 
-			if (_ScrollX!=ScrollX || _ScrollY!=ScrollY) 
-			{
-				log->Debug("PPU: Scroll {%.2x,%.2x}", ScrollX, ScrollY);
-			}
+			//if (_ScrollX!=ScrollX || _ScrollY!=ScrollY) 
+			//{
+			//	log->Debug("PPU: Scroll {%.2x,%.2x}", ScrollX, ScrollY);
+			//}
 			break;
 
 		case 0x2006: //PPUADDR
@@ -135,8 +136,10 @@ void PPU::Write( uint8_t reg, uint8_t data )
 			// Access to PPU memory from CPU
 			addr = (PPUADDRhi<<8) | PPUADDRlo;
 
-			if (addr>=0x3f00 && addr<=0x3f1f) //Palette
+			if (addr>=0x3f00 && addr<=0x3fff) //Palette
 			{
+				addr = (addr-0x3f00)%0x20;
+				addr += 0x3f00;
 			}
 			memory[ addr%0x4000 ] = data;
 
@@ -155,12 +158,14 @@ void PPU::Write( uint8_t reg, uint8_t data )
 
 uint8_t PPU::Read( uint8_t reg)
 {
+	static bool sprite0 = true;
 	int ret = 0;
 	int16_t addr;
 	switch (reg+0x2000)
 	{
 		case 0x2002: //PPUSTATUS
-			ret = (VBLANK<<7);
+			sprite0 = !sprite0;
+			ret = (VBLANK<<7) | (sprite0<<6);
 			// 7 - Vertical blank has started (0: not in VBLANK; 1: in VBLANK)
 
 			// 6 - Sprite 0 Hit.  Set when a nonzero pixel of sprite 0 'hits', ignored
@@ -186,7 +191,21 @@ uint8_t PPU::Read( uint8_t reg)
 		case 0x2007: //PPUDATA
 			// Access to PPU memory from CPU,
 			addr = (PPUADDRhi<<8) | PPUADDRlo;
-			ret = memory[ addr ];
+
+			/* Note 
+			   When reading PPUDATA at 0-0x3EFF PPU returns buffer value - not current
+			   value at memory. You just return buffer, then read memory to buffer
+			   and increment address
+		    */
+			if (addr < 0x3EFF)
+			{
+				ret = PPUDATAbuffer;
+				PPUDATAbuffer = memory[ addr ];
+			}
+			else
+			{
+				ret = memory[ addr ];
+			}
 
 			addr+=VRAMaddressIncrement;
 
@@ -266,7 +285,7 @@ void PPU::Render(SDL_Surface* s)
 		uint8_t currentNametable = (BaseNametable-0x2000)/0x400;
 		uint8_t cnx = (currentNametable%2);
 		uint8_t cny = (currentNametable/2);
-		SDL_Surface* bg = SDL_CreateRGBSurface( SDL_SWSURFACE, 256, 512, 32, 0, 0, 0, 0 );
+		SDL_Surface* bg = SDL_CreateRGBSurface( SDL_SWSURFACE, 256, 256+32, 32, 0, 0, 0, 0 );
 		if (!bg) log->Fatal("PPU: Cannot create BG surface!");
 		SDL_UnlockSurface( s );
 		for (int i = 0; i<4; i++)
@@ -315,14 +334,16 @@ void PPU::RenderSprite(SDL_Surface* s)
 			for (int y = 0; y<8; y++)
 			{
 				int sprite_y = y;
-				if ( spr.attr&0x40 ) sprite_y = 7 - sprite_y; //Hor flip
+				if ( spr.attr&0x80 ) sprite_y = 7 - sprite_y; //Vertical flip
+
+				if ( sprite_y+spr.y+8 > 240 ) continue;
 
 				uint8_t spritedata = memory[ spriteaddr + sprite_y ];
 				uint8_t spritedata2 = memory[ spriteaddr + sprite_y + 8 ];
 				for (int x = 0; x<8; x++)
 				{
 					int sprite_x = x;
-					if ( spr.attr&0x80 ) sprite_x = 7 - sprite_x; //Ver flip
+					if ( spr.attr&0x40 ) sprite_x = 7 - sprite_x; //Horizontal flip
 
 					bool c1 = ( spritedata  &(1<<(7-sprite_x)) )? true: false;
 					bool c2 = ( spritedata2 &(1<<(7-sprite_x)) )? true: false;

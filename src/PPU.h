@@ -61,6 +61,7 @@ private:
 	bool PPUADDRhalf;
 	uint8_t PPUADDRhi;
 	uint8_t PPUADDRlo;
+	uint8_t PPUDATAbuffer;
 
 
 	// Scrolling

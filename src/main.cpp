@@ -30,7 +30,7 @@ int main()
 
 	SDL_Window* MainWindow = SDL_CreateWindow( "AnotherNES", 
 		SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,
-		256, 512, SDL_WINDOW_SHOWN );
+		256*2, 240*2, SDL_WINDOW_SHOWN );
 
 	if ( MainWindow == NULL )
 	{
@@ -41,8 +41,8 @@ int main()
 	
 	SDL_DisplayMode mode;
 	mode.format = SDL_PIXELFORMAT_RGB888;
-	mode.w = 256;
-	mode.h = 512;
+	mode.w = 256*2;
+	mode.h = 240*2;
 	mode.refresh_rate = 0;
 	mode.driverdata = 0;
 
@@ -55,6 +55,8 @@ int main()
 
 	SDL_Surface* screen = SDL_GetWindowSurface( MainWindow );
 
+	SDL_Surface* canvas = SDL_CreateRGBSurface( SDL_SWSURFACE, 256, 240, 32, 0, 0, 0, 0 );
+	if (!canvas) log->Fatal("Cannot create canvas surface!");
 
 	//SDL_WM_IconifyWindow();
 
@@ -134,10 +136,11 @@ int main()
 			{
 				//if (tick%4 == 0)
 				{
-					SDL_LockSurface( screen );
+					SDL_LockSurface( canvas );
 					
-					cpu->ppu.Render( screen );
-					SDL_UnlockSurface( screen );
+					cpu->ppu.Render( canvas );
+					SDL_UnlockSurface( canvas );
+					SDL_SoftStretch( canvas, NULL, screen, NULL );
 					SDL_UpdateWindowSurface( MainWindow );
 				}
 					cpu->NMI();
