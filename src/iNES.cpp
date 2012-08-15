@@ -4,6 +4,7 @@ iNES::iNES(void)
 {
 	PRG_ROM = NULL;
 	CHR_ROM = NULL;
+	Mapper = 0;
 	log->Debug("iNES created");
 }
 
@@ -79,14 +80,7 @@ int iNES::Load( const char* name )
 		Mirroring = 0;
 	}
 
-	uint8_t mapper = ((flags6&0xf0)>>8) |
-					 (flags7&0xf0);
-
-	if (mapper != 0)
-	{
-		log->Error("iNES.cpp: Only NROM mapper supported for now");
-		return 3;
-	}
+	Mapper = ((flags6&0xf0)>>4) | (flags7&0xf0);
 
 	if (flags6&0x04) // Trainer
 	{

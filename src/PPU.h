@@ -75,7 +75,7 @@ public:
 	uint8_t Mirroring;
 	uint8_t OAMADDR;
 	uint8_t memory[0x4000]; // 16KB
-	SPRITE OAM[0xff]; // 64B*4
+	SPRITE OAM[64]; // 64B*4
 	PPU(void);
 	~PPU(void);
 

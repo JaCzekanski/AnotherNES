@@ -170,6 +170,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\src\CPU_interpreter.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\src\CPU_ram.cpp"
 				>
 			</File>
@@ -193,6 +197,10 @@
 			>
 			<File
 				RelativePath=".\src\CPU.h"
+				>
+			</File>
+			<File
+				RelativePath=".\src\CPU_interpreter.h"
 				>
 			</File>
 			<File

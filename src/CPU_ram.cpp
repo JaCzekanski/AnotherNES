@@ -3,6 +3,10 @@
 CPU_ram::CPU_ram(void)
 {
 	ZERO =  0;
+	mapper = 0;
+	prg_highpage = 0;
+	prg_lowpage = 0;
+	prg_pages = 0;
 	memset( this->memory, 0, 0xffff );
 	this->memory[0x0008] = 0xf7;
 	this->memory[0x0009] = 0xef;

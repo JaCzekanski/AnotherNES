@@ -12,6 +12,7 @@ public:
 	uint8_t* CHR_ROM;
 
 	uint8_t Mirroring;
+	uint8_t Mapper;
 
 
 	iNES(void);

@@ -48,16 +48,8 @@ void PPU::Write( uint8_t reg, uint8_t data )
 			// 6 - ppu slave/master, ignore
 
 			// 5 - Sprite size (0 - 8x8, 1 - 8x16), ignore
-			if (data&0x20) 
-			{
-				if (!SpriteSize) log->Debug("PPU: 8x16");
-				SpriteSize = true;
-			}
-			else
-			{
-				if (SpriteSize) log->Debug("PPU: 8x8");
-				SpriteSize = false;
-			}
+			if (data&0x20) SpriteSize = true;
+			else SpriteSize = false;
 				
 
 			// 4 - Background pattern table address (0: $0000; 1: $1000)
@@ -102,8 +94,8 @@ void PPU::Write( uint8_t reg, uint8_t data )
 			break;
 			
 		case 0x2004: //OAMDATA
-			log->Debug("PPU: 0x2004 <- 0x%.2x", data);
-			// Object Attribute Memory (sprites), ignored
+			*((uint8_t *)OAM+OAMADDR) = data;
+			OAMADDR++;
 			break;
 			
 		case 0x2005: //PPUSCROLL
@@ -118,11 +110,6 @@ void PPU::Write( uint8_t reg, uint8_t data )
 				ScrollY = data;
 			}
 			SCROLLhalf = ! SCROLLhalf;
-
-			//if (_ScrollX!=ScrollX || _ScrollY!=ScrollY) 
-			//{
-			//	log->Debug("PPU: Scroll {%.2x,%.2x}", ScrollX, ScrollY);
-			//}
 			break;
 
 		case 0x2006: //PPUADDR
@@ -150,7 +137,7 @@ void PPU::Write( uint8_t reg, uint8_t data )
 			break;
 
 		default:
-			log->Error("CPU write to wrong PPU address");
+			log->Error("CPU write to wrong PPU address: %d", reg);
 			int a = 0;
 			break;
 	}
@@ -185,7 +172,7 @@ uint8_t PPU::Read( uint8_t reg)
 			break;
 						
 		case 0x2004: //OAMDATA
-			// Object Attribute Memory (sprites), ignored
+			ret = *((uint8_t *)OAM+OAMADDR);
 			break;
 			
 		case 0x2007: //PPUDATA
@@ -326,6 +313,7 @@ void PPU::RenderSprite(SDL_Surface* s)
 		for (int i = 0; i<64; i++)
 		{
 			SPRITE spr = this->OAM[i];
+			if (spr.y<0xff) spr.y+=1;
 			if (spr.y >= 0xEF) continue;
 
 			uint16_t spriteaddr = SpritePattenTable + spr.index*16;
@@ -374,6 +362,7 @@ void PPU::RenderSprite(SDL_Surface* s)
 		for (int i = 0; i<64; i++)
 		{
 			SPRITE spr = this->OAM[i];
+			if (spr.y<0xff) spr.y+=1;
 			if (spr.y >= 0xEF) continue;
 
 

@@ -28,6 +28,12 @@ $00FF - $0000 - Zero Page
 class CPU_ram
 {
 public:
+	uint8_t mapper;
+
+	uint8_t prg_rom[2024*1024]; // 2MB
+	uint8_t prg_lowpage;
+	uint8_t prg_highpage;
+	uint8_t prg_pages;
 	uint8_t memory[0xffff]; // Not sure if this is good idea 
 	uint8_t ZERO;
 	uint8_t RET;
@@ -57,15 +63,25 @@ public:
 		{
 			if (n == 0x4014) // OAM_DMA 
 			{
-				for (int i = ppu->OAMADDR; i<64; i++)
+				// Copy $XX00-$XXFF to OAM
+				// OAMADDR
+
+				int oamptr = ppu->OAMADDR;
+				for (int i = 0; i<256; i++)
 				{
-					SPRITE spr;
-					spr.y =     memory[ data<<8 | i*4 + 0];
-					spr.index = memory[ data<<8 | i*4 + 1];
-					spr.attr =  memory[ data<<8 | i*4 + 2];
-					spr.x =     memory[ data<<8 | i*4 + 3];
-					ppu->OAM[i] = spr;
+					*((uint8_t *)ppu->OAM+oamptr) = memory[ data<<8 | i ];
+					if (++oamptr>0xff) oamptr = 0;
 				}
+
+				//for (int i = ppu->OAMADDR; i<64; i++)
+				//{
+				//	SPRITE spr;
+				//	spr.y =     memory[ data<<8 | i*4 + 0];
+				//	spr.index = memory[ data<<8 | i*4 + 1];
+				//	spr.attr =  memory[ data<<8 | i*4 + 2];
+				//	spr.x =     memory[ data<<8 | i*4 + 3];
+				//	ppu->OAM[i] = spr;
+				//}
 			}
 			else if (n == 0x4016) // JOY1
 			{
@@ -87,7 +103,18 @@ public:
 		}
 		else
 		{
-			log->Fatal("CPU_ram.h: Writing to ROM section!");
+			// Mapper 2
+			// $8000-$FFFF [PPPP PPPP]
+			if (mapper == 2 || mapper == 71 || mapper == 104)
+			{
+				prg_lowpage = data;
+				//log->Debug("Mapper: 0x%.4x: 0x%x", n, data);
+			}
+			else
+			{
+				log->Fatal("Unsupported mapper.");
+				return ;
+			}
 		}
 		memory[ n ] = data;
 		return ; // Return PRG-ROM
@@ -136,8 +163,21 @@ public:
 			return memory[ n ];
 			// TODO: Interface with APU and IO
 		}
-		return memory[n]; // Return PRG-ROM
-	}
+		if (prg_pages == 1)
+		{
+			return prg_rom[ (n-0x4000)-0x8000 ]; // Return PRG-ROM
+		}
 
+		if (mapper == 2 || mapper == 71 || mapper == 104)
+		{
+			n-=0x8000;
+			if (n>0x4000) // high
+			{
+				return prg_rom[ (prg_highpage-1)*0x4000 + (n-0x4000) ];
+			}
+			return prg_rom[ (prg_lowpage*0x4000) + n%0x4000 ];
+		}
+		return prg_rom[ (prg_lowpage*0x4000) + n-0x8000 ]; // Return PRG-ROM
+	}
 
 };
