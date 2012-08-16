@@ -540,8 +540,8 @@ void CPU_interpreter::BRK( CPU_interpreter* c ) // Force an interrupt
 {
 	log->Debug("0x%x: Break, suspicious... ", c->PC);
 	//c->IRQ();
-	c->Push16( c->PC+1 );
-	c->Push( c->P );
+	c->Push16( c->PC+2 );
+	c->Push( c->P | 0x30 );
 
 	c->PC = c->memory[0xFFFF]<<8 | c->memory[0xFFFE];
 	c->BREAK(1);

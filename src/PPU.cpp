@@ -5,6 +5,11 @@ PPU::PPU(void)
 	memset( this->memory, 0, 0x4000 );
 	memset( this->memory+0x2000 , 0xFF, 0xc00 );
 	memset( this->OAM , 0, 0xff );
+
+	// Startup palette according to blargg tests
+	
+    memcpy( this->memory+0x3f00, "\x09,\x01,\x00,\x01,\x00,\x02,\x02,\x0D,\x08,\x10,\x08,\x24,\x00,\x00,\x04,\x2C,\x09,\x01,\x34,\x03,\x00,\x04,\x00,\x14,\x08,\x3A,\x00,\x02,\x00,\x20,\x2C,\x08", 32 );
+
 	cycles = 0;
 	scanline = 0;
 	NMI_enabled = false;
@@ -24,7 +29,6 @@ PPU::PPU(void)
 	VRAMaddressIncrement = 1;
 	OAMADDR = 0;
 
-	SCROLLhalf = true;
 	ScrollX = 0;
 	ScrollY = 0;
 	log->Debug("CPU_ram: Created");
@@ -99,7 +103,7 @@ void PPU::Write( uint8_t reg, uint8_t data )
 			break;
 			
 		case 0x2005: //PPUSCROLL
-			if (SCROLLhalf) 
+			if (PPUADDRhalf) 
 			{
 				_ScrollX = ScrollX;
 				ScrollX = data;
@@ -109,7 +113,8 @@ void PPU::Write( uint8_t reg, uint8_t data )
 				_ScrollY = ScrollY;
 				ScrollY = data;
 			}
-			SCROLLhalf = ! SCROLLhalf;
+			PPUADDRhalf = !PPUADDRhalf;
+			
 			break;
 
 		case 0x2006: //PPUADDR
@@ -122,13 +127,21 @@ void PPU::Write( uint8_t reg, uint8_t data )
 		case 0x2007: //PPUDATA
 			// Access to PPU memory from CPU
 			addr = (PPUADDRhi<<8) | PPUADDRlo;
+			addr = addr%0x4000;
 
+			if (addr >= 0x3000 && addr <= 0x3eff) addr -= 0x1000;
 			if (addr>=0x3f00 && addr<=0x3fff) //Palette
 			{
-				addr = (addr-0x3f00)%0x20;
+				addr -= 0x3f00;
+				addr = addr % 0x20;
 				addr += 0x3f00;
+
+				if (addr == 0x3f10 || addr == 0x3f14 || addr == 0x3f18 || addr == 0x3f1c)
+				{
+					memory[ addr - 0x10 ] = data;
+				}
 			}
-			memory[ addr%0x4000 ] = data;
+			memory[ addr ] = data;
 
 			addr+=VRAMaddressIncrement;
 
@@ -168,7 +181,6 @@ uint8_t PPU::Read( uint8_t reg)
 
 			// Reset PPUADDR latch to high
 			PPUADDRhalf  = true;
-			SCROLLhalf = true;
 			break;
 						
 		case 0x2004: //OAMDATA
@@ -178,12 +190,14 @@ uint8_t PPU::Read( uint8_t reg)
 		case 0x2007: //PPUDATA
 			// Access to PPU memory from CPU,
 			addr = (PPUADDRhi<<8) | PPUADDRlo;
+			addr = addr%0x4000;
 
 			/* Note 
 			   When reading PPUDATA at 0-0x3EFF PPU returns buffer value - not current
 			   value at memory. You just return buffer, then read memory to buffer
 			   and increment address
 		    */
+			if (addr >= 0x3000 && addr <= 0x3eff) addr -= 0x1000;
 			if (addr < 0x3EFF)
 			{
 				ret = PPUDATAbuffer;
@@ -191,7 +205,9 @@ uint8_t PPU::Read( uint8_t reg)
 			}
 			else
 			{
-				ret = memory[ addr ];
+				addr -= 0x3f00;
+				addr = addr % 0x20;
+				ret = memory[ 0x3f00 + addr ];
 			}
 
 			addr+=VRAMaddressIncrement;
@@ -247,7 +263,7 @@ uint8_t PPU::Step( )
 void PPU::Render(SDL_Surface* s)
 {
 	SDL_FillRect( s, NULL, 0 );
-	if (ShowBackground) 
+	//if (ShowBackground) 
 	{
 		/* We have 2 types of mirroring:
                          ______
@@ -450,6 +466,11 @@ void PPU::RenderBackground(SDL_Surface* s, uint8_t nametable)
 				infopal = (infopal&0x03);
 
 				color = c1 | c2<<1;
+
+				if (color == 0)
+				{
+					infopal = 0;
+				}
 
 				//BG Palette + Infopal*4
 				Palette_entry e = nes_palette[ memory[0x3F00 + (infopal*4) + color] ];

@@ -19,6 +19,177 @@ iNES* rom;
 
 unsigned char FileName[2048];
 
+SDL_Window *ToolboxPalette;
+SDL_Window *ToolboxOAM;
+SDL_Window *ToolboxNametable;
+
+
+void __DrawNametable(SDL_Surface* s, uint8_t nametable)
+{
+	//Q&D scrolling 
+	int x = 0;
+	int y = 0;
+
+	uint8_t *PIXELS = (uint8_t*)s->pixels;
+	uint32_t color = 0;
+
+	uint16_t NametableAddress = (0x2000 + 0x400 * (nametable&0x03));
+
+	uint16_t Attribute = NametableAddress + 0x3c0;
+	for (int i = 0; i<960; i++)
+	{
+		// Assume that Surface is 256x240
+		uint16_t tile = cpu->ppu.memory[i+NametableAddress];
+		uint32_t dt = ( (y*256*8) + (x*8) ) * 4;
+		uint8_t *PIXEL = PIXELS+dt;
+		for (uint8_t b = 0; b<8; b++) //Y
+		{
+			uint8_t tiledata = cpu->ppu.memory[ cpu->ppu.BackgroundPattenTable + tile*16 + b];
+			uint8_t tiledata2 = cpu->ppu.memory[ cpu->ppu.BackgroundPattenTable + tile*16 + b +8];
+			for (uint8_t a = 0; a<8; a++) //X
+			{
+				bool c1 = ( tiledata&(1<<(7-a)) )? true: false;
+				bool c2 = ( tiledata2&(1<<(7-a)) )? true: false;
+
+				uint8_t InfoByte = cpu->ppu.memory[ Attribute + ((y/4)*8)+(x/4) ];
+				uint8_t infopal = 0;
+				if ( (y%4)<=1 ) //up
+				{
+					if ( (x%4)<=1 ) infopal = InfoByte; // up-left
+					else infopal = InfoByte>>2; // up-right
+				}
+				else 
+				{
+					if ( (x%4)<=1 ) infopal = InfoByte>>4; // down-left
+					else infopal = InfoByte>>6; // down-right
+				}
+
+				infopal = (infopal&0x03);
+
+				color = c1 | c2<<1;
+
+				if (color == 0)
+				{
+					infopal = 0;
+				}
+
+				//BG Palette + Infopal*4
+				Palette_entry e = nes_palette[ cpu->ppu.memory[0x3F00 + (infopal*4) + color] ];
+
+				*(PIXEL+((b*256)+a)*4) = e.b;
+				*(PIXEL+((b*256)+a)*4+1) = e.g;
+				*(PIXEL+((b*256)+a)*4+2) = e.r;
+			}
+		}
+		if (x++ == 31)
+		{
+			y++;
+			x = 0;
+		}
+
+	}
+}
+
+
+void RefrestToolbox()
+{
+	// Update toolbox palette
+	SDL_Surface *tps = SDL_GetWindowSurface( ToolboxPalette );
+	for ( int y = 0; y<2; y++ )
+	{
+		for (int x = 0; x<16; x++ )
+		{
+			SDL_Rect r = { x*32, y*32, 32, 32 };
+			uint8_t pal = cpu->ppu.memory[0x3f00 + (y*16) + x];
+			Palette_entry col = nes_palette[ pal ];
+
+			SDL_FillRect( tps, &r, col.r<<16 | col.g<<8 | col.b );
+		}
+	}
+	SDL_UpdateWindowSurface( ToolboxPalette );
+
+	// Update toolbox OAM
+	SDL_Surface *tos = SDL_GetWindowSurface( ToolboxOAM );
+	for ( int Gy = 0; Gy<4; Gy++ )
+	{
+		for (int Gx = 0; Gx<16; Gx++ )
+		{
+			SDL_Surface* Sspr = SDL_CreateRGBSurface( SDL_SWSURFACE, 8, 8, 32, 0, 0, 0, 0 ); //Fuck error check
+			SDL_LockSurface( Sspr );
+			uint8_t *PIXELS = (uint8_t*)Sspr->pixels;
+
+			SDL_Rect r = { Gx*32, Gy*32, 32, 32 };
+			SPRITE spr = cpu->ppu.OAM[ Gy*16 + Gx ];
+
+			uint16_t spriteaddr = cpu->ppu.SpritePattenTable + spr.index*16;
+
+			for (int y = 0; y<8; y++)
+			{
+				int sprite_y = y;
+				if ( spr.attr&0x80 ) sprite_y = 7 - sprite_y; //Vertical flip
+
+				uint8_t spritedata = cpu->ppu.memory[ spriteaddr + sprite_y ];
+				uint8_t spritedata2 = cpu->ppu.memory[ spriteaddr + sprite_y + 8 ];
+				for (int x = 0; x<8; x++)
+				{
+					int sprite_x = x;
+					if ( spr.attr&0x40 ) sprite_x = 7 - sprite_x; //Horizontal flip
+
+					bool c1 = ( spritedata  &(1<<(7-sprite_x)) )? true: false;
+					bool c2 = ( spritedata2 &(1<<(7-sprite_x)) )? true: false;
+					
+					uint8_t color = c1 | c2<<1;
+
+					//if (color == 0) continue;
+
+
+					Palette_entry e = nes_palette[ cpu->ppu.memory[0x3F10 + ((spr.attr&0x3)*4) + color] ];
+
+					*(PIXELS++) = e.b;
+					*(PIXELS++) = e.g;
+					*(PIXELS++) = e.r;
+					PIXELS++;
+				}
+			}
+			SDL_UnlockSurface( Sspr );
+
+			SDL_BlitScaled( Sspr, NULL, tos, &r );
+
+			SDL_FreeSurface( Sspr );
+		}
+	}
+	SDL_UpdateWindowSurface( ToolboxOAM );
+
+	// Update toolbox Nametable
+	SDL_Surface *tns = SDL_GetWindowSurface( ToolboxNametable );
+	for ( int i = 0; i<4; i++ )
+	{
+		uint8_t currentNametable = 0;//(cpu->ppu.BaseNametable-0x2000)/0x400;
+		uint8_t cnx = (currentNametable%2);
+		uint8_t cny = (currentNametable/2);
+		SDL_Rect r = { (i%2)*256, (i/2)*240, 256, 240 };
+
+		SDL_Surface* Sspr = SDL_CreateRGBSurface( SDL_SWSURFACE, 256, 256, 32, 0, 0, 0, 0 ); //Fuck error check
+		SDL_LockSurface( Sspr );
+
+		if (cpu->ppu.Mirroring == VERTICAL) // Vertical
+		{
+			if (i%2 == 0) __DrawNametable(Sspr, cnx);
+			else __DrawNametable(Sspr, !cnx);
+		}
+		else // Horizontal
+		{
+			if (i/2 == 0) __DrawNametable(Sspr, (cny)*2);
+			else __DrawNametable(Sspr, (!cny)*2);
+		}
+
+		SDL_UnlockSurface( Sspr );
+		SDL_BlitSurface( Sspr, NULL, tns, &r );
+		SDL_FreeSurface( Sspr );
+	}
+	SDL_UpdateWindowSurface( ToolboxNametable );
+}
+
 int main()
 {
 	log = new Logger("log.txt");
@@ -32,7 +203,7 @@ int main()
 	log->Success("SDL_Init successful");
 
 	SDL_Window* MainWindow = SDL_CreateWindow( "AnotherNES", 
-		SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,
+		542, 20,
 		256*2, 240*2, SDL_WINDOW_SHOWN );
 
 	if ( MainWindow == NULL )
@@ -60,6 +231,41 @@ int main()
 
 	SDL_Surface* canvas = SDL_CreateRGBSurface( SDL_SWSURFACE, 256, 240, 32, 0, 0, 0, 0 );
 	if (!canvas) log->Fatal("Cannot create canvas surface!");
+
+
+	// Toolbox
+
+	// Palette window
+	{
+		int wX, wY;
+		SDL_GetWindowPosition( MainWindow, &wX, &wY );
+		ToolboxPalette = SDL_CreateWindow( "AnotherNES - Palette", wX, wY+240*2+24, 4*4*32, 2*32, SDL_WINDOW_SHOWN );
+	}
+	if ( ToolboxPalette == NULL )
+	{
+		log->Fatal("Cannot create toolbox palette");
+		return 1;
+	}
+	log->Success("Toolbox palette window created");
+
+	// OAM window
+	ToolboxOAM = SDL_CreateWindow( "AnotherNES - OAM", 20, 20, 16*8*4, 4*8*4, SDL_WINDOW_SHOWN );
+	if ( ToolboxOAM == NULL )
+	{
+		log->Fatal("Cannot create Toolbox OAM");
+		return 1;
+	}
+	log->Success("Toolbox OAM window created");
+	
+	// Nametable window
+	ToolboxNametable = SDL_CreateWindow( "AnotherNES - Nametable", 20, 170, 256*2, 240*2, SDL_WINDOW_SHOWN );
+	if ( ToolboxNametable == NULL )
+	{
+		log->Fatal("Cannot create Toolbox Nametable");
+		return 1;
+	}
+	log->Success("Toolbox Nametable window created");
+
 
 	//SDL_WM_IconifyWindow();
 
@@ -155,6 +361,7 @@ int main()
 		if ( keys[SDL_SCANCODE_RIGHT] ) buttonState |= 1<<0;
 
 		if ( keys[SDL_SCANCODE_R] ) cpu->Reset();
+		if ( keys[SDL_SCANCODE_T] ) RefrestToolbox();
 
 
 		for (int i = 0; i<3; i++)
@@ -169,6 +376,8 @@ int main()
 				SDL_SoftStretch( canvas, NULL, screen, NULL );
 				SDL_UpdateWindowSurface( MainWindow );
 				cpu->NMI();
+				RefrestToolbox();
+
 			}
 		}
 
@@ -178,6 +387,7 @@ int main()
 
 	delete rom;
 	delete cpu;
+	SDL_FreeSurface( canvas );
 	SDL_DestroyWindow( MainWindow );
 	SDL_Quit();
 	log->Info("Goodbye");

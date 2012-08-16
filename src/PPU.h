@@ -48,10 +48,7 @@ private:
 	bool VBLANK;
 	bool NMI_enabled;
 	bool SpriteSize; // false - 8x8, true - 8x16
-	uint16_t BackgroundPattenTable;
-	uint16_t SpritePattenTable;
 	uint8_t VRAMaddressIncrement;
-	uint16_t BaseNametable;
 
 
 	bool ShowBackground;
@@ -65,13 +62,15 @@ private:
 
 
 	// Scrolling
-	bool SCROLLhalf;
 	uint8_t ScrollX, _ScrollX;
 	uint8_t ScrollY, _ScrollY;
 
 	void RenderSprite(SDL_Surface* s);
 	void RenderBackground(SDL_Surface* s, uint8_t nametable);
 public:
+	uint16_t BaseNametable;
+	uint16_t BackgroundPattenTable;
+	uint16_t SpritePattenTable;
 	uint8_t Mirroring;
 	uint8_t OAMADDR;
 	uint8_t memory[0x4000]; // 16KB
