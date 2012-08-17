@@ -116,9 +116,6 @@ public:
 				return ;
 			}
 		}
-		memory[ n ] = data;
-		return ; // Return PRG-ROM
-		
 	}
 
 	uint8_t & operator[](size_t n)
@@ -171,11 +168,11 @@ public:
 		if (mapper == 2 || mapper == 71 || mapper == 104)
 		{
 			n-=0x8000;
-			if (n>0x4000) // high
+			if (n>=0x4000) // high
 			{
-				return prg_rom[ (prg_highpage-1)*0x4000 + (n-0x4000) ];
+				return prg_rom[ prg_highpage*0x4000 + (n-0x4000) ];
 			}
-			return prg_rom[ (prg_lowpage*0x4000) + n%0x4000 ];
+			return prg_rom[ prg_lowpage*0x4000 + n%0x4000 ];
 		}
 		return prg_rom[ (prg_lowpage*0x4000) + n-0x8000 ]; // Return PRG-ROM
 	}

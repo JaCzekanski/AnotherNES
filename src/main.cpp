@@ -30,7 +30,7 @@ void __DrawNametable(SDL_Surface* s, uint8_t nametable)
 	int x = 0;
 	int y = 0;
 
-	uint8_t *PIXELS = (uint8_t*)s->pixels;
+	SDL_Color (*PIXEL)[256] = (SDL_Color(*)[256]) s->pixels;
 	uint32_t color = 0;
 
 	uint16_t NametableAddress = (0x2000 + 0x400 * (nametable&0x03));
@@ -40,8 +40,6 @@ void __DrawNametable(SDL_Surface* s, uint8_t nametable)
 	{
 		// Assume that Surface is 256x240
 		uint16_t tile = cpu->ppu.memory[i+NametableAddress];
-		uint32_t dt = ( (y*256*8) + (x*8) ) * 4;
-		uint8_t *PIXEL = PIXELS+dt;
 		for (uint8_t b = 0; b<8; b++) //Y
 		{
 			uint8_t tiledata = cpu->ppu.memory[ cpu->ppu.BackgroundPattenTable + tile*16 + b];
@@ -68,17 +66,13 @@ void __DrawNametable(SDL_Surface* s, uint8_t nametable)
 
 				color = c1 | c2<<1;
 
-				if (color == 0)
-				{
-					infopal = 0;
-				}
+				if (color == 0)	infopal = 0;
 
 				//BG Palette + Infopal*4
 				Palette_entry e = nes_palette[ cpu->ppu.memory[0x3F00 + (infopal*4) + color] ];
 
-				*(PIXEL+((b*256)+a)*4) = e.b;
-				*(PIXEL+((b*256)+a)*4+1) = e.g;
-				*(PIXEL+((b*256)+a)*4+2) = e.r;
+				SDL_Color c = {e.b, e.g, e.r};
+				PIXEL[y*8+b][x*8+a] = c;
 			}
 		}
 		if (x++ == 31)
@@ -116,7 +110,7 @@ void RefrestToolbox()
 		{
 			SDL_Surface* Sspr = SDL_CreateRGBSurface( SDL_SWSURFACE, 8, 8, 32, 0, 0, 0, 0 ); //Fuck error check
 			SDL_LockSurface( Sspr );
-			uint8_t *PIXELS = (uint8_t*)Sspr->pixels;
+			SDL_Color (*PIXELS)[8] = (SDL_Color(*)[8]) Sspr->pixels;
 
 			SDL_Rect r = { Gx*32, Gy*32, 32, 32 };
 			SPRITE spr = cpu->ppu.OAM[ Gy*16 + Gx ];
@@ -140,15 +134,10 @@ void RefrestToolbox()
 					
 					uint8_t color = c1 | c2<<1;
 
-					//if (color == 0) continue;
-
-
 					Palette_entry e = nes_palette[ cpu->ppu.memory[0x3F10 + ((spr.attr&0x3)*4) + color] ];
 
-					*(PIXELS++) = e.b;
-					*(PIXELS++) = e.g;
-					*(PIXELS++) = e.r;
-					PIXELS++;
+					SDL_Color c = {e.b, e.g, e.r};
+					PIXELS[y][x] = c;
 				}
 			}
 			SDL_UnlockSurface( Sspr );
@@ -316,9 +305,10 @@ int main()
 	memcpy( cpu->memory.prg_rom, rom->PRG_ROM, rom->PRG_ROM_pages*16*1024 );
 	cpu->memory.prg_pages = rom->PRG_ROM_pages;
 	if (rom->PRG_ROM_pages == 1) cpu->memory.prg_lowpage = 1; //fix
+	cpu->memory.prg_lowpage = 0;
 
-	cpu->memory.prg_highpage = rom->PRG_ROM_pages;
-	if (rom->Mapper == 104) cpu->memory.prg_highpage = 16; // Golden five fix
+	cpu->memory.prg_highpage = rom->PRG_ROM_pages-1;
+	if (rom->Mapper == 104) cpu->memory.prg_highpage = 15; // Golden five fix
 
 	log->Success("%dB PRG_ROM copied", rom->PRG_ROM_pages*16*1024);
 
@@ -360,13 +350,14 @@ int main()
 		if ( keys[SDL_SCANCODE_LEFT] ) buttonState |= 1<<1;
 		if ( keys[SDL_SCANCODE_RIGHT] ) buttonState |= 1<<0;
 
-		if ( keys[SDL_SCANCODE_R] ) cpu->Reset();
+		if ( keys[SDL_SCANCODE_R] ) {cpu->Reset(); Sleep(1000);}
 		if ( keys[SDL_SCANCODE_T] ) RefrestToolbox();
 
 
 		for (int i = 0; i<3; i++)
 		{
-			if (cpu->ppu.Step()) // NMI requested
+			uint8_t ppuresult = cpu->ppu.Step();
+			if (ppuresult) // NMI requested
 			{
 				SDL_LockSurface( canvas );
 				cpu->ppu.Render( canvas );
@@ -375,9 +366,10 @@ int main()
 
 				SDL_SoftStretch( canvas, NULL, screen, NULL );
 				SDL_UpdateWindowSurface( MainWindow );
-				cpu->NMI();
+				
 				RefrestToolbox();
 
+				if (ppuresult==2) cpu->NMI();
 			}
 		}
 

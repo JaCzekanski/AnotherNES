@@ -18,6 +18,7 @@ CPU_interpreter::CPU_interpreter()
 		}
 		OpcodeTableOptimized[ OpcodeTable[i].number ] = OpcodeTable[i];
 	}
+
 	log->Debug("Opcode table filled");
 	this->Power();
 	log->Debug("CPU_interpreter created");
@@ -259,7 +260,7 @@ void CPU_interpreter::PHA( CPU_interpreter* c ) // Push accumulator on stack
 
 void CPU_interpreter::PHP( CPU_interpreter* c ) // Push processor status on stack
 {
-	c->Push( c->P | BREAK_FLAG );
+	c->Push( c->P | BREAK_FLAG | UNKNOWN_FLAG );
 }
 
 void CPU_interpreter::PLA( CPU_interpreter* c ) // Pull accumulator from stack
@@ -542,9 +543,10 @@ void CPU_interpreter::BRK( CPU_interpreter* c ) // Force an interrupt
 	//c->IRQ();
 	c->Push16( c->PC+2 );
 	c->Push( c->P | 0x30 );
+	c->INTERRUPT(1);
 
 	c->PC = c->memory[0xFFFF]<<8 | c->memory[0xFFFE];
-	c->BREAK(1);
+	//c->BREAK(1);
 }
 void CPU_interpreter::NOP( CPU_interpreter* c ) // No Operation
 {
@@ -552,6 +554,7 @@ void CPU_interpreter::NOP( CPU_interpreter* c ) // No Operation
 void CPU_interpreter::RTI( CPU_interpreter* c ) // Return from Interrupt
 {
 	c->P = c->Pop() | UNKNOWN_FLAG;
+	c->BREAK(0); // THIS FLAG DOES NOT EXISTS :)
 	c->PC = c->Pop16();
 }
 
@@ -696,6 +699,78 @@ void CPU_interpreter::ALR( CPU_interpreter* c ) // AND byte with accumulator, th
 	c->NEGATIVE( (ret&0x80) );
 }
 
+void CPU_interpreter::ARR( CPU_interpreter* c ) // AND byte with accumulator, then shift right one bit in accumulator.
+{
+	c->A = c->A & c->Readv();
+
+
+	c->A = c->A>>1 | ((c->P&CARRY_FLAG)<<7);
+
+	if ( c->A & 0x40 && c->A & 0x20 ) // Set C, clear V
+	{
+		c->CARRY( 1 );
+		c->OVERFLOW( 0 );
+	}
+	else if ( !(c->A & 0x40) && !(c->A & 0x20) ) // Clear C and V
+	{
+		c->CARRY( 0 );
+		c->OVERFLOW( 0 );
+	}
+	else if ( c->A & 0x20 ) // Set V, clear C
+	{
+		c->CARRY( 0 );
+		c->OVERFLOW( 1 );
+	}
+	else if ( c->A & 0x40 ) // Set C and V
+	{
+		c->CARRY( 1 );
+		c->OVERFLOW( 1 );
+	}
+
+	c->ZERO( c->A?0:1 );
+	c->NEGATIVE( (c->A&0x80) );
+}
+
+void CPU_interpreter::ATX( CPU_interpreter* c ) // AND byte with accumulator, then transfer accumulator to X register.
+{
+	c->A = c->A & c->Readv();
+	c->X = c->A;
+
+	c->ZERO( c->A?0:1 );
+	c->NEGATIVE( (c->A&0x80) );
+}
+
+void CPU_interpreter::AXS( CPU_interpreter* c ) // AND X register with accumulator and store result in X register, then subtract byte from X register (without borrow).
+{
+	c->X = c->X & c->A;
+
+	uint16_t ret = (uint16_t)c->X - c->Readv() - 1;
+
+	c->ZERO( (ret & 0xff)? 0 : 1 );
+	c->CARRY( ret < 0x100 );
+	c->NEGATIVE( ret&0x80 );
+
+	c->X = ret;
+}
+
+void CPU_interpreter::SYA( CPU_interpreter* c ) // AND Y register with the high byte of the target address of the argument + 1. Store the result in memory.
+{
+	c->Writev( c->Y & ((c->virtaddr>>8)+1) );
+}
+
+void CPU_interpreter::SXA( CPU_interpreter* c ) // AND X register with the high byte of the target address of the argument + 1. Store the result in memory.
+{
+	c->Writev( c->X & ((c->virtaddr>>8)+1) );
+}
+
+void CPU_interpreter::KIL(CPU_interpreter* c)
+{
+	log->Fatal("0x%x: CPU Jam (0x%x), halting!", c->PC, c->memory[c->PC]);
+	for(;;)
+	{
+		Sleep(1);
+	}
+}
 	
 void CPU_interpreter::UNK(CPU_interpreter* c)
 {

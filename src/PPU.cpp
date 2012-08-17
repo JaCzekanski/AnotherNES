@@ -90,6 +90,10 @@ void PPU::Write( uint8_t reg, uint8_t data )
 			if (data&0x08) ShowBackground = true;
 			else ShowBackground = false;
 			break;
+
+		case 0x2002: //PPUSTATUS
+			// Writes here have no effect.
+			break;
 			
 		case 0x2003: //OAMADDR
 			//log->Debug("PPU: 0x2003 <- 0x%.2x", data);
@@ -148,11 +152,6 @@ void PPU::Write( uint8_t reg, uint8_t data )
 			PPUADDRhi = (addr>>8)&0xff;
 			PPUADDRlo = addr&0xff;
 			break;
-
-		default:
-			log->Error("CPU write to wrong PPU address: %d", reg);
-			int a = 0;
-			break;
 	}
 }
 
@@ -180,6 +179,7 @@ uint8_t PPU::Read( uint8_t reg)
 			//       (due to register not being updated for this address)
 
 			// Reset PPUADDR latch to high
+			VBLANK = false;
 			PPUADDRhalf  = true;
 			break;
 						
@@ -228,6 +228,7 @@ uint8_t PPU::Step( )
 {
 	// 1 CPU cycles - 3 PPU cycles
 	// 1 scanline - 341 PPU cycles
+	uint8_t prevscanline = scanline;
 	cycles++;
 	if (cycles%341 == 0) 
 	{
@@ -247,14 +248,14 @@ uint8_t PPU::Step( )
 	{
 		return 0;
 	}
+	else if (prevscanline == 240 && scanline == 241)
+	{
+		VBLANK = true;
+		if (NMI_enabled) return 2;
+		else return 1;
+	}
 	else if (scanline == 241) // Set vblank
 	{
-		if (!VBLANK) 
-		{
-			VBLANK = true;
-			if (NMI_enabled)
-			return 1;
-		}
 		/*if (NMI_enabled)*/ 
 	}
 	return 0;

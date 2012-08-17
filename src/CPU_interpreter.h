@@ -164,6 +164,13 @@ public:
 	static void ANC( CPU_interpreter* c ); // AND byte with accumulator. If result is negative then carry is set.
 	static void ALR( CPU_interpreter* c ); // AND byte with accumulator, then shift right one bit in accumulator.
 
+	static void ARR( CPU_interpreter* c ); // AND byte with accumulator, then rotate one bit right in accumulator and set some flags
+	static void ATX( CPU_interpreter* c ); // AND byte with accumulator, then transfer accumulator to X register.
+	static void AXS( CPU_interpreter* c ); // AND X register with accumulator and store result in X register, then subtract byte from X register (without borrow).
+	static void SYA( CPU_interpreter* c ); // AND Y register with the high byte of the target address of the argument + 1. Store the result in memory.
+	static void SXA( CPU_interpreter* c ); // AND X register with the high byte of the target address of the argument + 1. Store the result in memory.
+
+	static void KIL(CPU_interpreter* c); // CPU JAM
 
 	static void UNK(CPU_interpreter* c); //DBG PURPOSES
 };
@@ -522,6 +529,35 @@ static OPCODE OpcodeTable[] =
 
 	// AND byte with accumulator, then shift right one bit in accumulator.
 	{0x4B, CPU_interpreter::ALR, "ALR", 2, Immediate},
+
+	// AND byte with accumulator, then rotate one bit right in accumulator and set some flags
+	{0x6B, CPU_interpreter::ARR, "ARR", 2, Immediate},
+
+	// AND byte with accumulator, then transfer accumulator to X register.
+	{0xAB, CPU_interpreter::ATX, "ATX", 2, Immediate},
+	
+	// AND X register with accumulator and store result in X register, then subtract byte from X register (without borrow).
+	{0xCB, CPU_interpreter::AXS, "AXS", 2, Immediate},
+
+	// AND Y register with the high byte of the target address of the argument + 1. Store the result in memory.
+	{0x9C, CPU_interpreter::SYA, "SYA", 5, Absolute_x},
+
+	// AND X register with the high byte of the target address of the argument + 1. Store the result in memory.
+	{0x9E, CPU_interpreter::SXA, "SXA", 5, Absolute_y},
+
+	// CPU JAM
+	//{0x02, CPU_interpreter::KIL, "KIL", 1, Implicit},
+	{0x12, CPU_interpreter::KIL, "KIL", 1, Implicit},
+	{0x22, CPU_interpreter::KIL, "KIL", 1, Implicit},
+	{0x32, CPU_interpreter::KIL, "KIL", 1, Implicit},
+	{0x42, CPU_interpreter::KIL, "KIL", 1, Implicit},
+	{0x52, CPU_interpreter::KIL, "KIL", 1, Implicit},
+	{0x62, CPU_interpreter::KIL, "KIL", 1, Implicit},
+	{0x72, CPU_interpreter::KIL, "KIL", 1, Implicit},
+	{0x92, CPU_interpreter::KIL, "KIL", 1, Implicit},
+	{0xB2, CPU_interpreter::KIL, "KIL", 1, Implicit},
+	{0xD2, CPU_interpreter::KIL, "KIL", 1, Implicit},
+	{0xF2, CPU_interpreter::KIL, "KIL", 1, Implicit},
 
 	{0x02, CPU_interpreter::UNK, "GFOT"}
 
