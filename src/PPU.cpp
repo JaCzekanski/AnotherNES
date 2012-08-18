@@ -240,23 +240,23 @@ uint8_t PPU::Step( )
 		VBLANK = false;
 	}
 
-	if (scanline<240) // rendering
+	//if (scanline<240) // rendering
+	//{
+	//	return 0;
+	//} 
+	//else if (scanline == 240) // idle, no vblank yet
+	//{
+	//	return 0;
+	//}
+	if (prevscanline == 200 && scanline == 201)
 	{
-		return 0;
-	} 
-	else if (scanline == 240) // idle, no vblank yet
-	{
-		return 0;
+		return 100; // Update toolboxes
 	}
-	else if (prevscanline == 240 && scanline == 241)
+	else if (prevscanline == 240 && scanline == 241) // Set vblank && NMI
 	{
 		VBLANK = true;
 		if (NMI_enabled) return 2;
 		else return 1;
-	}
-	else if (scanline == 241) // Set vblank
-	{
-		/*if (NMI_enabled)*/ 
 	}
 	return 0;
 }
@@ -389,6 +389,10 @@ void PPU::RenderSprite(SDL_Surface* s)
 			for (int y = 0; y<16; y++)
 			{
 				int sprite_y = y;
+				if ( spr.attr&0x80 ) 
+				{
+					sprite_y = 15 - sprite_y; //Vertical flip
+				}
 				if (sprite_y>7) sprite_y+=8;
 
 				uint8_t spritedata = memory[ spriteaddr + sprite_y ];
@@ -396,7 +400,7 @@ void PPU::RenderSprite(SDL_Surface* s)
 				for (int x = 0; x<8; x++)
 				{
 					int sprite_x = x;
-					if ( spr.attr&0x80 ) sprite_x = 7 - sprite_x; //Ver flip
+					if ( spr.attr&0x40 ) sprite_x = 7 - sprite_x; //Ver flip
 
 					bool c1 = ( spritedata  &(1<<(7-sprite_x)) )? true: false;
 					bool c2 = ( spritedata2 &(1<<(7-sprite_x)) )? true: false;

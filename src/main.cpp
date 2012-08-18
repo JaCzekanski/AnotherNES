@@ -19,6 +19,7 @@ iNES* rom;
 
 unsigned char FileName[2048];
 
+bool SpriteSize;
 SDL_Window *ToolboxPalette;
 SDL_Window *ToolboxOAM;
 SDL_Window *ToolboxNametable;
@@ -84,43 +85,28 @@ void __DrawNametable(SDL_Surface* s, uint8_t nametable)
 	}
 }
 
-
-void RefrestToolbox()
+void __DrawOAM(SDL_Surface* s, int i)
 {
-	// Update toolbox palette
-	SDL_Surface *tps = SDL_GetWindowSurface( ToolboxPalette );
-	for ( int y = 0; y<2; y++ )
+	uint8_t *PIXEL = (uint8_t*)s->pixels;
+	uint32_t color = 0;
+
+	if (!cpu->ppu.SpriteSize)
 	{
-		for (int x = 0; x<16; x++ )
+		//for (int i = 0; i<64; i++)
 		{
-			SDL_Rect r = { x*32, y*32, 32, 32 };
-			uint8_t pal = cpu->ppu.memory[0x3f00 + (y*16) + x];
-			Palette_entry col = nes_palette[ pal ];
-
-			SDL_FillRect( tps, &r, col.r<<16 | col.g<<8 | col.b );
-		}
-	}
-	SDL_UpdateWindowSurface( ToolboxPalette );
-
-	// Update toolbox OAM
-	SDL_Surface *tos = SDL_GetWindowSurface( ToolboxOAM );
-	for ( int Gy = 0; Gy<4; Gy++ )
-	{
-		for (int Gx = 0; Gx<16; Gx++ )
-		{
-			SDL_Surface* Sspr = SDL_CreateRGBSurface( SDL_SWSURFACE, 8, 8, 32, 0, 0, 0, 0 ); //Fuck error check
-			SDL_LockSurface( Sspr );
-			SDL_Color (*PIXELS)[8] = (SDL_Color(*)[8]) Sspr->pixels;
-
-			SDL_Rect r = { Gx*32, Gy*32, 32, 32 };
-			SPRITE spr = cpu->ppu.OAM[ Gy*16 + Gx ];
+			SPRITE spr = cpu->ppu.OAM[i];
+			if (spr.y<0xff) spr.y+=1;
+			//if (spr.y >= 0xEF) continue;
 
 			uint16_t spriteaddr = cpu->ppu.SpritePattenTable + spr.index*16;
 
+			// 8x8px
 			for (int y = 0; y<8; y++)
 			{
 				int sprite_y = y;
 				if ( spr.attr&0x80 ) sprite_y = 7 - sprite_y; //Vertical flip
+
+				if ( sprite_y+spr.y+8 > 240 ) continue;
 
 				uint8_t spritedata = cpu->ppu.memory[ spriteaddr + sprite_y ];
 				uint8_t spritedata2 = cpu->ppu.memory[ spriteaddr + sprite_y + 8 ];
@@ -132,18 +118,118 @@ void RefrestToolbox()
 					bool c1 = ( spritedata  &(1<<(7-sprite_x)) )? true: false;
 					bool c2 = ( spritedata2 &(1<<(7-sprite_x)) )? true: false;
 					
-					uint8_t color = c1 | c2<<1;
+					color = c1 | c2<<1;
 
 					Palette_entry e = nes_palette[ cpu->ppu.memory[0x3F10 + ((spr.attr&0x3)*4) + color] ];
 
-					SDL_Color c = {e.b, e.g, e.r};
-					PIXELS[y][x] = c;
+					*(PIXEL++) = e.b;
+					*(PIXEL++) = e.g;
+					*(PIXEL++) = e.r;
+					PIXEL++;
 				}
 			}
+		}
+
+	}
+	else //8x16
+	{
+		//for (int i = 0; i<64; i++)
+		{
+			SPRITE spr = cpu->ppu.OAM[i];
+			if (spr.y<0xff) spr.y+=1;
+			//if (spr.y >= 0xEF) continue;
+
+
+			uint16_t spriteaddr = ( (spr.index&1) * 0x1000)  + ((spr.index>>1)*32);
+
+			// 8x16px
+			for (int y = 0; y<16; y++)
+			{
+				int sprite_y = y;
+				if ( spr.attr&0x80 ) 
+				{
+					sprite_y = 15 - sprite_y; //Vertical flip
+				}
+				if (sprite_y>7) sprite_y+=8;
+
+				uint8_t spritedata = cpu->ppu.memory[ spriteaddr + sprite_y ];
+				uint8_t spritedata2 = cpu->ppu.memory[ spriteaddr + sprite_y + 8 ];
+				for (int x = 0; x<8; x++)
+				{
+					int sprite_x = x;
+					if ( spr.attr&0x40 ) sprite_x = 7 - sprite_x; //Ver flip
+
+					bool c1 = ( spritedata  &(1<<(7-sprite_x)) )? true: false;
+					bool c2 = ( spritedata2 &(1<<(7-sprite_x)) )? true: false;
+					
+					color = c1 | c2<<1;
+
+					Palette_entry e = nes_palette[ cpu->ppu.memory[0x3F10 + ((spr.attr&0x3)*4) + color] ];
+
+					*(PIXEL++) = e.b;
+					*(PIXEL++) = e.g;
+					*(PIXEL++) = e.r;
+					PIXEL++;
+				}
+			}
+		}
+
+	}
+
+}
+
+void RefrestToolbox()
+{
+	// Update toolbox palette
+	SDL_Surface *tps = SDL_GetWindowSurface( ToolboxPalette );
+	for ( int y = 0; y<2; y++ )
+	{
+		for (int x = 0; x<16; x++ )
+		{
+			SDL_Rect r = { x*16, y*16, 16, 16 };
+			uint8_t pal = cpu->ppu.memory[0x3f00 + (y*16) + x];
+			Palette_entry col = nes_palette[ pal ];
+
+			SDL_FillRect( tps, &r, col.r<<16 | col.g<<8 | col.b );
+		}
+	}
+	SDL_UpdateWindowSurface( ToolboxPalette );
+
+	// Update toolbox OAM
+	if ( SpriteSize != cpu->ppu.SpriteSize )
+	{
+		SpriteSize = cpu->ppu.SpriteSize;
+		if (!SpriteSize) // 8x8
+			SDL_SetWindowSize( ToolboxOAM, 16*8*2, 4*8*2 );
+		else
+			SDL_SetWindowSize( ToolboxOAM, 16*8*2, 4*8*2*2 );
+	}
+	SDL_Surface *tos = SDL_GetWindowSurface( ToolboxOAM );
+	for ( int Gy = 0; Gy<4; Gy++ )
+	{
+		for (int Gx = 0; Gx<16; Gx++ )
+		{
+			SDL_Rect r = { Gx*16, Gy*16, 16, 16 };
+			SDL_Surface* Sspr = NULL;
+			if (!SpriteSize) // 8x8
+			{
+				Sspr = SDL_CreateRGBSurface( SDL_SWSURFACE, 8, 8, 32, 0, 0, 0, 0 ); //Fuck error check
+				r.y = Gy*16;
+				r.h = 16;
+			}
+			else
+			{
+				Sspr = SDL_CreateRGBSurface( SDL_SWSURFACE, 8, 16, 32, 0, 0, 0, 0 ); //Fuck error check
+				r.y = Gy*32;
+				r.h = 32;
+			}
+			if (!Sspr) log->Fatal("PPU: Cannot create Sspr surface!");
+			SDL_LockSurface( Sspr );
+			
+			__DrawOAM( Sspr, Gy*16 + Gx );
+
 			SDL_UnlockSurface( Sspr );
-
 			SDL_BlitScaled( Sspr, NULL, tos, &r );
-
 			SDL_FreeSurface( Sspr );
 		}
 	}
@@ -159,6 +245,7 @@ void RefrestToolbox()
 		SDL_Rect r = { (i%2)*256, (i/2)*240, 256, 240 };
 
 		SDL_Surface* Sspr = SDL_CreateRGBSurface( SDL_SWSURFACE, 256, 256, 32, 0, 0, 0, 0 ); //Fuck error check
+		if (!Sspr) log->Fatal("PPU: Cannot create Sspr surface!");
 		SDL_LockSurface( Sspr );
 
 		if (cpu->ppu.Mirroring == VERTICAL) // Vertical
@@ -225,10 +312,10 @@ int main()
 	// Toolbox
 
 	// Palette window
+	int wX, wY;
+	SDL_GetWindowPosition( MainWindow, &wX, &wY );
 	{
-		int wX, wY;
-		SDL_GetWindowPosition( MainWindow, &wX, &wY );
-		ToolboxPalette = SDL_CreateWindow( "AnotherNES - Palette", wX, wY+240*2+24, 4*4*32, 2*32, SDL_WINDOW_SHOWN );
+		ToolboxPalette = SDL_CreateWindow( "AnotherNES - Palette", wX, wY+240*2+24, 16*16, 2*16, SDL_WINDOW_SHOWN );
 	}
 	if ( ToolboxPalette == NULL )
 	{
@@ -238,7 +325,7 @@ int main()
 	log->Success("Toolbox palette window created");
 
 	// OAM window
-	ToolboxOAM = SDL_CreateWindow( "AnotherNES - OAM", 20, 20, 16*8*4, 4*8*4, SDL_WINDOW_SHOWN );
+	ToolboxOAM = SDL_CreateWindow( "AnotherNES - OAM", wX+16*16, wY+240*2+24, 16*8*2, 4*8*2, SDL_WINDOW_SHOWN );
 	if ( ToolboxOAM == NULL )
 	{
 		log->Fatal("Cannot create Toolbox OAM");
@@ -247,7 +334,7 @@ int main()
 	log->Success("Toolbox OAM window created");
 	
 	// Nametable window
-	ToolboxNametable = SDL_CreateWindow( "AnotherNES - Nametable", 20, 170, 256*2, 240*2, SDL_WINDOW_SHOWN );
+	ToolboxNametable = SDL_CreateWindow( "AnotherNES - Nametable", wX-256*2-16, wY, 256*2, 240*2, SDL_WINDOW_SHOWN );
 	if ( ToolboxNametable == NULL )
 	{
 		log->Fatal("Cannot create Toolbox Nametable");
@@ -359,17 +446,25 @@ int main()
 			uint8_t ppuresult = cpu->ppu.Step();
 			if (ppuresult) // NMI requested
 			{
-				SDL_LockSurface( canvas );
-				cpu->ppu.Render( canvas );
-				SDL_UnlockSurface( canvas );
+				if (ppuresult == 100) 
+				{
+					static int UpdateSecond = 0;
+					if (UpdateSecond%2 == 0) RefrestToolbox();
+					UpdateSecond++;
+				}
+				else
+				{
+					SDL_LockSurface( canvas );
+					cpu->ppu.Render( canvas );
+					SDL_UnlockSurface( canvas );
 
 
-				SDL_SoftStretch( canvas, NULL, screen, NULL );
-				SDL_UpdateWindowSurface( MainWindow );
-				
-				RefrestToolbox();
+					SDL_SoftStretch( canvas, NULL, screen, NULL );
+					SDL_UpdateWindowSurface( MainWindow );
+					
 
-				if (ppuresult==2) cpu->NMI();
+					if (ppuresult==2) cpu->NMI();
+				}
 			}
 		}
 

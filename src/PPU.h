@@ -47,7 +47,6 @@ private:
 	uint16_t scanline;
 	bool VBLANK;
 	bool NMI_enabled;
-	bool SpriteSize; // false - 8x8, true - 8x16
 	uint8_t VRAMaddressIncrement;
 
 
@@ -68,6 +67,7 @@ private:
 	void RenderSprite(SDL_Surface* s);
 	void RenderBackground(SDL_Surface* s, uint8_t nametable);
 public:
+	bool SpriteSize; // false - 8x8, true - 8x16
 	uint16_t BaseNametable;
 	uint16_t BackgroundPattenTable;
 	uint16_t SpritePattenTable;
