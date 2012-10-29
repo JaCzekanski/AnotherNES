@@ -400,11 +400,11 @@ int main()
 	log->Success("%dB PRG_ROM copied", rom->PRG_ROM_pages*16*1024);
 
 
-	//if (rom->CHR_ROM_pages!=1)
-	//{
-	//	log->Error("CHR_ROM pages != 1 will cause crash (no mappers supported). Breaking.");
-	//	return 1;
-	//}
+	if (rom->CHR_ROM_pages>1)
+	{
+		log->Error("CHR_ROM pages > 1 will cause crash (no mappers supported). Breaking.");
+		return 1;
+	}
 	memcpy( cpu->ppu.memory, rom->CHR_ROM, rom->CHR_ROM_pages*8*1024 );
 	log->Success("%dB CHR_ROM copied", rom->CHR_ROM_pages*8*1024 );
 
