@@ -3,6 +3,8 @@
 #include "PPU.h"
 
 extern int buttonState;
+extern int AUDIO[0x20];
+extern bool AUDIOACCESS;
 /* Memory map
 
 $FFFA - $FFFB - NMI vector
@@ -61,6 +63,17 @@ public:
 		}
 		if (n < 0x4020) // IO / APU
 		{
+			// 0x4000-0x4003 - Pulse 1
+			// 0x4004-0x4007 - Pulse 2
+			// 0x4008-0x400B - Triangle
+			// 0x400C-0x400F - Noise
+			// 0x4010-0x4013 - DMC
+			if (n <= 0x4013 || n == 0x4015)
+			{
+				AUDIO[n-0x4000] = data;
+				AUDIOACCESS = true;
+				return;
+			}
 			if (n == 0x4014) // OAM_DMA 
 			{
 				// Copy $XX00-$XXFF to OAM
@@ -84,6 +97,11 @@ public:
 				//}
 			}
 			else if (n == 0x4016) // JOY1
+			{
+				bit = 7; // Strobe
+				return ;
+			}
+			else if (n == 0x4017) // JOY2 and Frame counter control
 			{
 				bit = 7; // Strobe
 				return ;

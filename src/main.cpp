@@ -1,5 +1,9 @@
 bool debug = false;
 int buttonState = 0;
+int AUDIO[0x20];
+bool AUDIOACCESS = true;
+#include <windows.h>
+#include <xinput.h>
 #include <iostream>
 #include <SDL.h>
 #undef main
@@ -24,6 +28,140 @@ SDL_Window *ToolboxPalette;
 SDL_Window *ToolboxOAM;
 SDL_Window *ToolboxNametable;
 
+int audcount = 0;
+int audcount2 = 0;
+int gvolume = 0x0f;
+bool dir = false;
+bool dir2 = false;
+void audiocallback(void *userdata, Uint8 *stream, int len)
+{
+	if (AUDIOACCESS)
+	{
+		AUDIOACCESS = false;
+		gvolume = 0xf;
+	}
+	for (int i = 0; i<len; i++)
+	{
+		stream[i] = 0x7f;
+	}
+	if ( AUDIO[0x15] | 0x01 ) // PULSE 1 enabled
+	{
+		// SQ1_ENV ($4000);
+		uint8_t volume = AUDIO[0] & 0xf;
+		bool LengthCounterDisable = (AUDIO[0]&0x20)>>5;
+		uint8_t dutycycle = (AUDIO[0] & 0xC0) >> 6;
+
+		if (AUDIO[0]&0x10) // if 1 - Envelope
+		{
+			volume = gvolume;
+		}
+		else // else - volume
+		{
+			volume = gvolume;
+		}
+
+		if (LengthCounterDisable) // Length controlled by us
+		{		
+		}
+		else
+		{
+			
+		}
+	
+		if (volume > 0)
+		{
+
+				// SQ1_LO ($4002), SQ1_HI ($4003)
+				uint16_t period = (AUDIO[3]&0x7)<<8 | AUDIO[2];
+				uint8_t length = (AUDIO[3]&0xf8)>>3;
+
+				int freq = 1789772.67f / (float)(16*(period+1));
+
+				for (int i = 0; i<len; i++)
+				{
+					if (dutycycle==1 || dutycycle==3)
+					{
+						if (audcount>(44100.f/freq) ) 
+						{
+							dir = !dir;
+							audcount = 0;
+						}
+					}
+					else if (dutycycle==2)
+					{
+						if (audcount>(44100.f/freq) ) 
+						{
+							dir = !dir;
+							audcount = 0;
+						}
+					}
+
+					if (dir) stream[i] =(volume*8)/2;
+					audcount++;
+				}
+		}
+	}
+	if ( AUDIO[0x15] | 0x02 ) // PULSE 2 enabled
+	{
+		// SQ1_ENV ($4000);
+		uint8_t volume = AUDIO[0+4] & 0xf;
+		bool LengthCounterDisable = (AUDIO[0+4]&0x20)>>5;
+		uint8_t dutycycle = (AUDIO[0+4] & 0xC0) >> 6;
+
+		if (AUDIO[0]&0x10) // if 1 - Envelope
+		{
+			volume = gvolume;
+		}
+		else // else - volume
+		{
+			volume = gvolume;
+		}
+
+		if (LengthCounterDisable) // Length controlled by us
+		{
+			//log->Debug("LengthCounterDisable: true");			
+		}
+		else
+		{
+			
+		}
+	
+		if (volume > 0)
+		{
+				// SQ1_LO ($4002), SQ1_HI ($4003)
+				uint16_t period = (AUDIO[3+4]&0x7)<<8 | AUDIO[2+4];
+				uint8_t length = (AUDIO[3+4]&0xf8)>>3;
+
+				int freq = 1789772.67f / (float)(16*(period+1));
+
+				for (int i = 0; i<len; i++)
+				{
+					if (dutycycle==1 || dutycycle==3)
+					{
+						if (audcount2>(44100.f/freq) ) 
+						{
+							dir2 = !dir2;
+							audcount2 = 0;
+						}
+					}
+					else if (dutycycle==2)
+					{
+						if (audcount2>(44100.f/freq) ) 
+						{
+							dir2 = !dir2;
+							audcount2 = 0;
+						}
+					}
+
+					if (dir) stream[i] += (volume*8)/2;
+					//else stream[i] = 0x7f;
+					audcount2++;
+				}
+		}
+	}
+	if (gvolume>0) gvolume--;
+
+}
 
 void __DrawNametable(SDL_Surface* s, uint8_t nametable)
 {
@@ -271,7 +409,7 @@ int main()
 	log = new Logger("log.txt");
 	log->Info("AnotherNES version %d.%d", MAJOR_VERSION, MINOR_VERSION);
 	
-	if ( SDL_Init( SDL_INIT_VIDEO ) < 0 )
+	if ( SDL_Init( SDL_INIT_VIDEO | SDL_INIT_AUDIO ) < 0 )
 	{
 		log->Fatal("SDL_Init failed");
 		return 1;
@@ -342,8 +480,33 @@ int main()
 	}
 	log->Success("Toolbox Nametable window created");
 
+	SDL_AudioSpec requested, obtained;
+	requested.channels = 1;
+	requested.format = AUDIO_U8;
+	requested.freq = 44100 ;
+	requested.samples = 1024;
+	requested.callback = audiocallback;
+	if ( SDL_OpenAudio( &requested, &obtained ) == -1 )
+	{
+		log->Error("SDL_OpenAudio error.");
+	}
+SDL_PauseAudio(0);
 
+	log->Success("Audio initialized.");
 	//SDL_WM_IconifyWindow();
+
+	XINPUT_STATE xstate;
+	bool XboxPresent = false;
+	if (XInputGetState(0, &xstate) == ERROR_SUCCESS)
+	{
+		log->Success("XInput: Xbox360 controller connected.");
+		XboxPresent = true;
+	}
+	else
+	{
+		log->Info("XInput: No Xbox360 controller found.");
+	}
+	
 
 	log->Info("Creating CPU interpreter");
 	cpu = new CPU_interpreter();
@@ -425,9 +588,26 @@ int main()
 		SDL_PollEvent(&event);
 		if (event.type == SDL_QUIT) break;
 
+		if (XboxPresent )
+		{
+			if ((tick%1000) == 0)
+			{
+				buttonState = 0;
+				XInputGetState(0, &xstate);
+				if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_B) buttonState |= 1<<7;
+				if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_A) buttonState |= 1<<6;
+				if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_BACK) buttonState |= 1<<5;
+				if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_START) buttonState |= 1<<4;
+				if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_UP) buttonState |= 1<<3;
+				if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN) buttonState |= 1<<2;
+				if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_LEFT) buttonState |= 1<<1;
+				if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_RIGHT) buttonState |= 1<<0;
+			}
+		}
+		else buttonState = 0;
+
 		Uint8 *keys = SDL_GetKeyboardState(NULL);
 		//A, B, Select, Start, Up, Down, Left, Right.
-		buttonState = 0;
 		if ( keys[SDL_SCANCODE_X] ) buttonState |= 1<<7;
 		if ( keys[SDL_SCANCODE_Z] ) buttonState |= 1<<6;
 		if ( keys[SDL_SCANCODE_A] ) buttonState |= 1<<5;
@@ -439,6 +619,8 @@ int main()
 
 		if ( keys[SDL_SCANCODE_R] ) {cpu->Reset(); Sleep(1000);}
 		if ( keys[SDL_SCANCODE_T] ) RefrestToolbox();
+
+		
 
 
 		for (int i = 0; i<3; i++)
@@ -472,6 +654,8 @@ int main()
 		++tick;
 	}
 
+	SDL_PauseAudio(1);
+	SDL_CloseAudio();
 	delete rom;
 	delete cpu;
 	SDL_FreeSurface( canvas );
