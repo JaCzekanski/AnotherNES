@@ -82,5 +82,5 @@ public:
 	void IRQ();
 
 	void Load( uint8_t* rom, uint16_t size ); // Load ROM into program space
-	virtual void Step()=0; // One step of execution
+	virtual int Step()=0; // One step of execution
 };

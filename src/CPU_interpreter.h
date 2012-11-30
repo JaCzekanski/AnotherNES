@@ -70,7 +70,7 @@ public:
 		else this->P &= ~NEGATIVE_FLAG;
 	}
 
-	void Step();
+	int Step();
 
 
 	// Load/Store Operations

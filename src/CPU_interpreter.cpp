@@ -33,7 +33,7 @@ extern bool debug;
 #endif
 
 #undef _DEBUG
-void CPU_interpreter::Step()
+int CPU_interpreter::Step()
 {
 	char buffer[512] = {0};
 	int opsize = 0;
@@ -41,9 +41,10 @@ void CPU_interpreter::Step()
 	OPCODE op = OpcodeTableOptimized[ this->memory[this->PC] ];
 
 	uint8_t low,high; // Temporary variables for address calculations
-	uint8_t* arg1 = &this->memory[ this->PC+1 ];
+ 	uint8_t* arg1 = &this->memory[ this->PC+1 ];
 	uint8_t* arg2 = &this->memory[ this->PC+2 ];
 	uint16_t addrlo, addrhi;
+	int CYCLE = op.cycles;
 	switch (op.address)
 	{
 	case Implicit: // No args, Working
@@ -172,6 +173,7 @@ if (debug)
 	{
 		this->PC += opsize;
 	}
+	return CYCLE;
  }
 
 void CPU_interpreter::LDA( CPU_interpreter* c ) // Load Accumulator

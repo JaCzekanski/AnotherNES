@@ -15,7 +15,7 @@ bool AUDIOACCESS = true;
 
 #define MAJOR_VERSION 0
 #define MINOR_VERSION 1
-#define ROM_NAME "rom/micromachines.nes"
+#define ROM_NAME "rom/contra.nes"
 
 Logger* log;
 CPU* cpu;
@@ -404,6 +404,15 @@ void RefrestToolbox()
 	SDL_UpdateWindowSurface( ToolboxNametable );
 }
 
+
+	int64_t tick = 0;
+Uint32 TimerCallback(Uint32 interval, void *param)
+{
+	log->Info("Instr per sec: %d", tick);
+	tick = 0;
+	return interval;
+}
+
 int main()
 {
 	log = new Logger("log.txt");
@@ -453,7 +462,7 @@ int main()
 	int wX, wY;
 	SDL_GetWindowPosition( MainWindow, &wX, &wY );
 	{
-		ToolboxPalette = SDL_CreateWindow( "AnotherNES - Palette", wX, wY+240*2+24, 16*16, 2*16, SDL_WINDOW_SHOWN );
+		ToolboxPalette = SDL_CreateWindow( "AnotherNES - Palette", wX, wY+240*2+24, 16*16, 2*16, SDL_WINDOW_HIDDEN );
 	}
 	if ( ToolboxPalette == NULL )
 	{
@@ -463,7 +472,7 @@ int main()
 	log->Success("Toolbox palette window created");
 
 	// OAM window
-	ToolboxOAM = SDL_CreateWindow( "AnotherNES - OAM", wX+16*16, wY+240*2+24, 16*8*2, 4*8*2, SDL_WINDOW_SHOWN );
+	ToolboxOAM = SDL_CreateWindow( "AnotherNES - OAM", wX+16*16, wY+240*2+24, 16*8*2, 4*8*2, SDL_WINDOW_HIDDEN );
 	if ( ToolboxOAM == NULL )
 	{
 		log->Fatal("Cannot create Toolbox OAM");
@@ -472,7 +481,7 @@ int main()
 	log->Success("Toolbox OAM window created");
 	
 	// Nametable window
-	ToolboxNametable = SDL_CreateWindow( "AnotherNES - Nametable", wX-256*2-16, wY, 256*2, 240*2, SDL_WINDOW_SHOWN );
+	ToolboxNametable = SDL_CreateWindow( "AnotherNES - Nametable", wX-256*2-16, wY, 256*2, 240*2, SDL_WINDOW_HIDDEN );
 	if ( ToolboxNametable == NULL )
 	{
 		log->Fatal("Cannot create Toolbox Nametable");
@@ -582,7 +591,10 @@ SDL_PauseAudio(0);
 	bool dostep = false;
 	bool prevstate = false;
 
-	int64_t tick = 0;
+
+	SDL_AddTimer( 1000, TimerCallback, NULL );
+	int64_t cycles = 0;
+	bool IRQ = false;
 	while(1)
 	{
 		SDL_PollEvent(&event);
@@ -619,6 +631,15 @@ SDL_PauseAudio(0);
 
 		if ( keys[SDL_SCANCODE_R] ) {cpu->Reset(); Sleep(1000);}
 		if ( keys[SDL_SCANCODE_T] ) RefrestToolbox();
+		if ( keys[SDL_SCANCODE_I] )
+		{
+			if (!IRQ)
+			{
+				IRQ = true;
+				cpu->IRQ();
+			}
+		}
+		else IRQ = false;
 
 		
 
@@ -628,14 +649,14 @@ SDL_PauseAudio(0);
 			uint8_t ppuresult = cpu->ppu.Step();
 			if (ppuresult) // NMI requested
 			{
-				if (ppuresult == 100) 
+				/*if (ppuresult == 100) 
 				{
 					static int UpdateSecond = 0;
 					if (UpdateSecond%2 == 0) RefrestToolbox();
 					UpdateSecond++;
 				}
 				else
-				{
+				{*/
 					SDL_LockSurface( canvas );
 					cpu->ppu.Render( canvas );
 					SDL_UnlockSurface( canvas );
@@ -646,11 +667,11 @@ SDL_PauseAudio(0);
 					
 
 					if (ppuresult==2) cpu->NMI();
-				}
+				//}
 			}
 		}
 
-		cpu->Step();
+		cycles+= cpu->Step();
 		++tick;
 	}
 
