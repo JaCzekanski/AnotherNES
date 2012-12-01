@@ -493,7 +493,7 @@ int main()
 	requested.channels = 1;
 	requested.format = AUDIO_U8;
 	requested.freq = 44100 ;
-	requested.samples = 1024;
+	requested.samples = 2048;
 	requested.callback = audiocallback;
 	if ( SDL_OpenAudio( &requested, &obtained ) == -1 )
 	{
@@ -619,6 +619,7 @@ SDL_PauseAudio(0);
 		else buttonState = 0;
 
 		Uint8 *keys = SDL_GetKeyboardState(NULL);
+		if ( keys[SDL_SCANCODE_ESCAPE] ) break;
 		//A, B, Select, Start, Up, Down, Left, Right.
 		if ( keys[SDL_SCANCODE_X] ) buttonState |= 1<<7;
 		if ( keys[SDL_SCANCODE_Z] ) buttonState |= 1<<6;
@@ -644,7 +645,7 @@ SDL_PauseAudio(0);
 		
 
 
-		for (int i = 0; i<3; i++)
+		for (int i = (cycles==0)?3:cycles*3; i>0; i--)
 		{
 			uint8_t ppuresult = cpu->ppu.Step();
 			if (ppuresult) // NMI requested
@@ -670,6 +671,7 @@ SDL_PauseAudio(0);
 				//}
 			}
 		}
+		cycles = 0;
 
 		cycles+= cpu->Step();
 		++tick;

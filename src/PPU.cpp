@@ -185,6 +185,7 @@ uint8_t PPU::Read( uint8_t reg)
 						
 		case 0x2004: //OAMDATA
 			ret = *((uint8_t *)OAM+OAMADDR);
+			if (((OAMADDR)%4) == 2 ) ret = ret&0xE3;
 			break;
 			
 		case 0x2007: //PPUDATA
