@@ -28,6 +28,13 @@ SDL_Window *ToolboxPalette;
 SDL_Window *ToolboxOAM;
 SDL_Window *ToolboxNametable;
 
+bool DutyCycle[4][8] = {
+	{ 0, 1, 0, 0, 0, 0, 0, 0 }, // 0, 12.5%
+	{ 0, 1, 1, 0, 0, 0, 0, 0 }, // 1, 25%
+	{ 0, 1, 1, 1, 1, 0, 0, 0 }, // 2, 50%
+	{ 1, 0, 0, 1, 1, 1, 1, 1 }  // 3. 25% negated
+};
+
 int audcount = 0;
 int audcount2 = 0;
 int gvolume = 0x0f;
@@ -153,7 +160,7 @@ void audiocallback(void *userdata, Uint8 *stream, int len)
 						}
 					}
 
-					if (dir) stream[i] += (volume*8)/2;
+					if (dir2) stream[i] += (volume*8)/2;
 					//else stream[i] = 0x7f;
 					audcount2++;
 				}
@@ -406,13 +413,6 @@ void RefrestToolbox()
 
 
 	int64_t tick = 0;
-Uint32 TimerCallback(Uint32 interval, void *param)
-{
-	log->Info("Instr per sec: %d", tick);
-	tick = 0;
-	return interval;
-}
-
 int main()
 {
 	log = new Logger("log.txt");
@@ -591,8 +591,6 @@ SDL_PauseAudio(0);
 	bool dostep = false;
 	bool prevstate = false;
 
-
-	SDL_AddTimer( 1000, TimerCallback, NULL );
 	int64_t cycles = 0;
 	bool IRQ = false;
 	while(1)
