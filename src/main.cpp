@@ -3,8 +3,6 @@
 #endif
 bool debug = false;
 int buttonState = 0;
-int AUDIO[0x20];
-bool AUDIOACCESS = true;
 #include <windows.h>
 #include <xinput.h>
 #include <iostream>
@@ -16,6 +14,7 @@ bool AUDIOACCESS = true;
 #include "iNES.h"
 #include "CPU.h"
 #include "CPU_interpreter.h"
+#include "APU.h"
 
 #define MAJOR_VERSION 0
 #define MINOR_VERSION 1
@@ -30,148 +29,6 @@ bool SpriteSize;
 SDL_Window *ToolboxPalette;
 SDL_Window *ToolboxOAM;
 SDL_Window *ToolboxNametable;
-
-bool DutyCycle[4][8] = {
-	{ 0, 1, 0, 0, 0, 0, 0, 0 }, // 0, 12.5%
-	{ 0, 1, 1, 0, 0, 0, 0, 0 }, // 1, 25%
-	{ 0, 1, 1, 1, 1, 0, 0, 0 }, // 2, 50%
-	{ 1, 0, 0, 1, 1, 1, 1, 1 }  // 3. 25% negated
-};
-
-int audcount = 0;
-int audcount2 = 0;
-int gvolume = 0x0f;
-bool dir = false;
-bool dir2 = false;
-void audiocallback(void *userdata, Uint8 *stream, int len)
-{
-	if (AUDIOACCESS)
-	{
-		AUDIOACCESS = false;
-		gvolume = 0xf;
-	}
-	for (int i = 0; i<len; i++)
-	{
-		stream[i] = 0x7f;
-	}
-	if ( AUDIO[0x15] | 0x01 ) // PULSE 1 enabled
-	{
-		// SQ1_ENV ($4000);
-		uint8_t volume = AUDIO[0] & 0xf;
-		bool LengthCounterDisable = (AUDIO[0]&0x20)>>5;
-		uint8_t dutycycle = (AUDIO[0] & 0xC0) >> 6;
-
-		if (AUDIO[0]&0x10) // if 1 - Envelope
-		{
-			volume = gvolume;
-		}
-		else // else - volume
-		{
-			volume = gvolume;
-		}
-
-		if (LengthCounterDisable) // Length controlled by us
-		{		
-		}
-		else
-		{
-			
-		}
-	
-		if (volume > 0)
-		{
-
-				// SQ1_LO ($4002), SQ1_HI ($4003)
-				uint16_t period = (AUDIO[3]&0x7)<<8 | AUDIO[2];
-				uint8_t length = (AUDIO[3]&0xf8)>>3;
-
-				int freq = 1789772.67f / (float)(16*(period+1));
-
-				for (int i = 0; i<len; i++)
-				{
-					if (dutycycle==1 || dutycycle==3)
-					{
-						if (audcount>(44100.f/freq) ) 
-						{
-							dir = !dir;
-							audcount = 0;
-						}
-					}
-					else if (dutycycle==2)
-					{
-						if (audcount>(44100.f/freq) ) 
-						{
-							dir = !dir;
-							audcount = 0;
-						}
-					}
-
-					if (dir) stream[i] =(volume*8)/2;
-					audcount++;
-				}
-		}
-	}
-	if ( AUDIO[0x15] | 0x02 ) // PULSE 2 enabled
-	{
-		// SQ1_ENV ($4000);
-		uint8_t volume = AUDIO[0+4] & 0xf;
-		bool LengthCounterDisable = (AUDIO[0+4]&0x20)>>5;
-		uint8_t dutycycle = (AUDIO[0+4] & 0xC0) >> 6;
-
-		if (AUDIO[0]&0x10) // if 1 - Envelope
-		{
-			volume = gvolume;
-		}
-		else // else - volume
-		{
-			volume = gvolume;
-		}
-
-		if (LengthCounterDisable) // Length controlled by us
-		{
-			//log->Debug("LengthCounterDisable: true");			
-		}
-		else
-		{
-			
-		}
-	
-		if (volume > 0)
-		{
-				// SQ1_LO ($4002), SQ1_HI ($4003)
-				uint16_t period = (AUDIO[3+4]&0x7)<<8 | AUDIO[2+4];
-				uint8_t length = (AUDIO[3+4]&0xf8)>>3;
-
-				int freq = 1789772.67f / (float)(16*(period+1));
-
-				for (int i = 0; i<len; i++)
-				{
-					if (dutycycle==1 || dutycycle==3)
-					{
-						if (audcount2>(44100.f/freq) ) 
-						{
-							dir2 = !dir2;
-							audcount2 = 0;
-						}
-					}
-					else if (dutycycle==2)
-					{
-						if (audcount2>(44100.f/freq) ) 
-						{
-							dir2 = !dir2;
-							audcount2 = 0;
-						}
-					}
-
-					if (dir2) stream[i] += (volume*8)/2;
-					//else stream[i] = 0x7f;
-					audcount2++;
-				}
-		}
-	}
-	if (gvolume>0) gvolume--;
-
-}
 
 void __DrawNametable(SDL_Surface* s, uint8_t nametable)
 {
@@ -414,6 +271,13 @@ void RefrestToolbox()
 	SDL_UpdateWindowSurface( ToolboxNametable );
 }
 
+void audiocallback(void *userdata, Uint8 *stream, int len)
+{
+	if (cpu)
+	{
+		cpu->apu.audiocallback( userdata, stream, len );
+	}
+}
 
 	int64_t tick = 0;
 int main()
@@ -500,7 +364,6 @@ int main()
 	}
 	log->Success("Toolbox Nametable window created");
 #endif
-
 
 	SDL_AudioSpec requested, obtained;
 	requested.channels = 1;
@@ -593,6 +456,7 @@ int main()
 
 	log->Info("CPU Reset");
 	cpu->memory.ppu = &cpu->ppu;
+	cpu->memory.apu = &cpu->apu;
 	cpu->ppu.Mirroring = rom->Mirroring;
 	cpu->Reset();
 
