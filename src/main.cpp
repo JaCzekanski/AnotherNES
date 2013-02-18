@@ -12,7 +12,7 @@ bool AUDIOACCESS = true;
 #include <SDL_syswm.h>
 #undef main
 #include "headers.h"
-
+#include "resource.h"
 #include "iNES.h"
 #include "CPU.h"
 #include "CPU_interpreter.h"
@@ -418,6 +418,7 @@ void RefrestToolbox()
 	int64_t tick = 0;
 int main()
 {
+	HINSTANCE hInstance = GetModuleHandle(NULL);
 	log = new Logger("log.txt");
 	log->Info("AnotherNES version %d.%d", MAJOR_VERSION, MINOR_VERSION);
 	
@@ -430,7 +431,7 @@ int main()
 
 	SDL_Window* MainWindow = SDL_CreateWindow( "AnotherNES", 
 		542, 20,
-		256*2, 240*2, SDL_WINDOW_SHOWN );
+		256*2, 240*2+20, SDL_WINDOW_SHOWN );
 
 	if ( MainWindow == NULL )
 	{
@@ -439,6 +440,31 @@ int main()
 	}
 	log->Success("Main window created");
 	
+	SDL_SysWMinfo WindowInfo;
+	SDL_VERSION(&WindowInfo.version);
+	SDL_GetWindowWMInfo( MainWindow, &WindowInfo);
+
+	HWND MainWindowHwnd = WindowInfo.info.win.window;
+
+	// Icon
+	SDL_Surface *SurfaceIcon = SDL_LoadBMP("icon.bmp");
+	if (!SurfaceIcon)
+	{
+		log->Error("Cannot load icon.bmp");
+		SurfaceIcon = NULL;
+	}
+	else
+		SDL_SetWindowIcon( MainWindow, SurfaceIcon );
+
+	// Menu
+	HMENU Menu = LoadMenu( hInstance, MAKEINTRESOURCE( RES_MENU ) );
+	if (!SetMenu( MainWindowHwnd, Menu ))
+	{
+		log->Fatal("Problem loading resource (menu)");
+		return 1;
+	}
+	SDL_EventState( SDL_SYSWMEVENT, SDL_ENABLE );
+
 	SDL_DisplayMode mode;
 	mode.format = SDL_PIXELFORMAT_RGB888;
 	mode.w = 256*2;
@@ -458,13 +484,6 @@ int main()
 	SDL_Surface* canvas = SDL_CreateRGBSurface( SDL_SWSURFACE, 256, 240, 32, 0, 0, 0, 0 );
 	if (!canvas) log->Fatal("Cannot create canvas surface!");
 
-	// Menu
-	SDL_SysWMinfo WindowInfo;
-	SDL_VERSION(&WindowInfo.version);
-	SDL_GetWindowWMInfo( MainWindow, &WindowInfo);
-
-	HWND MainWindowHwnd = WindowInfo.info.win.window;
-
 
 #ifdef _DEBUG
 	// Toolbox
@@ -480,6 +499,7 @@ int main()
 		log->Fatal("Cannot create toolbox palette");
 		return 1;
 	}
+	if (SurfaceIcon) SDL_SetWindowIcon( ToolboxPalette, SurfaceIcon );
 	log->Success("Toolbox palette window created");
 
 	// OAM window
@@ -489,6 +509,7 @@ int main()
 		log->Fatal("Cannot create Toolbox OAM");
 		return 1;
 	}
+	if (SurfaceIcon) SDL_SetWindowIcon( ToolboxOAM, SurfaceIcon );
 	log->Success("Toolbox OAM window created");
 	
 	// Nametable window
@@ -498,6 +519,7 @@ int main()
 		log->Fatal("Cannot create Toolbox Nametable");
 		return 1;
 	}
+	if (SurfaceIcon) SDL_SetWindowIcon( ToolboxNametable, SurfaceIcon );
 	log->Success("Toolbox Nametable window created");
 #endif
 
@@ -541,7 +563,7 @@ int main()
 	memset( &ofn, 0, sizeof(ofn) );
 	ofn.lStructSize = sizeof( ofn );
 	ofn.hwndOwner = MainWindowHwnd;
-	ofn.hInstance = GetModuleHandle(NULL);
+	ofn.hInstance = hInstance;
 	memset(FileName, 0, sizeof(FileName) );
 	ofn.lpstrFile = (char*)FileName;
 	ofn.nMaxFile = sizeof(FileName);
@@ -604,10 +626,37 @@ int main()
 
 	int64_t cycles = 0;
 	bool IRQ = false;
-	while(1)
+	bool DoExit = false;
+	while( DoExit == false )
 	{
 		SDL_PollEvent(&event);
-		if (event.type == SDL_QUIT) break;
+		if (event.type == SDL_QUIT) 
+		{
+			DoExit = true;
+			break;
+		}
+		if (event.type == SDL_SYSWMEVENT)
+		{
+			if (event.syswm.msg->msg.win.msg == WM_COMMAND)
+			{
+				switch( LOWORD( event.syswm.msg->msg.win.wParam ) )
+				{
+					// File
+				case IDM_EXIT1:
+					DoExit = true;
+					break;
+
+					// Emulation
+
+					// Options
+
+					// Help
+				case IDM_ABOUT1:
+					DialogBox( hInstance, MAKEINTRESOURCE( DIALOG_ABOUT ), MainWindowHwnd, NULL );
+					break;
+				}
+			}
+		}
 
 		if (XboxPresent )
 		{
