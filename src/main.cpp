@@ -375,9 +375,14 @@ int main()
 				{
 					if (ppuresult == 100) 
 					{
-						if (ToolboxOAM) ToolboxOAM->Update();
-						if (ToolboxPalette) ToolboxPalette->Update();
-						if (ToolboxNametable) ToolboxNametable->Update();
+						static int ToolboxDelay = 0; // Performacne hit
+						if (ToolboxDelay%5 == 0)
+						{
+							if (ToolboxOAM) ToolboxOAM->Update();
+							if (ToolboxPalette) ToolboxPalette->Update();
+							if (ToolboxNametable) ToolboxNametable->Update();
+						}
+						ToolboxDelay++;
 					}
 					else
 					{
@@ -394,6 +399,10 @@ int main()
 			}
 			cycles = cpu->Step();
 			++tick;
+		}
+		else
+		{
+			SDL_WaitEvent(NULL);
 		}
 	}
 
