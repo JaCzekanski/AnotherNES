@@ -1,10 +1,9 @@
 #pragma once
 #include "headers.h"
 #include "PPU.h"
+#include "APU.h"
 
 extern int buttonState;
-extern int AUDIO[0x20];
-extern bool AUDIOACCESS;
 /* Memory map
 
 $FFFA - $FFFB - NMI vector
@@ -43,6 +42,7 @@ public:
 	uint8_t bit;
 
 	PPU* ppu;
+	APU* apu;
 
 	CPU_ram(void);
 	~CPU_ram(void);
@@ -70,8 +70,7 @@ public:
 			// 0x4010-0x4013 - DMC
 			if (n <= 0x4013 || n == 0x4015)
 			{
-				AUDIO[n-0x4000] = data;
-				AUDIOACCESS = true;
+				apu->Write(n-0x4000, data);
 				return;
 			}
 			if (n == 0x4014) // OAM_DMA 

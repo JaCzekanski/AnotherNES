@@ -2,6 +2,7 @@
 #include "headers.h"
 #include "CPU_ram.h"
 #include "PPU.h"
+#include "APU.h"
 
 #include <vector>
 using namespace std;
@@ -64,6 +65,7 @@ protected:
 public:
 	CPU_ram memory;
 	PPU ppu;
+	APU apu;
 	uint32_t cycles;
 
 	CPU(void);
