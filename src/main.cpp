@@ -17,6 +17,10 @@ bool AUDIOACCESS = true;
 #include "CPU.h"
 #include "CPU_interpreter.h"
 
+#include "dialog/DlgOAM.h"
+#include "dialog/DlgPalette.h"
+#include "dialog/DlgNametable.h"
+
 #define MAJOR_VERSION 0
 #define MINOR_VERSION 1
 #define ROM_NAME "rom/contra.nes"
@@ -26,10 +30,9 @@ iNES* rom;
 
 unsigned char FileName[2048];
 
-bool SpriteSize;
-SDL_Window *ToolboxPalette;
-SDL_Window *ToolboxOAM;
-SDL_Window *ToolboxNametable;
+DlgOAM *ToolboxOAM;
+DlgPalette *ToolboxPalette;
+DlgNametable *ToolboxNametable;
 
 bool DutyCycle[4][8] = {
 	{ 0, 1, 0, 0, 0, 0, 0, 0 }, // 0, 12.5%
@@ -173,249 +176,7 @@ void audiocallback(void *userdata, Uint8 *stream, int len)
 
 }
 
-void __DrawNametable(SDL_Surface* s, uint8_t nametable)
-{
-	//Q&D scrolling 
-	int x = 0;
-	int y = 0;
-
-	SDL_Color (*PIXEL)[256] = (SDL_Color(*)[256]) s->pixels;
-	uint32_t color = 0;
-
-	uint16_t NametableAddress = (0x2000 + 0x400 * (nametable&0x03));
-
-	uint16_t Attribute = NametableAddress + 0x3c0;
-	for (int i = 0; i<960; i++)
-	{
-		// Assume that Surface is 256x240
-		uint16_t tile = cpu->ppu.memory[i+NametableAddress];
-		for (uint8_t b = 0; b<8; b++) //Y
-		{
-			uint8_t tiledata = cpu->ppu.memory[ cpu->ppu.BackgroundPattenTable + tile*16 + b];
-			uint8_t tiledata2 = cpu->ppu.memory[ cpu->ppu.BackgroundPattenTable + tile*16 + b +8];
-			for (uint8_t a = 0; a<8; a++) //X
-			{
-				bool c1 = ( tiledata&(1<<(7-a)) )? true: false;
-				bool c2 = ( tiledata2&(1<<(7-a)) )? true: false;
-
-				uint8_t InfoByte = cpu->ppu.memory[ Attribute + ((y/4)*8)+(x/4) ];
-				uint8_t infopal = 0;
-				if ( (y%4)<=1 ) //up
-				{
-					if ( (x%4)<=1 ) infopal = InfoByte; // up-left
-					else infopal = InfoByte>>2; // up-right
-				}
-				else 
-				{
-					if ( (x%4)<=1 ) infopal = InfoByte>>4; // down-left
-					else infopal = InfoByte>>6; // down-right
-				}
-
-				infopal = (infopal&0x03);
-
-				color = c1 | c2<<1;
-
-				if (color == 0)	infopal = 0;
-
-				//BG Palette + Infopal*4
-				Palette_entry e = nes_palette[ cpu->ppu.memory[0x3F00 + (infopal*4) + color] ];
-
-				SDL_Color c = {e.b, e.g, e.r};
-				PIXEL[y*8+b][x*8+a] = c;
-			}
-		}
-		if (x++ == 31)
-		{
-			y++;
-			x = 0;
-		}
-
-	}
-}
-
-void __DrawOAM(SDL_Surface* s, int i)
-{
-	uint8_t *PIXEL = (uint8_t*)s->pixels;
-	uint32_t color = 0;
-
-	if (!cpu->ppu.SpriteSize)
-	{
-		//for (int i = 0; i<64; i++)
-		{
-			SPRITE spr = cpu->ppu.OAM[i];
-			if (spr.y<0xff) spr.y+=1;
-			//if (spr.y >= 0xEF) continue;
-
-			uint16_t spriteaddr = cpu->ppu.SpritePattenTable + spr.index*16;
-
-			// 8x8px
-			for (int y = 0; y<8; y++)
-			{
-				int sprite_y = y;
-				if ( spr.attr&0x80 ) sprite_y = 7 - sprite_y; //Vertical flip
-
-				if ( sprite_y+spr.y+8 > 240 ) continue;
-
-				uint8_t spritedata = cpu->ppu.memory[ spriteaddr + sprite_y ];
-				uint8_t spritedata2 = cpu->ppu.memory[ spriteaddr + sprite_y + 8 ];
-				for (int x = 0; x<8; x++)
-				{
-					int sprite_x = x;
-					if ( spr.attr&0x40 ) sprite_x = 7 - sprite_x; //Horizontal flip
-
-					bool c1 = ( spritedata  &(1<<(7-sprite_x)) )? true: false;
-					bool c2 = ( spritedata2 &(1<<(7-sprite_x)) )? true: false;
-					
-					color = c1 | c2<<1;
-
-					Palette_entry e = nes_palette[ cpu->ppu.memory[0x3F10 + ((spr.attr&0x3)*4) + color] ];
-
-					*(PIXEL++) = e.b;
-					*(PIXEL++) = e.g;
-					*(PIXEL++) = e.r;
-					PIXEL++;
-				}
-			}
-		}
-
-	}
-	else //8x16
-	{
-		//for (int i = 0; i<64; i++)
-		{
-			SPRITE spr = cpu->ppu.OAM[i];
-			if (spr.y<0xff) spr.y+=1;
-			//if (spr.y >= 0xEF) continue;
-
-
-			uint16_t spriteaddr = ( (spr.index&1) * 0x1000)  + ((spr.index>>1)*32);
-
-			// 8x16px
-			for (int y = 0; y<16; y++)
-			{
-				int sprite_y = y;
-				if ( spr.attr&0x80 ) 
-				{
-					sprite_y = 15 - sprite_y; //Vertical flip
-				}
-				if (sprite_y>7) sprite_y+=8;
-
-				uint8_t spritedata = cpu->ppu.memory[ spriteaddr + sprite_y ];
-				uint8_t spritedata2 = cpu->ppu.memory[ spriteaddr + sprite_y + 8 ];
-				for (int x = 0; x<8; x++)
-				{
-					int sprite_x = x;
-					if ( spr.attr&0x40 ) sprite_x = 7 - sprite_x; //Ver flip
-
-					bool c1 = ( spritedata  &(1<<(7-sprite_x)) )? true: false;
-					bool c2 = ( spritedata2 &(1<<(7-sprite_x)) )? true: false;
-					
-					color = c1 | c2<<1;
-
-					Palette_entry e = nes_palette[ cpu->ppu.memory[0x3F10 + ((spr.attr&0x3)*4) + color] ];
-
-					*(PIXEL++) = e.b;
-					*(PIXEL++) = e.g;
-					*(PIXEL++) = e.r;
-					PIXEL++;
-				}
-			}
-		}
-
-	}
-
-}
-
-void RefrestToolbox()
-{
-	// Update toolbox palette
-	SDL_Surface *tps = SDL_GetWindowSurface( ToolboxPalette );
-	for ( int y = 0; y<2; y++ )
-	{
-		for (int x = 0; x<16; x++ )
-		{
-			SDL_Rect r = { x*16, y*16, 16, 16 };
-			uint8_t pal = cpu->ppu.memory[0x3f00 + (y*16) + x];
-			Palette_entry col = nes_palette[ pal ];
-
-			SDL_FillRect( tps, &r, col.r<<16 | col.g<<8 | col.b );
-		}
-	}
-	SDL_UpdateWindowSurface( ToolboxPalette );
-
-	// Update toolbox OAM
-	if ( SpriteSize != cpu->ppu.SpriteSize )
-	{
-		SpriteSize = cpu->ppu.SpriteSize;
-		if (!SpriteSize) // 8x8
-			SDL_SetWindowSize( ToolboxOAM, 16*8*2, 4*8*2 );
-		else
-			SDL_SetWindowSize( ToolboxOAM, 16*8*2, 4*8*2*2 );
-	}
-	SDL_Surface *tos = SDL_GetWindowSurface( ToolboxOAM );
-	for ( int Gy = 0; Gy<4; Gy++ )
-	{
-		for (int Gx = 0; Gx<16; Gx++ )
-		{
-			SDL_Rect r = { Gx*16, Gy*16, 16, 16 };
-			SDL_Surface* Sspr = NULL;
-			if (!SpriteSize) // 8x8
-			{
-				Sspr = SDL_CreateRGBSurface( SDL_SWSURFACE, 8, 8, 32, 0, 0, 0, 0 ); //Fuck error check
-				r.y = Gy*16;
-				r.h = 16;
-			}
-			else
-			{
-				Sspr = SDL_CreateRGBSurface( SDL_SWSURFACE, 8, 16, 32, 0, 0, 0, 0 ); //Fuck error check
-				r.y = Gy*32;
-				r.h = 32;
-			}
-			if (!Sspr) log->Fatal("PPU: Cannot create Sspr surface!");
-			SDL_LockSurface( Sspr );
-			
-			__DrawOAM( Sspr, Gy*16 + Gx );
-
-			SDL_UnlockSurface( Sspr );
-			SDL_BlitScaled( Sspr, NULL, tos, &r );
-			SDL_FreeSurface( Sspr );
-		}
-	}
-	SDL_UpdateWindowSurface( ToolboxOAM );
-
-	// Update toolbox Nametable
-	SDL_Surface *tns = SDL_GetWindowSurface( ToolboxNametable );
-	for ( int i = 0; i<4; i++ )
-	{
-		uint8_t currentNametable = 0;//(cpu->ppu.BaseNametable-0x2000)/0x400;
-		uint8_t cnx = (currentNametable%2);
-		uint8_t cny = (currentNametable/2);
-		SDL_Rect r = { (i%2)*256, (i/2)*240, 256, 240 };
-
-		SDL_Surface* Sspr = SDL_CreateRGBSurface( SDL_SWSURFACE, 256, 256, 32, 0, 0, 0, 0 ); //Fuck error check
-		if (!Sspr) log->Fatal("PPU: Cannot create Sspr surface!");
-		SDL_LockSurface( Sspr );
-
-		if (cpu->ppu.Mirroring == VERTICAL) // Vertical
-		{
-			if (i%2 == 0) __DrawNametable(Sspr, cnx);
-			else __DrawNametable(Sspr, !cnx);
-		}
-		else // Horizontal
-		{
-			if (i/2 == 0) __DrawNametable(Sspr, (cny)*2);
-			else __DrawNametable(Sspr, (!cny)*2);
-		}
-
-		SDL_UnlockSurface( Sspr );
-		SDL_BlitSurface( Sspr, NULL, tns, &r );
-		SDL_FreeSurface( Sspr );
-	}
-	SDL_UpdateWindowSurface( ToolboxNametable );
-}
-
-
-	int64_t tick = 0;
+int64_t tick = 0;
 int main()
 {
 	HINSTANCE hInstance = GetModuleHandle(NULL);
@@ -483,46 +244,6 @@ int main()
 
 	SDL_Surface* canvas = SDL_CreateRGBSurface( SDL_SWSURFACE, 256, 240, 32, 0, 0, 0, 0 );
 	if (!canvas) log->Fatal("Cannot create canvas surface!");
-
-
-#ifdef _DEBUG
-	// Toolbox
-
-	// Palette window
-	int wX, wY;
-	SDL_GetWindowPosition( MainWindow, &wX, &wY );
-	{
-		ToolboxPalette = SDL_CreateWindow( "AnotherNES - Palette", wX, wY+240*2+24, 16*16, 2*16, SDL_WINDOW_SHOWN );
-	}
-	if ( ToolboxPalette == NULL )
-	{
-		log->Fatal("Cannot create toolbox palette");
-		return 1;
-	}
-	if (SurfaceIcon) SDL_SetWindowIcon( ToolboxPalette, SurfaceIcon );
-	log->Success("Toolbox palette window created");
-
-	// OAM window
-	ToolboxOAM = SDL_CreateWindow( "AnotherNES - OAM", wX+16*16, wY+240*2+24, 16*8*2, 4*8*2, SDL_WINDOW_SHOWN );
-	if ( ToolboxOAM == NULL )
-	{
-		log->Fatal("Cannot create Toolbox OAM");
-		return 1;
-	}
-	if (SurfaceIcon) SDL_SetWindowIcon( ToolboxOAM, SurfaceIcon );
-	log->Success("Toolbox OAM window created");
-	
-	// Nametable window
-	ToolboxNametable = SDL_CreateWindow( "AnotherNES - Nametable", wX-256*2-16, wY, 256*2, 240*2, SDL_WINDOW_SHOWN );
-	if ( ToolboxNametable == NULL )
-	{
-		log->Fatal("Cannot create Toolbox Nametable");
-		return 1;
-	}
-	if (SurfaceIcon) SDL_SetWindowIcon( ToolboxNametable, SurfaceIcon );
-	log->Success("Toolbox Nametable window created");
-#endif
-
 
 	SDL_AudioSpec requested, obtained;
 	requested.channels = 1;
@@ -621,11 +342,9 @@ int main()
 
 	SDL_Event event;
 
-	bool dostep = false;
-	bool prevstate = false;
+	bool EmulationPaused = false;
 
 	int64_t cycles = 0;
-	bool IRQ = false;
 	bool DoExit = false;
 	while( DoExit == false )
 	{
@@ -642,16 +361,110 @@ int main()
 				switch( LOWORD( event.syswm.msg->msg.win.wParam ) )
 				{
 					// File
-				case IDM_EXIT1:
+					// -Exit
+				case FILE_EXIT:
 					DoExit = true;
 					break;
 
 					// Emulation
+					// -Pause
+				case EMULATION_PAUSE:
+					if ( CheckMenuItem( Menu, EMULATION_PAUSE, MF_BYCOMMAND ) == MF_UNCHECKED ) 
+					{
+						CheckMenuItem( Menu, EMULATION_PAUSE, MF_BYCOMMAND | MF_CHECKED );
+						EmulationPaused = true;
+						log->Info("Emulation paused");
+					}
+					else 
+					{
+						CheckMenuItem( Menu, EMULATION_PAUSE, MF_BYCOMMAND | MF_UNCHECKED );
+						EmulationPaused = false;
+						log->Info("Emulation resumed");
+					}
+					break;
+					// -Reset (soft)
+				case EMULATION_RESET_SOFT:
+					cpu->Reset(); 
+					break;
 
 					// Options
+					// -Sound
+					// --Enable
+				case OPTIONS_SOUND_ENABLED:
+					if ( CheckMenuItem( Menu, OPTIONS_SOUND_ENABLED, MF_BYCOMMAND ) == MF_UNCHECKED ) 
+					{
+						CheckMenuItem( Menu, OPTIONS_SOUND_ENABLED, MF_BYCOMMAND | MF_CHECKED );
+						SDL_PauseAudio(0);
+						log->Info("Sound: enabled");
+					}
+					else 
+					{
+						CheckMenuItem( Menu, OPTIONS_SOUND_ENABLED, MF_BYCOMMAND | MF_UNCHECKED );
+						SDL_PauseAudio(1);
+						log->Info("Sound: disabled");
+					}
+					break;
+
+
+					// Debug
+					// -Windows
+					// --OAM
+				case DEBUG_WINDOWS_OAM:
+					if ( CheckMenuItem( Menu, DEBUG_WINDOWS_OAM, MF_BYCOMMAND ) == MF_UNCHECKED ) 
+					{
+						CheckMenuItem( Menu, DEBUG_WINDOWS_OAM, MF_BYCOMMAND | MF_CHECKED );
+						ToolboxOAM = new DlgOAM(cpu);
+					}
+					else 
+					{
+						CheckMenuItem( Menu, DEBUG_WINDOWS_OAM, MF_BYCOMMAND | MF_UNCHECKED );
+						if (ToolboxOAM)
+						{
+							delete ToolboxOAM;
+							ToolboxOAM = NULL;
+						}
+					}
+					break;
+					
+					// --Palette
+				case DEBUG_WINDOWS_PALETTE:
+					if ( CheckMenuItem( Menu, DEBUG_WINDOWS_PALETTE, MF_BYCOMMAND ) == MF_UNCHECKED ) 
+					{
+						CheckMenuItem( Menu, DEBUG_WINDOWS_PALETTE, MF_BYCOMMAND | MF_CHECKED );
+						ToolboxPalette = new DlgPalette(cpu);
+					}
+					else 
+					{
+						CheckMenuItem( Menu, DEBUG_WINDOWS_PALETTE, MF_BYCOMMAND | MF_UNCHECKED );
+						if (ToolboxPalette)
+						{
+							delete ToolboxPalette;
+							ToolboxPalette = NULL;
+						}
+					}
+					break;
+					
+					// --Nametable
+				case DEBUG_WINDOWS_NAMETABLE:
+					if ( CheckMenuItem( Menu, DEBUG_WINDOWS_NAMETABLE, MF_BYCOMMAND ) == MF_UNCHECKED ) 
+					{
+						CheckMenuItem( Menu, DEBUG_WINDOWS_NAMETABLE, MF_BYCOMMAND | MF_CHECKED );
+						ToolboxNametable = new DlgNametable(cpu);
+					}
+					else 
+					{
+						CheckMenuItem( Menu, DEBUG_WINDOWS_NAMETABLE, MF_BYCOMMAND | MF_UNCHECKED );
+						if (ToolboxNametable)
+						{
+							delete ToolboxNametable;
+							ToolboxNametable = NULL;
+						}
+					}
+					break;
 
 					// Help
-				case IDM_ABOUT1:
+					// -About
+				case HELP_ABOUT:
 					DialogBox( hInstance, MAKEINTRESOURCE( DIALOG_ABOUT ), MainWindowHwnd, NULL );
 					break;
 				}
@@ -688,62 +501,46 @@ int main()
 		if ( keys[SDL_SCANCODE_LEFT] ) buttonState |= 1<<1;
 		if ( keys[SDL_SCANCODE_RIGHT] ) buttonState |= 1<<0;
 
-		if ( keys[SDL_SCANCODE_R] ) {cpu->Reset(); Sleep(1000);}
-		if ( keys[SDL_SCANCODE_T] ) RefrestToolbox();
-		if ( keys[SDL_SCANCODE_I] )
+		if (!EmulationPaused)
 		{
-			if (!IRQ)
+			for (int i = (cycles==0)?3:cycles*3; i>0; i--)
 			{
-				IRQ = true;
-				cpu->IRQ();
-			}
-		}
-		else IRQ = false;
-
-		
-
-
-		for (int i = (cycles==0)?3:cycles*3; i>0; i--)
-		{
-			uint8_t ppuresult = cpu->ppu.Step();
-			if (ppuresult) // NMI requested
-			{
-#ifdef _DEBUG
-				if (ppuresult == 100) 
+				uint8_t ppuresult = cpu->ppu.Step();
+				if (ppuresult) // NMI requested
 				{
-					static int UpdateSecond = 0;
-					if (UpdateSecond%2 == 0) RefrestToolbox();
-					UpdateSecond++;
-				}
-#endif
-				if (ppuresult != 100)
-				{
-					SDL_LockSurface( canvas );
-					cpu->ppu.Render( canvas );
-					SDL_UnlockSurface( canvas );
+					if (ppuresult == 100) 
+					{
+						if (ToolboxOAM) ToolboxOAM->Update();
+						if (ToolboxPalette) ToolboxPalette->Update();
+						if (ToolboxNametable) ToolboxNametable->Update();
+					}
+					else
+					{
+						SDL_LockSurface( canvas );
+						cpu->ppu.Render( canvas );
+						SDL_UnlockSurface( canvas );
 
-
-					SDL_SoftStretch( canvas, NULL, screen, NULL );
-					SDL_UpdateWindowSurface( MainWindow );
-					
-
-					if (ppuresult==2) cpu->NMI();
+						SDL_SoftStretch( canvas, NULL, screen, NULL );
+						SDL_UpdateWindowSurface( MainWindow );
+						
+						if (ppuresult==2) cpu->NMI();
+					}
 				}
 			}
+			cycles = cpu->Step();
+			++tick;
 		}
-		cycles = cpu->Step();
-		++tick;
 	}
 
 	SDL_PauseAudio(1);
 	SDL_CloseAudio();
 	delete rom; rom = NULL;
 	delete cpu; cpu = NULL;
-#ifdef _DEBUG
-	SDL_DestroyWindow( ToolboxNametable ); ToolboxNametable = NULL;
-	SDL_DestroyWindow( ToolboxOAM ); ToolboxOAM = NULL;
-	SDL_DestroyWindow( ToolboxPalette ); ToolboxPalette = NULL;
-#endif
+
+	delete ToolboxOAM; ToolboxOAM = NULL;
+	delete ToolboxPalette; ToolboxPalette = NULL;
+	delete ToolboxNametable; ToolboxNametable = NULL;
+	
 	SDL_FreeSurface( canvas ); canvas = NULL;
 	SDL_DestroyWindow( MainWindow ); MainWindow = NULL;
 	SDL_Quit();

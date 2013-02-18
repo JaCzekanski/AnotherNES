@@ -189,6 +189,22 @@
 				RelativePath=".\src\PPU.cpp"
 				>
 			</File>
+			<Filter
+				Name="Dialog"
+				>
+				<File
+					RelativePath=".\src\Dialog\DlgNametable.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\src\Dialog\DlgOAM.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\src\Dialog\DlgPalette.cpp"
+					>
+				</File>
+			</Filter>
 		</Filter>
 		<Filter
 			Name="Header Files"
@@ -231,6 +247,22 @@
 				RelativePath=".\src\stdint.h"
 				>
 			</File>
+			<Filter
+				Name="Dialog"
+				>
+				<File
+					RelativePath=".\src\Dialog\DlgNametable.h"
+					>
+				</File>
+				<File
+					RelativePath=".\src\Dialog\DlgOAM.h"
+					>
+				</File>
+				<File
+					RelativePath=".\src\Dialog\DlgPalette.h"
+					>
+				</File>
+			</Filter>
 		</Filter>
 		<Filter
 			Name="Resource Files"

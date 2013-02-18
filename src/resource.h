@@ -3,16 +3,19 @@
 #endif
 
 #define RES_MENU                                101
-#define IDR_ACCELERATOR1                        102
 #define DIALOG_ABOUT                            109
 #define RES_ICON                                116
-#define RES_ICONBIG                             118
+#define RES_ICON_BIG                            120
 #define ABOUT_IMAGE                             1003
 #define ABOUT_VERSION                           1004
-#define ACC_OPEN                                40000
-#define IDM_LOAD1                               40000
-#define ACC_EXIT                                40001
-#define IDM_CLOSE1                              40001
-#define ACC_CLOSE                               40002
-#define IDM_EXIT1                               40003
-#define IDM_ABOUT1                              40004
+#define FILE_LOAD                               40000
+#define FILE_CLOSE                              40001
+#define EMULATION_RESET_SOFT                    40002
+#define FILE_EXIT                               40003
+#define HELP_ABOUT                              40004
+#define DEBUG_WINDOWS_OAM                       40005
+#define DEBUG_WINDOWS_PALETTE                   40006
+#define DEBUG_WINDOWS_NAMETABLE                 40007
+#define EMULATION_RESET_HARD                    40008
+#define EMULATION_PAUSE                         40009
+#define OPTIONS_SOUND_ENABLED                   40010

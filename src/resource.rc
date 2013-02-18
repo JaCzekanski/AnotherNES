@@ -11,6 +11,14 @@
 
 
 //
+// Bitmap resources
+//
+LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
+RES_ICON_BIG       BITMAP         "..\\iconbig.bmp"
+
+
+
+//
 // Menu resources
 //
 LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
@@ -18,22 +26,37 @@ RES_MENU MENU
 {
     POPUP "File"
     {
-        MENUITEM "Load\tCtrl+L", IDM_LOAD1, INACTIVE
-        MENUITEM "Close\tCtrl+C", IDM_CLOSE1, INACTIVE
+        MENUITEM "Load\tCtrl+L", FILE_LOAD, INACTIVE
+        MENUITEM "Close\tCtrl+C", FILE_CLOSE, INACTIVE
         MENUITEM SEPARATOR
-        MENUITEM "Exit\tAlt+F4", IDM_EXIT1
+        MENUITEM "Exit\tAlt+F4", FILE_EXIT
     }
     POPUP "Emulation"
     {
+        MENUITEM "Pause", EMULATION_PAUSE
         MENUITEM SEPARATOR
+        MENUITEM "Reset (soft)", EMULATION_RESET_SOFT
+        MENUITEM "Reset (hard)", EMULATION_RESET_HARD
     }
     POPUP "Options"
     {
-        MENUITEM SEPARATOR
+        POPUP "Sound"
+        {
+            MENUITEM "Enabled", OPTIONS_SOUND_ENABLED, CHECKED
+        }
+    }
+    POPUP "Debug"
+    {
+        POPUP "Windows"
+        {
+            MENUITEM "OAM", DEBUG_WINDOWS_OAM
+            MENUITEM "Palette", DEBUG_WINDOWS_PALETTE
+            MENUITEM "Nametable", DEBUG_WINDOWS_NAMETABLE
+        }
     }
     POPUP "Help"
     {
-        MENUITEM "About", IDM_ABOUT1
+        MENUITEM "About", HELP_ABOUT
     }
 }
 
@@ -49,7 +72,7 @@ CAPTION "AnotherNES: About"
 FONT 8, "Ms Shell Dlg"
 {
     GROUPBOX        "AnotherNES", IDC_STATIC, 7, 7, 183, 184
-    ICON            RES_ICONBIG, ABOUT_IMAGE, 51, 18, 96, 96, SS_ICON | SS_CENTERIMAGE
+    CONTROL         RES_ICON_BIG, ABOUT_IMAGE, WC_STATIC, SS_BITMAP | SS_CENTERIMAGE, 55, 18, 86, 86
     LTEXT           "Author: Jakub Czekañski", IDC_STATIC, 59, 176, 80, 8, SS_LEFT
     LTEXT           "AnotherNES", IDC_STATIC, 79, 112, 40, 8, SS_LEFT
     LTEXT           "Version: ", IDC_STATIC, 78, 123, 28, 8, SS_LEFT
@@ -59,24 +82,7 @@ FONT 8, "Ms Shell Dlg"
 
 
 //
-// Accelerator resources
-//
-LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
-IDR_ACCELERATOR1 ACCELERATORS
-{
-    "O",            ACC_OPEN, VIRTKEY, CONTROL
-    VK_F4,         ACC_EXIT, VIRTKEY, ALT
-    "C",            ACC_CLOSE, VIRTKEY, CONTROL
-}
-
-
-
-//
 // Icon resources
 //
 LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
 RES_ICON           ICON           "..\\icon.ico"
-
-
-LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
-RES_ICONBIG        ICON           "..\\iconbig.ico"

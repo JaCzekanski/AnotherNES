@@ -31,12 +31,12 @@ PPU::PPU(void)
 
 	ScrollX = 0;
 	ScrollY = 0;
-	log->Debug("CPU_ram: Created");
+	log->Debug("PPU: created");
 }
 
 PPU::~PPU(void)
 {
-	log->Debug("CPU_ram: Destroyed");
+	log->Debug("PPU: destroyed");
 }
 
 void PPU::Write( uint8_t reg, uint8_t data )
