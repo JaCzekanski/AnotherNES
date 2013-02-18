@@ -1,3 +1,6 @@
+#ifdef _DEBUG
+#include <vld.h>
+#endif
 bool debug = false;
 int buttonState = 0;
 int AUDIO[0x20];
@@ -16,7 +19,6 @@ bool AUDIOACCESS = true;
 #define MAJOR_VERSION 0
 #define MINOR_VERSION 1
 #define ROM_NAME "rom/contra.nes"
-
 Logger* log;
 CPU* cpu;
 iNES* rom;
@@ -456,13 +458,14 @@ int main()
 	if (!canvas) log->Fatal("Cannot create canvas surface!");
 
 
+#ifdef _DEBUG
 	// Toolbox
 
 	// Palette window
 	int wX, wY;
 	SDL_GetWindowPosition( MainWindow, &wX, &wY );
 	{
-		ToolboxPalette = SDL_CreateWindow( "AnotherNES - Palette", wX, wY+240*2+24, 16*16, 2*16, SDL_WINDOW_HIDDEN );
+		ToolboxPalette = SDL_CreateWindow( "AnotherNES - Palette", wX, wY+240*2+24, 16*16, 2*16, SDL_WINDOW_SHOWN );
 	}
 	if ( ToolboxPalette == NULL )
 	{
@@ -472,7 +475,7 @@ int main()
 	log->Success("Toolbox palette window created");
 
 	// OAM window
-	ToolboxOAM = SDL_CreateWindow( "AnotherNES - OAM", wX+16*16, wY+240*2+24, 16*8*2, 4*8*2, SDL_WINDOW_HIDDEN );
+	ToolboxOAM = SDL_CreateWindow( "AnotherNES - OAM", wX+16*16, wY+240*2+24, 16*8*2, 4*8*2, SDL_WINDOW_SHOWN );
 	if ( ToolboxOAM == NULL )
 	{
 		log->Fatal("Cannot create Toolbox OAM");
@@ -481,13 +484,15 @@ int main()
 	log->Success("Toolbox OAM window created");
 	
 	// Nametable window
-	ToolboxNametable = SDL_CreateWindow( "AnotherNES - Nametable", wX-256*2-16, wY, 256*2, 240*2, SDL_WINDOW_HIDDEN );
+	ToolboxNametable = SDL_CreateWindow( "AnotherNES - Nametable", wX-256*2-16, wY, 256*2, 240*2, SDL_WINDOW_SHOWN );
 	if ( ToolboxNametable == NULL )
 	{
 		log->Fatal("Cannot create Toolbox Nametable");
 		return 1;
 	}
 	log->Success("Toolbox Nametable window created");
+#endif
+
 
 	SDL_AudioSpec requested, obtained;
 	requested.channels = 1;
@@ -563,9 +568,7 @@ SDL_PauseAudio(0);
 	}
 	memcpy( cpu->memory.prg_rom, rom->PRG_ROM, rom->PRG_ROM_pages*16*1024 );
 	cpu->memory.prg_pages = rom->PRG_ROM_pages;
-	if (rom->PRG_ROM_pages == 1) cpu->memory.prg_lowpage = 1; //fix
 	cpu->memory.prg_lowpage = 0;
-
 	cpu->memory.prg_highpage = rom->PRG_ROM_pages-1;
 	if (rom->Mapper == 104) cpu->memory.prg_highpage = 15; // Golden five fix
 
@@ -648,14 +651,16 @@ SDL_PauseAudio(0);
 			uint8_t ppuresult = cpu->ppu.Step();
 			if (ppuresult) // NMI requested
 			{
-				/*if (ppuresult == 100) 
+#ifdef _DEBUG
+				if (ppuresult == 100) 
 				{
 					static int UpdateSecond = 0;
 					if (UpdateSecond%2 == 0) RefrestToolbox();
 					UpdateSecond++;
 				}
-				else
-				{*/
+#endif
+				if (ppuresult != 100)
+				{
 					SDL_LockSurface( canvas );
 					cpu->ppu.Render( canvas );
 					SDL_UnlockSurface( canvas );
@@ -666,22 +671,25 @@ SDL_PauseAudio(0);
 					
 
 					if (ppuresult==2) cpu->NMI();
-				//}
+				}
 			}
 		}
-		cycles = 0;
-
-		cycles+= cpu->Step();
+		cycles = cpu->Step();
 		++tick;
 	}
 
 	SDL_PauseAudio(1);
 	SDL_CloseAudio();
-	delete rom;
-	delete cpu;
-	SDL_FreeSurface( canvas );
-	SDL_DestroyWindow( MainWindow );
+	delete rom; rom = NULL;
+	delete cpu; cpu = NULL;
+#ifdef _DEBUG
+	SDL_DestroyWindow( ToolboxNametable ); ToolboxNametable = NULL;
+	SDL_DestroyWindow( ToolboxOAM ); ToolboxOAM = NULL;
+	SDL_DestroyWindow( ToolboxPalette ); ToolboxPalette = NULL;
+#endif
+	SDL_FreeSurface( canvas ); canvas = NULL;
+	SDL_DestroyWindow( MainWindow ); MainWindow = NULL;
 	SDL_Quit();
-	log->Info("Goodbye");
+	delete log; log = NULL;
 	return 0;
 }
