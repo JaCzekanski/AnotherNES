@@ -1,1 +1,1 @@
-- Po wyjœciu z maina, program siê nie zamyka (tylko na DEBUGu).
+- Po wyjœciu z maina, program siê nie zamyka (problem spowodowany GetOpenFileName, nie znalaz³em sposobu na to).

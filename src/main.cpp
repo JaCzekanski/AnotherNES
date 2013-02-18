@@ -9,6 +9,7 @@ bool AUDIOACCESS = true;
 #include <xinput.h>
 #include <iostream>
 #include <SDL.h>
+#include <SDL_syswm.h>
 #undef main
 #include "headers.h"
 
@@ -457,6 +458,13 @@ int main()
 	SDL_Surface* canvas = SDL_CreateRGBSurface( SDL_SWSURFACE, 256, 240, 32, 0, 0, 0, 0 );
 	if (!canvas) log->Fatal("Cannot create canvas surface!");
 
+	// Menu
+	SDL_SysWMinfo WindowInfo;
+	SDL_VERSION(&WindowInfo.version);
+	SDL_GetWindowWMInfo( MainWindow, &WindowInfo);
+
+	HWND MainWindowHwnd = WindowInfo.info.win.window;
+
 
 #ifdef _DEBUG
 	// Toolbox
@@ -504,7 +512,7 @@ int main()
 	{
 		log->Error("SDL_OpenAudio error.");
 	}
-SDL_PauseAudio(0);
+	SDL_PauseAudio(0);
 
 	log->Success("Audio initialized.");
 	//SDL_WM_IconifyWindow();
@@ -529,22 +537,22 @@ SDL_PauseAudio(0);
 	strcpy( (char*)FileName, ROM_NAME );
 //#ifndef _DEBUG
 // Show file selection dialog
-	OPENFILENAME ofn = {0};
+	OPENFILENAME ofn;
+	memset( &ofn, 0, sizeof(ofn) );
 	ofn.lStructSize = sizeof( ofn );
-	ofn.hwndOwner = NULL;
+	ofn.hwndOwner = MainWindowHwnd;
+	ofn.hInstance = GetModuleHandle(NULL);
+	memset(FileName, 0, sizeof(FileName) );
 	ofn.lpstrFile = (char*)FileName;
-	ofn.lpstrFile[0] = 0;
 	ofn.nMaxFile = sizeof(FileName);
 	ofn.lpstrFilter = "NES\0*.nes\0";
 	ofn.nFilterIndex = 0;
-	ofn.lpstrFileTitle = NULL;
-	ofn.nMaxFileTitle = 0;
 	ofn.lpstrInitialDir = "./rom/";
-	ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+	ofn.Flags = OFN_EXPLORER | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
 	if (!GetOpenFileName( &ofn ))
 	{
 		log->Debug("GetOpenFileName problem!: %d", GetLastError());
-	strcpy( (char*)FileName, ROM_NAME );
+		strcpy( (char*)FileName, ROM_NAME );
 	}
 //#endif
 
