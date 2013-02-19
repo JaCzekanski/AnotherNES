@@ -19,9 +19,10 @@ int buttonState = 0;
 #include "dialog/DlgOAM.h"
 #include "dialog/DlgPalette.h"
 #include "dialog/DlgNametable.h"
+#include "dialog/DlgAbout.h"
 
-#define MAJOR_VERSION 0
-#define MINOR_VERSION 1
+#include "version.h"
+
 #define ROM_NAME "rom/contra.nes"
 Logger* log;
 CPU* cpu;
@@ -330,7 +331,7 @@ int main()
 					// Help
 					// -About
 				case HELP_ABOUT:
-					DialogBox( hInstance, MAKEINTRESOURCE( DIALOG_ABOUT ), MainWindowHwnd, NULL );
+					DlgAbout DialogAbout(MainWindowHwnd);
 					break;
 				}
 			}

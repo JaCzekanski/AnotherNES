@@ -197,6 +197,10 @@
 				Name="Dialog"
 				>
 				<File
+					RelativePath=".\src\Dialog\DlgAbout.cpp"
+					>
+				</File>
+				<File
 					RelativePath=".\src\Dialog\DlgNametable.cpp"
 					>
 				</File>
@@ -255,9 +259,17 @@
 				RelativePath=".\src\stdint.h"
 				>
 			</File>
+			<File
+				RelativePath=".\src\version.h"
+				>
+			</File>
 			<Filter
 				Name="Dialog"
 				>
+				<File
+					RelativePath=".\src\Dialog\DlgAbout.h"
+					>
+				</File>
 				<File
 					RelativePath=".\src\Dialog\DlgNametable.h"
 					>
