@@ -8,7 +8,7 @@
 #define RES_ICON_BIG                            120
 #define ABOUT_IMAGE                             1003
 #define ABOUT_VERSION                           1004
-#define FILE_LOAD                               40000
+#define FILE_OPEN                               40000
 #define FILE_CLOSE                              40001
 #define EMULATION_RESET_SOFT                    40002
 #define FILE_EXIT                               40003

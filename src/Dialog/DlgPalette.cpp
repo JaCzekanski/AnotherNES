@@ -14,6 +14,8 @@ DlgPalette::DlgPalette( CPU* cpu )
 		return;
 	}
 	//if (SurfaceIcon) SDL_SetWindowIcon( ToolboxPalette, SurfaceIcon );
+	this->Clear();
+	this->WindowID = SDL_GetWindowID(ToolboxPalette);
 	log->Success("Toolbox palette created");
 }
 
@@ -38,5 +40,12 @@ void DlgPalette::Update()
 			SDL_FillRect( tps, &r, col.r<<16 | col.g<<8 | col.b );
 		}
 	}
+	SDL_UpdateWindowSurface( ToolboxPalette );
+}
+
+void DlgPalette::Clear()
+{
+	SDL_Surface *tns = SDL_GetWindowSurface( ToolboxPalette );
+	SDL_FillRect( tns, NULL, 0x000000 );
 	SDL_UpdateWindowSurface( ToolboxPalette );
 }

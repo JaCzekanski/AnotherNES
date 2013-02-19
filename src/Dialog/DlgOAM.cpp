@@ -11,6 +11,8 @@ DlgOAM::DlgOAM( CPU* cpu )
 		return ;
 	}
 	//if (SurfaceIcon) SDL_SetWindowIcon( ToolboxOAM, SurfaceIcon );
+	this->Clear();
+	this->WindowID = SDL_GetWindowID(ToolboxOAM);
 	log->Success("Toolbox OAM created");
 }
 
@@ -155,4 +157,12 @@ void DlgOAM::__DrawOAM(SDL_Surface* s, int i)
 
 	}
 
+}
+
+
+void DlgOAM::Clear()
+{
+	SDL_Surface *tns = SDL_GetWindowSurface( ToolboxOAM );
+	SDL_FillRect( tns, NULL, 0x000000 );
+	SDL_UpdateWindowSurface( ToolboxOAM );
 }

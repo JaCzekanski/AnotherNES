@@ -11,6 +11,8 @@ DlgNametable::DlgNametable( CPU* cpu )
 		return;
 	}
 	//if (SurfaceIcon) SDL_SetWindowIcon( ToolboxNametable, SurfaceIcon );
+	this->Clear();
+	this->WindowID = SDL_GetWindowID(ToolboxNametable);
 	log->Success("Toolbox Nametable created");
 }
 
@@ -111,4 +113,11 @@ void DlgNametable::__DrawNametable(SDL_Surface* s, uint8_t nametable)
 		}
 
 	}
+}
+
+void DlgNametable::Clear()
+{
+	SDL_Surface *tns = SDL_GetWindowSurface( ToolboxNametable );
+	SDL_FillRect( tns, NULL, 0x000000 );
+	SDL_UpdateWindowSurface( ToolboxNametable );
 }

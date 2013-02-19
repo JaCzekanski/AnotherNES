@@ -26,17 +26,17 @@ RES_MENU MENU
 {
     POPUP "File"
     {
-        MENUITEM "Load\tCtrl+L", FILE_LOAD, INACTIVE
-        MENUITEM "Close\tCtrl+C", FILE_CLOSE, INACTIVE
+        MENUITEM "Open\tCtrl+O", FILE_OPEN
+        MENUITEM "Close\tCtrl+Q", FILE_CLOSE, GRAYED
         MENUITEM SEPARATOR
         MENUITEM "Exit\tAlt+F4", FILE_EXIT
     }
     POPUP "Emulation"
     {
-        MENUITEM "Pause", EMULATION_PAUSE
+        MENUITEM "Pause", EMULATION_PAUSE, GRAYED
         MENUITEM SEPARATOR
-        MENUITEM "Reset (soft)", EMULATION_RESET_SOFT
-        MENUITEM "Reset (hard)", EMULATION_RESET_HARD
+        MENUITEM "Reset (soft)", EMULATION_RESET_SOFT, GRAYED
+        MENUITEM "Reset (hard)", EMULATION_RESET_HARD, GRAYED
     }
     POPUP "Options"
     {

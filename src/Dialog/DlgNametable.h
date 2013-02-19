@@ -11,8 +11,10 @@ private:
 	SDL_Window *ToolboxNametable;
 	void __DrawNametable(SDL_Surface* s, uint8_t nametable);
 public:
+	uint32_t WindowID;
+
 	DlgNametable( CPU* cpu );
 	~DlgNametable(void);
 	void Update();
-
+	void Clear();
 };
