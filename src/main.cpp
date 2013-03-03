@@ -503,37 +503,46 @@ int main()
 			if ( keys[SDL_SCANCODE_LEFT] ) buttonState |= 1<<1;
 			if ( keys[SDL_SCANCODE_RIGHT] ) buttonState |= 1<<0;
 
-			for (int i = (cycles==0)?3:cycles*3; i>0; i--)
+			bool framerefresh = false;
+			while ( !framerefresh )
 			{
-				uint8_t ppuresult = cpu->ppu.Step();
-				if (ppuresult) // NMI requested
+				for (int i = (cycles==0)?3:cycles*3; i>0; i--)
 				{
-					if (ppuresult == 100) 
+					uint8_t ppuresult = cpu->ppu.Step();
+					if (ppuresult) // NMI requested
 					{
-						static int ToolboxDelay = 0; // Performacne hit
-						if (ToolboxDelay%5 == 0)
+						if (ppuresult == 100) 
 						{
-							if (ToolboxOAM) ToolboxOAM->Update();
-							if (ToolboxPalette) ToolboxPalette->Update();
-							if (ToolboxNametable) ToolboxNametable->Update();
+							static int ToolboxDelay = 0; // Performacne hit
+							if (ToolboxDelay%5 == 0)
+							{
+								if (ToolboxOAM) ToolboxOAM->Update();
+								if (ToolboxPalette) ToolboxPalette->Update();
+								if (ToolboxNametable) ToolboxNametable->Update();
+							}
+							ToolboxDelay++;
 						}
-						ToolboxDelay++;
-					}
-					else
-					{
-						SDL_LockSurface( canvas );
-						cpu->ppu.Render( canvas );
-						SDL_UnlockSurface( canvas );
+						else
+						{
+							framerefresh = true;
+							SDL_LockSurface( canvas );
+							cpu->ppu.Render( canvas );
+							SDL_UnlockSurface( canvas );
 
-						SDL_SoftStretch( canvas, NULL, screen, NULL );
-						SDL_UpdateWindowSurface( MainWindow );
-						
-						if (ppuresult==2) cpu->NMI();
+							SDL_SoftStretch( canvas, NULL, screen, NULL );
+							SDL_UpdateWindowSurface( MainWindow );
+							
+							if (ppuresult==2) cpu->NMI();
+						}
 					}
 				}
+				cycles = cpu->Step();
+				++tick;
 			}
-			cycles = cpu->Step();
-			++tick;
+			// Bad idea
+			// Compute how many msec we need to wait
+			// and just don't run the emulation then
+			Sleep(10); // 1/60
 		}
 	}
 
