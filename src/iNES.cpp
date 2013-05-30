@@ -93,6 +93,7 @@ int iNES::Load( const char* name )
 	fread( PRG_ROM, 1, PRG_ROM_pages*16*1024, rom );
 	fread( CHR_ROM, 1, CHR_ROM_pages*8*1024, rom );
 
+	fclose( rom );
 	log->Debug("iNES loaded");
 	return 0;
 }

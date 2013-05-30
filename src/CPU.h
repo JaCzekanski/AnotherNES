@@ -54,7 +54,7 @@ output = (b<<8)|a
 
 class CPU
 {
-protected:
+public:
 	uint8_t A;  // Accumulator
 	uint8_t X;  // Index register X
 	uint8_t Y;  // Index register Y

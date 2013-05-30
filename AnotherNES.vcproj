@@ -190,6 +190,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\src\NSF.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\src\PPU.cpp"
 				>
 			</File>
@@ -245,6 +249,10 @@
 			</File>
 			<File
 				RelativePath=".\src\logger.h"
+				>
+			</File>
+			<File
+				RelativePath=".\src\NSF.h"
 				>
 			</File>
 			<File

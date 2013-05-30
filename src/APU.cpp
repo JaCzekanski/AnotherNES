@@ -97,7 +97,7 @@ void APU::audiocallback(void *userdata, Uint8 *stream, int len)
 		bool LengthCounterDisable = (AUDIO[0+4]&0x20)>>5;
 		uint8_t dutycycle = (AUDIO[0+4] & 0xC0) >> 6;
 
-		if (AUDIO[0]&0x10) // if 1 - Envelope
+		if (AUDIO[0+4]&0x10) // if 1 - Envelope
 		{
 			volume = gvolume;
 		}

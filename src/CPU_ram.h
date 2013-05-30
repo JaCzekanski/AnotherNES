@@ -68,7 +68,7 @@ public:
 			// 0x4008-0x400B - Triangle
 			// 0x400C-0x400F - Noise
 			// 0x4010-0x4013 - DMC
-			if (n <= 0x4013 || n == 0x4015)
+			if (n <= 0x4013 || n == 0x4015 || n == 0x4017)
 			{
 				apu->Write(n-0x4000, data);
 				return;
@@ -129,7 +129,7 @@ public:
 			}
 			else
 			{
-				log->Fatal("Unsupported mapper.");
+				//log->Fatal("Unsupported mapper.");
 				return ;
 			}
 		}

@@ -149,15 +149,13 @@ if (debug)
 	}
 	int i;
 	int len = strlen(buffer);
-	for ( i = len; i< 16; i++)
+	for ( i = len; i< 10; i++)
 	{
 		buffer[i] = ' ';
 	}
 	buffer[++i] = 0;
 	//log->Debug("0x%x: %s\t%s %s", this->PC, hexvals, op.mnemnic, buffer );
-	log->Debug("%.4X  %s %s %s"
-		"A:%.2X X:%.2X Y:%.2X P:%.2X SP:%.2X", this->PC, hexvals, op.mnemnic, buffer,
-		this->A, this->X, this->Y, this->P, this->SP);
+	log->Debug("$%.4X %X %s", this->PC, this->memory[this->PC], op.mnemnic);
 }
 	uint16_t oldPC = this->PC;
 	PCchanged = false;

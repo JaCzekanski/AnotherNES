@@ -12,6 +12,7 @@ int buttonState = 0;
 #include "headers.h"
 #include "resource.h"
 #include "iNES.h"
+#include "NSF.h"
 #include "CPU.h"
 #include "CPU_interpreter.h"
 #include "APU.h"
@@ -46,6 +47,7 @@ namespace EmuState
 
 EmuState::State EmulatorState = EmuState::Idle;
 
+	SDL_Event event;
 void ClearMainWindow()
 {
 	SDL_Surface *tns = SDL_GetWindowSurface( MainWindow );
@@ -100,6 +102,108 @@ bool LoadGame( const char* path )
 	cpu->ppu.Mirroring = rom->Mirroring;
 	cpu->Reset();
 
+
+	return 0;
+}
+
+// Loads nsf with path as argument
+bool LoadNSF( const char* path )
+{
+	log->Info("Opening %s", path);
+	NSF* nsf = new NSF();
+	if (nsf->Load( (const char*)path ))
+	{
+		log->Error("Cannot load %s", path);
+		return 0;
+	}
+	log->Success("%s opened", path);
+
+
+
+	log->Info("Creating CPU interpreter");
+	cpu = new CPU_interpreter();
+
+	cpu->memory.mapper = 0;
+
+	memcpy( cpu->memory.prg_rom+(nsf->load_address-0x8000), nsf->data, nsf->size );
+	cpu->memory.prg_pages = 2;
+	cpu->memory.prg_lowpage = 0;
+	cpu->memory.prg_highpage = 1;
+
+	log->Success("%dB bytes of NSF data copid", nsf->size);
+
+
+	cpu->memory.ppu = &cpu->ppu;
+	cpu->memory.apu = &cpu->apu;
+	cpu->Reset();
+
+	int song = 0;
+	bool key_released = true;
+new_song:
+	log->Info("Song %d", song);
+
+	cpu->PC = nsf->init_address;
+	cpu->A = song;
+	cpu->X = 0; // ntsc
+
+	for (int i = 0; i<=0x07ff; i++) cpu->memory.Write(i,0);
+	for (int i = 0x6000; i<=0x7fff; i++) cpu->memory.Write(i,0);
+	for (int i = 0x4000; i<=0x400f; i++) cpu->memory.Write(i,0);
+	cpu->memory.Write(0x4010,0x10);
+	for (int i = 0x4011; i<=0x4013; i++) cpu->memory.Write(i,0);
+
+	cpu->memory.Write(0x4017,0x40);
+	cpu->memory.Write(0x4015,0x0f);
+
+	// c->Push16(c->PC+2); // Corrected
+
+	cpu->Push16(0xfff0);
+	bool returned = false;
+	while ( !returned )
+	{
+		cpu->Step();
+			if (cpu->PC == 0xfff0+1) returned = true;
+	}
+	SDL_PauseAudio(0);
+
+	while (1)
+	{
+		cpu->PC = nsf->play_address;
+		//cpu->SP -= 2;
+		cpu->Push16(0xfff0);
+		returned = false;
+		Uint32 ticks = SDL_GetTicks();
+		Uint32 newticks =0;
+		Uint32 delta = 0;
+		while ( !returned )
+		{
+			cpu->Step();
+			if (cpu->PC == 0xfff0+1) returned = true;
+		}
+		SDL_PollEvent(&event);
+		if (event.type == SDL_KEYDOWN && key_released)
+		{
+			key_released = false;
+			if (event.key.keysym.sym == SDLK_LEFT)
+			{
+				if (song > 0) song--;
+				goto new_song;
+			}
+			if (event.key.keysym.sym == SDLK_RIGHT)
+			{
+				/*if (song > 0) */song++;
+				goto new_song;
+			}
+		}
+		if (event.type == SDL_KEYUP)
+		{
+			key_released = true;
+		}
+		newticks = SDL_GetTicks();
+		delta = newticks - ticks;
+		Sleep( (delta>0)?0:16-delta);
+		ticks = newticks;
+	}
 
 	return 0;
 }
@@ -250,7 +354,6 @@ int main()
 	
 	EmulatorState = EmuState::Idle;
 
-	SDL_Event event;
 
 	int64_t cycles = 0;
 	while( EmulatorState != EmuState::Quited )
@@ -317,7 +420,8 @@ int main()
 						memset(FileName, 0, sizeof(FileName) );
 						ofn.lpstrFile = (char*)FileName;
 						ofn.nMaxFile = sizeof(FileName);
-						ofn.lpstrFilter = "NES\0*.nes\0";
+						ofn.lpstrFilter = "NES\0*.nes\0"
+										  "NSF\0*.nsf\0";
 						ofn.nFilterIndex = 0;
 						ofn.lpstrInitialDir = "./rom/";
 						ofn.Flags = OFN_EXPLORER | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
@@ -326,23 +430,34 @@ int main()
 							log->Debug("GetOpenFileName: No file selected.");
 							break;
 						}
-						if ( LoadGame( (const char*)FileName ) )
+						if ( memcmp( FileName+strlen((const char*)FileName)-3, "nsf", 3 ) == 0) // NSF
 						{
-							log->Error("File %s opening problem.", FileName);
-							break;
+							if ( LoadNSF( (const char*)FileName ) )
+							{
+								log->Error("File %s opening problem.", FileName);
+								break;
+							}
 						}
-						CloseGame();
+						else
+						{
+							if ( LoadGame( (const char*)FileName ) )
+							{
+								log->Error("File %s opening problem.", FileName);
+								break;
+							}
+							CloseGame();
 
-						EnableMenuItem( Menu, FILE_CLOSE, MF_BYCOMMAND | MF_ENABLED );
-						
-						CheckMenuItem( Menu, EMULATION_PAUSE, MF_BYCOMMAND | MF_UNCHECKED );
-						EnableMenuItem( Menu, EMULATION_PAUSE, MF_BYCOMMAND | MF_ENABLED );
+							EnableMenuItem( Menu, FILE_CLOSE, MF_BYCOMMAND | MF_ENABLED );
+							
+							CheckMenuItem( Menu, EMULATION_PAUSE, MF_BYCOMMAND | MF_UNCHECKED );
+							EnableMenuItem( Menu, EMULATION_PAUSE, MF_BYCOMMAND | MF_ENABLED );
 
-						EnableMenuItem( Menu, EMULATION_RESET_SOFT, MF_BYCOMMAND | MF_ENABLED );
-						EnableMenuItem( Menu, EMULATION_RESET_HARD, MF_BYCOMMAND | MF_ENABLED );
+							EnableMenuItem( Menu, EMULATION_RESET_SOFT, MF_BYCOMMAND | MF_ENABLED );
+							EnableMenuItem( Menu, EMULATION_RESET_HARD, MF_BYCOMMAND | MF_ENABLED );
 
-						ClearMainWindow();
-						EmulatorState = EmuState::Running;
+							ClearMainWindow();
+							EmulatorState = EmuState::Running;
+						}
 					break;
 
 					// -Close

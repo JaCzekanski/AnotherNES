@@ -68,7 +68,7 @@ private:
 		time_t secs = time(0);
 		strftime( _time, 64, "%X", localtime( &secs ) );
 
-		if (type != LOG_DEBUG) fprintf( file, "[%s][%s]\t%s\n", _time, _logtype, buffer );
+		/*if (type != LOG_DEBUG) */fprintf( file, "[%s][%s]\t%s\n", _time, _logtype, buffer );
 		printf( "[%s][%s]\t%s\n", _time, _logtype, buffer );
 		if ( type == LOG_FATAL )
 		{
