@@ -1,5 +1,5 @@
 #ifdef _DEBUG
-#include <vld.h>
+//#include <vld.h>
 #endif
 bool debug = false;
 int buttonState = 0;
@@ -24,7 +24,7 @@ int buttonState = 0;
 
 #include "version.h"
 
-Logger* log;
+Logger* Log;
 CPU* cpu;
 iNES* rom;
 
@@ -58,26 +58,26 @@ void ClearMainWindow()
 // Loads rom with path as argument
 bool LoadGame( const char* path )
 {
-	log->Info("Opening %s", path);
+	Log->Info("Opening %s", path);
 	rom = new iNES();
 	if (rom->Load( (const char*)path ))
 	{
-		log->Error("Cannot load %s", path);
+		Log->Error("Cannot load %s", path);
 		return 0;
 	}
-	log->Success("%s opened", path);
+	Log->Success("%s opened", path);
 
 
 
-	log->Info("Creating CPU interpreter");
+	Log->Info("Creating CPU interpreter");
 	cpu = new CPU_interpreter();
 
-	log->Info("Mapper: %d", rom->Mapper);
+	Log->Info("Mapper: %d", rom->Mapper);
 	cpu->memory.mapper = rom->Mapper;
 
 	if (rom->PRG_ROM_pages>128)
 	{
-		log->Error("PRG_ROM pages > 128 (more than 2MB, unsupported)");
+		Log->Error("PRG_ROM pages > 128 (more than 2MB, unsupported)");
 		return 1;
 	}
 	memcpy( cpu->memory.prg_rom, rom->PRG_ROM, rom->PRG_ROM_pages*16*1024 );
@@ -86,41 +86,41 @@ bool LoadGame( const char* path )
 	cpu->memory.prg_highpage = rom->PRG_ROM_pages-1;
 	if (rom->Mapper == 104) cpu->memory.prg_highpage = 15; // Golden five fix
 
-	log->Success("%dB PRG_ROM copied", rom->PRG_ROM_pages*16*1024);
+	Log->Success("%dB PRG_ROM copied", rom->PRG_ROM_pages*16*1024);
 
 
 	if (rom->CHR_ROM_pages>1)
 	{
-		log->Error("CHR_ROM pages > 1 will cause crash (no mappers supported). Breaking.");
+		Log->Error("CHR_ROM pages > 1 will cause crash (no mappers supported). Breaking.");
 		return 1;
 	}
 	memcpy( cpu->ppu.memory, rom->CHR_ROM, rom->CHR_ROM_pages*8*1024 );
-	log->Success("%dB CHR_ROM copied", rom->CHR_ROM_pages*8*1024 );
+	Log->Success("%dB CHR_ROM copied", rom->CHR_ROM_pages*8*1024 );
 
 	cpu->memory.ppu = &cpu->ppu;
 	cpu->memory.apu = &cpu->apu;
 	cpu->ppu.Mirroring = rom->Mirroring;
 	cpu->Reset();
 
-
+	SDL_PauseAudio(0);
 	return 0;
 }
 
 // Loads nsf with path as argument
 bool LoadNSF( const char* path )
 {
-	log->Info("Opening %s", path);
+	Log->Info("Opening %s", path);
 	NSF* nsf = new NSF();
 	if (nsf->Load( (const char*)path ))
 	{
-		log->Error("Cannot load %s", path);
+		Log->Error("Cannot load %s", path);
 		return 0;
 	}
-	log->Success("%s opened", path);
+	Log->Success("%s opened", path);
 
 
 
-	log->Info("Creating CPU interpreter");
+	Log->Info("Creating CPU interpreter");
 	cpu = new CPU_interpreter();
 
 	cpu->memory.mapper = 0;
@@ -130,7 +130,7 @@ bool LoadNSF( const char* path )
 	cpu->memory.prg_lowpage = 0;
 	cpu->memory.prg_highpage = 1;
 
-	log->Success("%dB bytes of NSF data copid", nsf->size);
+	Log->Success("%dB bytes of NSF data copid", nsf->size);
 
 
 	cpu->memory.ppu = &cpu->ppu;
@@ -140,7 +140,7 @@ bool LoadNSF( const char* path )
 	int song = 0;
 	bool key_released = true;
 new_song:
-	log->Info("Song %d", song);
+	Log->Info("Song %d", song);
 
 	cpu->PC = nsf->init_address;
 	cpu->A = song;
@@ -244,7 +244,7 @@ void CloseGame()
 	ClearMainWindow();
 
 
-	log->Info("Emulation closed");
+	Log->Info("Emulation closed");
 }
 
 void audiocallback(void *userdata, Uint8 *stream, int len)
@@ -259,15 +259,15 @@ int64_t tick = 0;
 int main()
 {
 	HINSTANCE hInstance = GetModuleHandle(NULL);
-	log = new Logger("log.txt");
-	log->Info("AnotherNES version %d.%d", MAJOR_VERSION, MINOR_VERSION);
+	Log = new Logger("log.txt");
+	Log->Info("AnotherNES version %d.%d", MAJOR_VERSION, MINOR_VERSION);
 	
 	if ( SDL_Init( SDL_INIT_VIDEO | SDL_INIT_AUDIO ) < 0 )
 	{
-		log->Fatal("SDL_Init failed");
+		Log->Fatal("SDL_Init failed");
 		return 1;
 	}
-	log->Success("SDL initialized");
+	Log->Success("SDL initialized");
 
 	MainWindow = SDL_CreateWindow( "AnotherNES", 
 		542, 20,
@@ -275,10 +275,10 @@ int main()
 
 	if ( MainWindow == NULL )
 	{
-		log->Fatal("Cannot create main window");
+		Log->Fatal("Cannot create main window");
 		return 1;
 	}
-	log->Success("Main window created");
+	Log->Success("Main window created");
 	ClearMainWindow();
 	
 	SDL_SysWMinfo WindowInfo;
@@ -291,7 +291,7 @@ int main()
 	SDL_Surface *SurfaceIcon = SDL_LoadBMP("icon.bmp");
 	if (!SurfaceIcon)
 	{
-		log->Error("Cannot load icon.bmp");
+		Log->Error("Cannot load icon.bmp");
 		SurfaceIcon = NULL;
 	}
 	else
@@ -301,7 +301,7 @@ int main()
 	Menu = LoadMenu( hInstance, MAKEINTRESOURCE( RES_MENU ) );
 	if (!SetMenu( MainWindowHwnd, Menu ))
 	{
-		log->Fatal("Problem loading resource (menu)");
+		Log->Fatal("Problem loading resource (menu)");
 		return 1;
 	}
 	SDL_EventState( SDL_SYSWMEVENT, SDL_ENABLE );
@@ -316,14 +316,14 @@ int main()
 
 	if ( SDL_SetWindowDisplayMode( MainWindow, &mode ) < 0 )
 	{
-		log->Fatal("SDL_SetWindowDisplayMode error");
+		Log->Fatal("SDL_SetWindowDisplayMode error");
 		return 1;
 	}
 
 	SDL_Surface* screen = SDL_GetWindowSurface( MainWindow );
 
 	SDL_Surface* canvas = SDL_CreateRGBSurface( SDL_SWSURFACE, 256, 240, 32, 0, 0, 0, 0 );
-	if (!canvas) log->Fatal("Cannot create canvas surface!");
+	if (!canvas) Log->Fatal("Cannot create canvas surface!");
 
 	SDL_AudioSpec requested, obtained;
 	requested.channels = 1;
@@ -333,23 +333,23 @@ int main()
 	requested.callback = audiocallback;
 	if ( SDL_OpenAudio( &requested, &obtained ) == -1 )
 	{
-		log->Error("SDL_OpenAudio error.");
+		Log->Error("SDL_OpenAudio error.");
 	}
 	SDL_PauseAudio(0);
 
-	log->Success("Audio initialized.");
+	Log->Success("Audio initialized.");
 	//SDL_WM_IconifyWindow();
 
 	XINPUT_STATE xstate;
 	bool XboxPresent = false;
 	if (XInputGetState(0, &xstate) == ERROR_SUCCESS)
 	{
-		log->Success("XInput: Xbox360 controller connected.");
+		Log->Success("XInput: Xbox360 controller connected.");
 		XboxPresent = true;
 	}
 	else
 	{
-		log->Info("XInput: No Xbox360 controller found.");
+		Log->Info("XInput: No Xbox360 controller found.");
 	}
 	
 	EmulatorState = EmuState::Idle;
@@ -358,8 +358,9 @@ int main()
 	int64_t cycles = 0;
 	while( EmulatorState != EmuState::Quited )
 	{
+		bool PendingEvents = false;
 		if ( EmulatorState != EmuState::Running ) SDL_WaitEvent(&event);
-		else SDL_PollEvent(&event);
+		else PendingEvents = SDL_PollEvent(&event);
 		if (event.type == SDL_QUIT) 
 		{
 			EmulatorState = EmuState::Quited;
@@ -411,7 +412,7 @@ int main()
 					// File
 					// -Open
 				case FILE_OPEN:
-						unsigned char FileName[2048];
+					unsigned char FileName[2048];
 						OPENFILENAME ofn;
 						memset( &ofn, 0, sizeof(ofn) );
 						ofn.lStructSize = sizeof( ofn );
@@ -427,25 +428,28 @@ int main()
 						ofn.Flags = OFN_EXPLORER | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
 						if (!GetOpenFileName( &ofn ))
 						{
-							log->Debug("GetOpenFileName: No file selected.");
+							Log->Debug("GetOpenFileName: No file selected.");
 							break;
 						}
 						if ( memcmp( FileName+strlen((const char*)FileName)-3, "nsf", 3 ) == 0) // NSF
 						{
 							if ( LoadNSF( (const char*)FileName ) )
 							{
-								log->Error("File %s opening problem.", FileName);
+								Log->Error("File %s opening problem.", FileName);
 								break;
 							}
 						}
 						else
 						{
+						if (EmulatorState != EmuState::Idle)
+						{
+							CloseGame();
+						}
 							if ( LoadGame( (const char*)FileName ) )
 							{
-								log->Error("File %s opening problem.", FileName);
+								Log->Error("File %s opening problem.", FileName);
 								break;
 							}
-							CloseGame();
 
 							EnableMenuItem( Menu, FILE_CLOSE, MF_BYCOMMAND | MF_ENABLED );
 							
@@ -483,7 +487,7 @@ int main()
 							CheckMenuItem( Menu, EMULATION_PAUSE, MF_BYCOMMAND | MF_CHECKED );
 							EmulatorState = EmuState::Paused;
 							SDL_PauseAudio(1);
-							log->Info("Emulation paused");
+							Log->Info("Emulation paused");
 						}
 					}
 					else 
@@ -493,7 +497,7 @@ int main()
 							CheckMenuItem( Menu, EMULATION_PAUSE, MF_BYCOMMAND | MF_UNCHECKED );
 							EmulatorState = EmuState::Running;
 							SDL_PauseAudio(0);
-							log->Info("Emulation resumed");
+							Log->Info("Emulation resumed");
 						}
 					}
 					break;
@@ -510,13 +514,13 @@ int main()
 					{
 						CheckMenuItem( Menu, OPTIONS_SOUND_ENABLED, MF_BYCOMMAND | MF_CHECKED );
 						SDL_PauseAudio(0);
-						log->Info("Sound: enabled");
+						Log->Info("Sound: enabled");
 					}
 					else 
 					{
 						CheckMenuItem( Menu, OPTIONS_SOUND_ENABLED, MF_BYCOMMAND | MF_UNCHECKED );
 						SDL_PauseAudio(1);
-						log->Info("Sound: disabled");
+						Log->Info("Sound: disabled");
 					}
 					break;
 
@@ -585,6 +589,7 @@ int main()
 				}
 			}
 		}
+		if (PendingEvents) { PendingEvents = false; continue; }
 		if ( EmulatorState == EmuState::Running )
 		{
 
@@ -606,7 +611,7 @@ int main()
 			}
 			else buttonState = 0;
 
-			Uint8 *keys = SDL_GetKeyboardState(NULL);
+			Uint8 *keys = (Uint8*) SDL_GetKeyboardState(NULL);
 			if ( keys[SDL_SCANCODE_ESCAPE] ) break;
 			//A, B, Select, Start, Up, Down, Left, Right.
 			if ( keys[SDL_SCANCODE_X] ) buttonState |= 1<<7;
@@ -673,6 +678,6 @@ int main()
 	SDL_FreeSurface( canvas ); canvas = NULL;
 	SDL_DestroyWindow( MainWindow ); MainWindow = NULL;
 	SDL_Quit();
-	delete log; log = NULL;
+	delete Log; Log = NULL;
 	return 0;
 }

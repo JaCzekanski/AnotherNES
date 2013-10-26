@@ -7,19 +7,19 @@ DlgNametable::DlgNametable( CPU* cpu )
 	ToolboxNametable = SDL_CreateWindow( "AnotherNES - Nametable", 5, 20, 256*2, 240*2, SDL_WINDOW_SHOWN );
 	if ( ToolboxNametable == NULL )
 	{
-		log->Fatal("Cannot create Toolbox Nametable");
+		Log->Fatal("Cannot create Toolbox Nametable");
 		return;
 	}
 	//if (SurfaceIcon) SDL_SetWindowIcon( ToolboxNametable, SurfaceIcon );
 	this->Clear();
 	this->WindowID = SDL_GetWindowID(ToolboxNametable);
-	log->Success("Toolbox Nametable created");
+	Log->Success("Toolbox Nametable created");
 }
 
 DlgNametable::~DlgNametable(void)
 {
 	SDL_DestroyWindow(ToolboxNametable);
-	log->Success("Toolbox Nametable destroyed.");
+	Log->Success("Toolbox Nametable destroyed.");
 }
 
 void DlgNametable::Update()
@@ -34,7 +34,7 @@ void DlgNametable::Update()
 		SDL_Rect r = { (i%2)*256, (i/2)*240, 256, 240 };
 
 		SDL_Surface* Sspr = SDL_CreateRGBSurface( SDL_SWSURFACE, 256, 256, 32, 0, 0, 0, 0 ); //Fuck error check
-		if (!Sspr) log->Fatal("PPU: Cannot create Sspr surface!");
+		if (!Sspr) Log->Fatal("PPU: Cannot create Sspr surface!");
 		SDL_LockSurface( Sspr );
 
 		if (cpu->ppu.Mirroring == VERTICAL) // Vertical

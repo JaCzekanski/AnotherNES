@@ -8,3 +8,4 @@ ROM
 *.dll
 log.txt
 *.suo
+AnotherNES.sdf

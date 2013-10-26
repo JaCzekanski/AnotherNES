@@ -18,12 +18,12 @@ NSF::NSF(void)
 	data = NULL;
 	size = 0;
 
-	log->Debug("NSF created");
+	Log->Debug("NSF created");
 }
 
 NSF::~NSF(void)
 {
-	log->Debug("NSF destroyed");
+	Log->Debug("NSF destroyed");
 }
 int NSF::Load( const char* name )
 {
@@ -31,7 +31,7 @@ int NSF::Load( const char* name )
 
 	if (!rom)
 	{
-		log->Error("NSF.cpp: Cannot open %s", rom);
+		Log->Error("NSF.cpp: Cannot open %s", rom);
 		return 1;
 	}
 
@@ -44,13 +44,13 @@ int NSF::Load( const char* name )
 	fread( magic, 1, 5, rom );
 	if ( memcmp( magic, "NESM\x1A", 5 ) )
 	{
-		log->Error("NSF.cpp: Wrong magic: expected NESM\\x1a");
+		Log->Error("NSF.cpp: Wrong magic: expected NESM\\x1a");
 		return 2; // Wrong MAGIC
 	}
 	uint8_t version = fgetc( rom );
 	if (version != 0x01)
 	{
-		log->Error("NSF.cpp: Wrong version: expected 0x01");
+		Log->Error("NSF.cpp: Wrong version: expected 0x01");
 		return 3; 
 	}
 
@@ -64,13 +64,13 @@ int NSF::Load( const char* name )
 	play_address = fgetc( rom ) | fgetc( rom ) << 8;
 
 	fread( buffer, 1, 32, rom );
-	log->Info("Name: %s", buffer);
+	Log->Info("Name: %s", buffer);
 	
 	fread( buffer, 1, 32, rom );
-	log->Info("Artist: %s", buffer);
+	Log->Info("Artist: %s", buffer);
 	
 	fread( buffer, 1, 32, rom );
-	log->Info("Copyright: %s", buffer);
+	Log->Info("Copyright: %s", buffer);
 
 	speed_ntsc = fgetc( rom ) | fgetc( rom ) << 8;
 
@@ -78,7 +78,7 @@ int NSF::Load( const char* name )
 	{
 		if (fgetc( rom ) != 0) 
 		{
-			log->Error("NSF.cpp: Banking used, not supported");
+			Log->Error("NSF.cpp: Banking used, not supported");
 			return 4;
 		}
 	}
@@ -91,15 +91,20 @@ int NSF::Load( const char* name )
 	{
 		if (fgetc( rom ) != 0) 
 		{
-			log->Error("NSF.cpp: Extra bytes: expected 0x00");
+			Log->Error("NSF.cpp: Extra bytes: expected 0x00");
 			return 5;
 		}
 	}
 
 	data = (uint8_t*)malloc( size );
+	if ( !data )
+	{
+		Log->Error("NSF.cpp: Cannot malloc");
+		return 6;
+	}
 	fread( data, 1, size, rom );
 
 	fclose( rom );
-	log->Debug("iNES loaded");
+	Log->Debug("iNES loaded");
 	return 0;
 }

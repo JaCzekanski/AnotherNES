@@ -59,7 +59,7 @@ public:
 		if (s) this->P |= BREAK_FLAG;
 		else this->P &= ~BREAK_FLAG;
 	}
-	void OVERFLOW( uint8_t s )
+	void OVERFLOW_( uint8_t s )
 	{
 		if (s) this->P |= OVERFLOW_FLAG;
 		else this->P &= ~OVERFLOW_FLAG;

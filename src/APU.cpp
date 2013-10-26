@@ -8,12 +8,12 @@ APU::APU(void)
 	gvolume = 0x0f;
 	dir = false;
 	dir2 = false;
-	log->Debug("APU created");
+	Log->Debug("APU created");
 }
 
 APU::~APU(void)
 {
-	log->Debug("APU destroyed");
+	Log->Debug("APU destroyed");
 }
 
 void APU::Write( uint8_t reg, uint8_t data )
@@ -108,7 +108,7 @@ void APU::audiocallback(void *userdata, Uint8 *stream, int len)
 
 		if (LengthCounterDisable) // Length controlled by us
 		{
-			//log->Debug("LengthCounterDisable: true");			
+			//Log->Debug("LengthCounterDisable: true");			
 		}
 		else
 		{

@@ -7,19 +7,19 @@ DlgOAM::DlgOAM( CPU* cpu )
 	ToolboxOAM = SDL_CreateWindow( "AnotherNES - OAM", 16*16+10, 240*2+24+20, 16*8*2, 4*8*2, SDL_WINDOW_SHOWN );
 	if ( ToolboxOAM == NULL )
 	{
-		log->Fatal("Cannot create Toolbox OAM");
+		Log->Fatal("Cannot create Toolbox OAM");
 		return ;
 	}
 	//if (SurfaceIcon) SDL_SetWindowIcon( ToolboxOAM, SurfaceIcon );
 	this->Clear();
 	this->WindowID = SDL_GetWindowID(ToolboxOAM);
-	log->Success("Toolbox OAM created");
+	Log->Success("Toolbox OAM created");
 }
 
 DlgOAM::~DlgOAM(void)
 {
 	SDL_DestroyWindow(ToolboxOAM);
-	log->Success("Toolbox OAM destroyed.");
+	Log->Success("Toolbox OAM destroyed.");
 }
 
 void DlgOAM::Update()
@@ -52,7 +52,7 @@ void DlgOAM::Update()
 				r.y = Gy*32;
 				r.h = 32;
 			}
-			if (!Sspr) log->Fatal("PPU: Cannot create Sspr surface!");
+			if (!Sspr) Log->Fatal("PPU: Cannot create Sspr surface!");
 			SDL_LockSurface( Sspr );
 			
 			__DrawOAM( Sspr, Gy*16 + Gx );

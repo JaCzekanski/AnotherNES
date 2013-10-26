@@ -31,12 +31,12 @@ PPU::PPU(void)
 
 	ScrollX = 0;
 	ScrollY = 0;
-	log->Debug("PPU: created");
+	Log->Debug("PPU: created");
 }
 
 PPU::~PPU(void)
 {
-	log->Debug("PPU: destroyed");
+	Log->Debug("PPU: destroyed");
 }
 
 void PPU::Write( uint8_t reg, uint8_t data )
@@ -96,7 +96,7 @@ void PPU::Write( uint8_t reg, uint8_t data )
 			break;
 			
 		case 0x2003: //OAMADDR
-			//log->Debug("PPU: 0x2003 <- 0x%.2x", data);
+			//Log->Debug("PPU: 0x2003 <- 0x%.2x", data);
 			OAMADDR = data;
 			// Object Attribute Memory (sprites), ignored
 			break;
@@ -218,7 +218,7 @@ uint8_t PPU::Read( uint8_t reg)
 			break;
 
 		default:
-			//log->Error("CPU read from wrong PPU address");
+			//Log->Error("CPU read from wrong PPU address");
 			int a = 0;
 			break;
 	}
@@ -291,7 +291,7 @@ void PPU::Render(SDL_Surface* s)
 		uint8_t cnx = (currentNametable%2);
 		uint8_t cny = (currentNametable/2);
 		SDL_Surface* bg = SDL_CreateRGBSurface( SDL_SWSURFACE, 256, 256+32, 32, 0, 0, 0, 0 );
-		if (!bg) log->Fatal("PPU: Cannot create BG surface!");
+		if (!bg) Log->Fatal("PPU: Cannot create BG surface!");
 		SDL_UnlockSurface( s );
 		for (int i = 0; i<4; i++)
 		{

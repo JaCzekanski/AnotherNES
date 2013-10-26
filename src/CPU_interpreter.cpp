@@ -8,7 +8,7 @@ CPU_interpreter::CPU_interpreter()
 		op.number = i;
 		OpcodeTableOptimized[i] = op;
 	}
-	log->Debug("Opcode table cleaned");
+	Log->Debug("Opcode table cleaned");
 	int i;
 	for (i = 0; i< 256; i++)
 	{
@@ -19,9 +19,9 @@ CPU_interpreter::CPU_interpreter()
 		OpcodeTableOptimized[ OpcodeTable[i].number ] = OpcodeTable[i];
 	}
 
-	log->Debug("Opcode table filled");
+	Log->Debug("Opcode table filled");
 	this->Power();
-	log->Debug("CPU_interpreter created");
+	Log->Debug("CPU_interpreter created");
 }
 
 extern bool debug;
@@ -130,7 +130,7 @@ int CPU_interpreter::Step()
 		DISASM("($%.2X),Y", (*arg1) );
 		break;
 	default:
-		log->Error("CPU_interpreter::Step(): Unknown addressing mode!");
+		Log->Error("CPU_interpreter::Step(): Unknown addressing mode!");
 		break;
 	}
 	// Page crossed + 1 to cycles
@@ -154,8 +154,8 @@ if (debug)
 		buffer[i] = ' ';
 	}
 	buffer[++i] = 0;
-	//log->Debug("0x%x: %s\t%s %s", this->PC, hexvals, op.mnemnic, buffer );
-	log->Debug("$%.4X %X %s", this->PC, this->memory[this->PC], op.mnemnic);
+	//Log->Debug("0x%x: %s\t%s %s", this->PC, hexvals, op.mnemnic, buffer );
+	Log->Debug("$%.4X %X %s", this->PC, this->memory[this->PC], op.mnemnic);
 }
 	uint16_t oldPC = this->PC;
 	PCchanged = false;
@@ -303,7 +303,7 @@ void CPU_interpreter::BIT( CPU_interpreter* c ) // Bit Test
 {
 	uint8_t tmp =  c->Readv();
 	c->ZERO( (c->A & tmp)?0:1 );
-	c->OVERFLOW( tmp&0x40 );
+	c->OVERFLOW_( tmp&0x40 );
 	c->NEGATIVE( tmp&0x80 );
 }
 
@@ -317,7 +317,7 @@ void CPU_interpreter::ADC( CPU_interpreter* c ) // Add with Carry
 	c->CARRY( ret > 0xff );
 	c->NEGATIVE( ret&0x80 );
 
-	c->OVERFLOW( ! ( ( c->A ^ c->Readv() ) & 0x80 )
+	c->OVERFLOW_( ! ( ( c->A ^ c->Readv() ) & 0x80 )
 		      &&  ( ( c->A ^ ret ) & 0x80) );
 
 	
@@ -331,7 +331,7 @@ void CPU_interpreter::SBC( CPU_interpreter* c ) // Subtract with Carry, WRONG
 	c->CARRY( ret < 0x100 );
 	c->NEGATIVE( ret&0x80 );
 
-	c->OVERFLOW(  ( ( c->A ^ c->Readv() ) & 0x80 )
+	c->OVERFLOW_(  ( ( c->A ^ c->Readv() ) & 0x80 )
 		      &&  ( ( c->A ^ ret ) & 0x80)  );
 	
 	c->A = ret&0xff;
@@ -521,7 +521,7 @@ void CPU_interpreter::CLI( CPU_interpreter* c ) // Clear interrupt disable flag
 }
 void CPU_interpreter::CLV( CPU_interpreter* c ) // Clear overflow flag
 {
-	c->OVERFLOW(0);
+	c->OVERFLOW_(0);
 }
 void CPU_interpreter::SEC( CPU_interpreter* c ) // Set carry flag
 {
@@ -539,7 +539,7 @@ void CPU_interpreter::SEI( CPU_interpreter* c ) // Set interrupt disable flag
 // System Function
 void CPU_interpreter::BRK( CPU_interpreter* c ) // Force an interrupt
 {
-	log->Debug("0x%x: Break, suspicious... ", c->PC);
+	Log->Debug("0x%x: Break, suspicious... ", c->PC);
 	//c->IRQ();
 	c->Push16( c->PC+2 );
 	c->Push( c->P | 0x30 );
@@ -605,7 +605,7 @@ void CPU_interpreter::ISB( CPU_interpreter* c ) // Increase memory by one, then 
 	c->CARRY( ret < 0x100 );
 	c->NEGATIVE( ret&0x80 );
 
-	c->OVERFLOW(  ( ( c->A ^ c->Readv() ) & 0x80 )
+	c->OVERFLOW_(  ( ( c->A ^ c->Readv() ) & 0x80 )
 		      &&  ( ( c->A ^ ret ) & 0x80)  );
 	
 	c->A = ret;
@@ -669,7 +669,7 @@ void CPU_interpreter::RRA( CPU_interpreter* c ) // Rotate one bit right in memor
 	c->CARRY( ret > 0xff );
 	c->NEGATIVE( ret&0x80 );
 
-	c->OVERFLOW( ! ( ( c->A ^ c->Readv() ) & 0x80 )
+	c->OVERFLOW_( ! ( ( c->A ^ c->Readv() ) & 0x80 )
 		      &&  ( ( c->A ^ ret ) & 0x80) );
 
 	
@@ -709,22 +709,22 @@ void CPU_interpreter::ARR( CPU_interpreter* c ) // AND byte with accumulator, th
 	if ( c->A & 0x40 && c->A & 0x20 ) // Set C, clear V
 	{
 		c->CARRY( 1 );
-		c->OVERFLOW( 0 );
+		c->OVERFLOW_( 0 );
 	}
 	else if ( !(c->A & 0x40) && !(c->A & 0x20) ) // Clear C and V
 	{
 		c->CARRY( 0 );
-		c->OVERFLOW( 0 );
+		c->OVERFLOW_( 0 );
 	}
 	else if ( c->A & 0x20 ) // Set V, clear C
 	{
 		c->CARRY( 0 );
-		c->OVERFLOW( 1 );
+		c->OVERFLOW_( 1 );
 	}
 	else if ( c->A & 0x40 ) // Set C and V
 	{
 		c->CARRY( 1 );
-		c->OVERFLOW( 1 );
+		c->OVERFLOW_( 1 );
 	}
 
 	c->ZERO( c->A?0:1 );
@@ -765,7 +765,7 @@ void CPU_interpreter::SXA( CPU_interpreter* c ) // AND X register with the high 
 
 void CPU_interpreter::KIL(CPU_interpreter* c)
 {
-	log->Fatal("0x%x: CPU Jam (0x%x), halting!", c->PC, c->memory[c->PC]);
+	Log->Fatal("0x%x: CPU Jam (0x%x), halting!", c->PC, c->memory[c->PC]);
 	for(;;)
 	{
 		Sleep(1);
@@ -774,7 +774,7 @@ void CPU_interpreter::KIL(CPU_interpreter* c)
 	
 void CPU_interpreter::UNK(CPU_interpreter* c)
 {
-	log->Debug("0x%x: Unknown instruction (0x%x), halting!", c->PC, c->memory[c->PC]);
+	Log->Debug("0x%x: Unknown instruction (0x%x), halting!", c->PC, c->memory[c->PC]);
 	for(;;)
 	{
 		Sleep(1);

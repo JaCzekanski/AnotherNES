@@ -5,14 +5,14 @@ iNES::iNES(void)
 	PRG_ROM = NULL;
 	CHR_ROM = NULL;
 	Mapper = 0;
-	log->Debug("iNES created");
+	Log->Debug("iNES created");
 }
 
 iNES::~iNES(void)
 {
 	if (PRG_ROM != NULL) delete PRG_ROM;
 	if (CHR_ROM != NULL) delete CHR_ROM;
-	log->Debug("iNES destroyed");
+	Log->Debug("iNES destroyed");
 }
 int iNES::Load( const char* name )
 {
@@ -20,7 +20,7 @@ int iNES::Load( const char* name )
 
 	if (!rom)
 	{
-		log->Error("iNES.cpp: Cannot open %s", rom);
+		Log->Error("iNES.cpp: Cannot open %s", rom);
 		return 1;
 	}
 	
@@ -28,7 +28,7 @@ int iNES::Load( const char* name )
 	fread( magic, 1, 4, rom );
 	if (memcmp( magic, "NES\x1A", 4))
 	{
-		log->Error("iNES.cpp: Wrong magic: expected NES\\x1a");
+		Log->Error("iNES.cpp: Wrong magic: expected NES\\x1a");
 		return 2; // Wrong MAGIC
 	}
 
@@ -71,12 +71,12 @@ int iNES::Load( const char* name )
 
 	if (flags6&0x01) 
 	{
-		log->Info("iNes.cpp: Vertical mirroring");
+		Log->Info("iNes.cpp: Vertical mirroring");
 		Mirroring = 1;
 	}
 	else 
 	{
-		log->Info("iNes.cpp: Horizontal mirroring");
+		Log->Info("iNes.cpp: Horizontal mirroring");
 		Mirroring = 0;
 	}
 
@@ -94,6 +94,6 @@ int iNES::Load( const char* name )
 	fread( CHR_ROM, 1, CHR_ROM_pages*8*1024, rom );
 
 	fclose( rom );
-	log->Debug("iNES loaded");
+	Log->Debug("iNES loaded");
 	return 0;
 }

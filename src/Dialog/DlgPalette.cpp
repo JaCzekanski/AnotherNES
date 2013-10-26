@@ -10,19 +10,19 @@ DlgPalette::DlgPalette( CPU* cpu )
 	ToolboxPalette = SDL_CreateWindow( "AnotherNES - Palette", 5, 240*2+24+20, 16*16, 2*16, SDL_WINDOW_SHOWN );
 	if ( ToolboxPalette == NULL )
 	{
-		log->Fatal("Cannot create toolbox palette");
+		Log->Fatal("Cannot create toolbox palette");
 		return;
 	}
 	//if (SurfaceIcon) SDL_SetWindowIcon( ToolboxPalette, SurfaceIcon );
 	this->Clear();
 	this->WindowID = SDL_GetWindowID(ToolboxPalette);
-	log->Success("Toolbox palette created");
+	Log->Success("Toolbox palette created");
 }
 
 DlgPalette::~DlgPalette(void)
 {
 	SDL_DestroyWindow(ToolboxPalette);
-	log->Success("Toolbox Palette destroyed.");
+	Log->Success("Toolbox Palette destroyed.");
 }
 
 void DlgPalette::Update()

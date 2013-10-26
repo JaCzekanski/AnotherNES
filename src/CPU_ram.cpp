@@ -13,12 +13,12 @@ CPU_ram::CPU_ram(void)
 	this->memory[0x000a] = 0xdf;
 	this->memory[0x000f] = 0xbf;
 	ppu = NULL;
-	log->Debug("CPU_ram: created");
+	Log->Debug("CPU_ram: created");
 }
 
 CPU_ram::~CPU_ram(void)
 {
-	log->Debug("CPU_ram: destroyed");
+	Log->Debug("CPU_ram: destroyed");
 }
 
 void CPU_ram::Load( uint16_t dst, const void* source, size_t num )
@@ -26,12 +26,12 @@ void CPU_ram::Load( uint16_t dst, const void* source, size_t num )
 	uint8_t* _source = (uint8_t*)source;
 	if (dst+num>0xffff)
 	{
-		log->Fatal("CPU_ram: dst+num>0xffff!");
+		Log->Fatal("CPU_ram: dst+num>0xffff!");
 		return;
 	}
 	for (int i = dst; i<dst+num; i++)
 	{
 		memory[i] = *_source++;
 	}
-	log->Debug("CPU_ram: loaded");
+	Log->Debug("CPU_ram: loaded");
 }

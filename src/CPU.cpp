@@ -3,12 +3,12 @@
 CPU::CPU(void)
 {
 	this->Power();
-	log->Debug("CPU created");
+	Log->Debug("CPU created");
 }
 
 CPU::~CPU(void)
 {
-	log->Debug("CPU destroyed");
+	Log->Debug("CPU destroyed");
 }
 
 void CPU::Push( uint8_t v )
@@ -33,7 +33,7 @@ uint16_t CPU::Pop16( )
 
 void CPU::Power()
 {
-	log->Debug("CPU power up state");
+	Log->Debug("CPU power up state");
 	this->A = 0;
 	this->X = 0;
 	this->Y = 0;
@@ -46,7 +46,7 @@ void CPU::Power()
 
 void CPU::Reset() 
 {
-	log->Debug("CPU Reset");
+	Log->Debug("CPU Reset");
 	// A,X,Y not affected
 	// S -= 3
 	// I set to true
@@ -59,7 +59,7 @@ void CPU::Reset()
 
 void CPU::NMI() 
 {
-	//log->Debug("CPU NMI");
+	//Log->Debug("CPU NMI");
 	this->Push16( this->PC );
 	this->Push( this->P );
 
@@ -68,7 +68,7 @@ void CPU::NMI()
 
 void CPU::IRQ() 
 {
-	//log->Debug("CPU IRQ");
+	//Log->Debug("CPU IRQ");
 	this->Push16( this->PC );
 	this->Push( this->P );
 

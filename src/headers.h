@@ -5,4 +5,4 @@
 #include "logger.h"
 #include "stdint.h"
 
-extern Logger* log;
+extern Logger* Log;

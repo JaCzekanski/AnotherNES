@@ -57,7 +57,7 @@ public:
 		}
 		if (n < 0x4000) // PPU ports
 		{
-			//log->Debug("IO write at 0x%x: 0x%x", n, data);
+			//Log->Debug("IO write at 0x%x: 0x%x", n, data);
   			ppu->Write( (n-0x2000)%8, data );
 			return ;
 		}
@@ -125,11 +125,11 @@ public:
 			if (mapper == 2 || mapper == 71 || mapper == 104)
 			{
 				prg_lowpage = data;
-				//log->Debug("Mapper: 0x%.4x: 0x%x", n, data);
+				//Log->Debug("Mapper: 0x%.4x: 0x%x", n, data);
 			}
 			else
 			{
-				//log->Fatal("Unsupported mapper.");
+				//Log->Fatal("Unsupported mapper.");
 				return ;
 			}
 		}
@@ -147,7 +147,7 @@ public:
 			$2002 - R
 			$2004 - RW (treat as wo)
 			$2007 - RW*/
-			//log->Debug("IO read at 0x%x", n);
+			//Log->Debug("IO read at 0x%x", n);
 
 			RET = ppu->Read( (n-0x2000)%8 );
 			return RET;
