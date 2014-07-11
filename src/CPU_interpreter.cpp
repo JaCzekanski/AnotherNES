@@ -37,6 +37,8 @@ int CPU_interpreter::Step()
 {
 	char buffer[512] = {0};
 	int opsize = 0;
+	static int cpuJamCount = 0;
+	static bool cpuJam = false;
 
 	OPCODE op = OpcodeTableOptimized[ this->memory[this->PC] ];
 
@@ -154,11 +156,33 @@ if (debug)
 		buffer[i] = ' ';
 	}
 	buffer[++i] = 0;
-	//Log->Debug("0x%x: %s\t%s %s", this->PC, hexvals, op.mnemnic, buffer );
-	Log->Debug("$%.4X %X %s", this->PC, this->memory[this->PC], op.mnemnic);
+	Log->Debug("0x%x: %s\t%s %s", this->PC, hexvals, op.mnemnic, buffer );
+	//Log->Debug("$%.4X %X %s", this->PC, this->memory[this->PC], op.mnemnic);
 }
 	uint16_t oldPC = this->PC;
 	PCchanged = false;
+
+	if (memcmp(op.mnemnic, "KIL", 3) == 0)	return -1; // CPU JAM
+	if (op.number == 0x00) //BRK
+	{
+		if (cpuJam)
+		{
+			if (cpuJamCount++ == 3) return -1;
+		}
+		else
+		{
+			cpuJam = true;
+			cpuJamCount = 0;
+		}
+	}
+	else
+	{
+		if (cpuJam) 
+		{
+			cpuJam = false;
+			cpuJamCount = 0;
+		}
+	}
 
 	op.inst(this);
 
@@ -539,7 +563,7 @@ void CPU_interpreter::SEI( CPU_interpreter* c ) // Set interrupt disable flag
 // System Function
 void CPU_interpreter::BRK( CPU_interpreter* c ) // Force an interrupt
 {
-	Log->Debug("0x%x: Break, suspicious... ", c->PC);
+	//Log->Debug("0x%x: Break, suspicious... ", c->PC);
 	//c->IRQ();
 	c->Push16( c->PC+2 );
 	c->Push( c->P | 0x30 );
@@ -766,10 +790,6 @@ void CPU_interpreter::SXA( CPU_interpreter* c ) // AND X register with the high 
 void CPU_interpreter::KIL(CPU_interpreter* c)
 {
 	Log->Fatal("0x%x: CPU Jam (0x%x), halting!", c->PC, c->memory[c->PC]);
-	for(;;)
-	{
-		Sleep(1);
-	}
 }
 	
 void CPU_interpreter::UNK(CPU_interpreter* c)

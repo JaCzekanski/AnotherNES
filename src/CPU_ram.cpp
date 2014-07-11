@@ -12,6 +12,9 @@ CPU_ram::CPU_ram(void)
 	this->memory[0x0009] = 0xef;
 	this->memory[0x000a] = 0xdf;
 	this->memory[0x000f] = 0xbf;
+
+	memset(this->memoryLock, 0, 2048);
+
 	ppu = NULL;
 	Log->Debug("CPU_ram: created");
 }

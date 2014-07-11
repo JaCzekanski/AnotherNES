@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
@@ -17,13 +17,13 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
-    <PlatformToolset>v110</PlatformToolset>
+    <PlatformToolset>v120</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
     <WholeProgramOptimization>true</WholeProgramOptimization>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
-    <PlatformToolset>v110</PlatformToolset>
+    <PlatformToolset>v120</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
@@ -90,6 +90,7 @@
     <ClCompile Include="src\CPU.cpp" />
     <ClCompile Include="src\CPU_interpreter.cpp" />
     <ClCompile Include="src\CPU_ram.cpp" />
+    <ClCompile Include="src\Dialog\DlgRAM.cpp" />
     <ClCompile Include="src\iNES.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\NSF.cpp" />
@@ -104,6 +105,7 @@
     <ClInclude Include="src\CPU.h" />
     <ClInclude Include="src\CPU_interpreter.h" />
     <ClInclude Include="src\CPU_ram.h" />
+    <ClInclude Include="src\Dialog\DlgRAM.h" />
     <ClInclude Include="src\headers.h" />
     <ClInclude Include="src\iNES.h" />
     <ClInclude Include="src\logger.h" />

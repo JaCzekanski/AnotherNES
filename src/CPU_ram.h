@@ -36,6 +36,8 @@ public:
 	uint8_t prg_highpage;
 	uint8_t prg_pages;
 	uint8_t memory[0xffff]; // Not sure if this is good idea 
+	bool memoryLock[2048];
+
 	uint8_t ZERO;
 	uint8_t RET;
 
@@ -52,7 +54,8 @@ public:
 	{
 		if (n < 0x2000) // Zero page, stack, ram, Mirrors
 		{
-			memory[n%2048] = data; // Mirror
+			if (!memoryLock[n % 2048])
+				memory[n%2048] = data; // Mirror
 			return ;
 		}
 		if (n < 0x4000) // PPU ports

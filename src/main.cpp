@@ -21,6 +21,7 @@ int buttonState = 0;
 #include "dialog/DlgPalette.h"
 #include "dialog/DlgNametable.h"
 #include "dialog/DlgAbout.h"
+#include "dialog/DlgRAM.h"
 
 #include "version.h"
 
@@ -31,6 +32,7 @@ iNES* rom;
 DlgOAM *ToolboxOAM;
 DlgPalette *ToolboxPalette;
 DlgNametable *ToolboxNametable;
+DlgRAM *ToolboxRAM;
 
 SDL_Window* MainWindow;
 HMENU Menu;
@@ -225,6 +227,11 @@ void CloseGame()
 		ToolboxPalette = NULL;
 		CheckMenuItem( Menu, DEBUG_WINDOWS_PALETTE, MF_BYCOMMAND | MF_UNCHECKED );
 	}
+	if (ToolboxRAM)	{
+		delete ToolboxRAM;
+		ToolboxRAM = NULL;
+		CheckMenuItem(Menu, DEBUG_WINDOWS_RAM, MF_BYCOMMAND | MF_UNCHECKED);
+	}
 	if (EmulatorState == EmuState::Idle) return;
 	EmulatorState = EmuState::Idle;
 	EnableMenuItem( Menu, FILE_CLOSE, MF_BYCOMMAND | MF_GRAYED );
@@ -307,7 +314,7 @@ int main()
 	SDL_EventState( SDL_SYSWMEVENT, SDL_ENABLE );
 
 	SDL_DisplayMode mode;
-	mode.format = SDL_PIXELFORMAT_RGB888;
+	mode.format = SDL_PIXELFORMAT_RGBA8888;
 	mode.w = 256*2;
 	mode.h = 240*2;
 	mode.refresh_rate = 0;
@@ -322,7 +329,7 @@ int main()
 
 	SDL_Surface* screen = SDL_GetWindowSurface( MainWindow );
 
-	SDL_Surface* canvas = SDL_CreateRGBSurface( SDL_SWSURFACE, 256, 240, 32, 0, 0, 0, 0 );
+	SDL_Surface* canvas = SDL_CreateRGBSurface( 0, 256, 240, 32, 0, 0, 0, 0xff000000 );
 	if (!canvas) Log->Fatal("Cannot create canvas surface!");
 
 	SDL_AudioSpec requested, obtained;
@@ -355,6 +362,7 @@ int main()
 	EmulatorState = EmuState::Idle;
 
 
+	bool mouseUp = true;
 	int64_t cycles = 0;
 	while( EmulatorState != EmuState::Quited )
 	{
@@ -399,9 +407,42 @@ int main()
 							CheckMenuItem( Menu, DEBUG_WINDOWS_PALETTE, MF_BYCOMMAND | MF_UNCHECKED );
 						}
 					}
+					if (ToolboxRAM)	{
+						if (ID == ToolboxRAM->WindowID) {
+							delete ToolboxRAM;
+							ToolboxRAM = NULL;
+							CheckMenuItem(Menu, DEBUG_WINDOWS_RAM, MF_BYCOMMAND | MF_UNCHECKED);
+						}
+					}
 
 				}
 			}
+		}
+		if (event.type == SDL_KEYDOWN)
+		{
+			if (ToolboxRAM && event.key.windowID == ToolboxRAM->WindowID)
+			{
+				ToolboxRAM->Key(event.key.keysym.sym);
+			}
+		}
+		if (event.type == SDL_MOUSEMOTION)
+		{
+			if (ToolboxRAM && event.motion.windowID == ToolboxRAM->WindowID)
+			{
+				ToolboxRAM->Move(event.motion.x , event.motion.y);
+			}
+		}
+		if (event.type == SDL_MOUSEBUTTONDOWN)
+		{
+			if (mouseUp && ToolboxRAM && event.button.windowID == ToolboxRAM->WindowID)
+			{
+				ToolboxRAM->Click(event.button.x, event.button.y, event.button.button & 0xff); 
+				mouseUp = false;
+			}
+		}
+		if (event.type == SDL_MOUSEBUTTONUP)
+		{
+			mouseUp = true;
 		}
 		if (event.type == SDL_SYSWMEVENT)
 		{
@@ -581,6 +622,24 @@ int main()
 					}
 					break;
 
+					// --Nametable
+				case DEBUG_WINDOWS_RAM:
+					if (CheckMenuItem(Menu, DEBUG_WINDOWS_RAM, MF_BYCOMMAND) == MF_UNCHECKED)
+					{
+						CheckMenuItem(Menu, DEBUG_WINDOWS_RAM, MF_BYCOMMAND | MF_CHECKED);
+						ToolboxRAM = new DlgRAM(cpu);
+					}
+					else
+					{
+						CheckMenuItem(Menu, DEBUG_WINDOWS_RAM, MF_BYCOMMAND | MF_UNCHECKED);
+						if (ToolboxRAM)
+						{
+							delete ToolboxRAM;
+							ToolboxRAM = NULL;
+						}
+					}
+					break;
+
 					// Help
 					// -About
 				case HELP_ABOUT:
@@ -657,11 +716,20 @@ int main()
 					}
 				}
 				cycles = cpu->Step();
+				if (cycles == -1)
+				{
+					Log->Error("CPU Jammed.");
+					framerefresh = true;
+					EmulatorState = EmuState::Paused;
+				}
+				//cpu->apu.Step();
 				++tick;
 			}
 			// Bad idea
 			// Compute how many msec we need to wait
 			// and just don't run the emulation then
+
+			if (ToolboxRAM) ToolboxRAM->Update();
 			Sleep(10); // 1/60
 		}
 	}

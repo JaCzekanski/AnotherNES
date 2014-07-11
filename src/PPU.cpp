@@ -144,8 +144,9 @@ void PPU::Write( uint8_t reg, uint8_t data )
 				{
 					memory[ addr - 0x10 ] = data;
 				}
+				else memory[addr] = data;
 			}
-			memory[ addr ] = data;
+			else memory[ addr ] = data;
 
 			addr+=VRAMaddressIncrement;
 
@@ -208,7 +209,11 @@ uint8_t PPU::Read( uint8_t reg)
 			{
 				addr -= 0x3f00;
 				addr = addr % 0x20;
-				ret = memory[ 0x3f00 + addr ];
+				if (addr == 0x3f10 || addr == 0x3f14 || addr == 0x3f18 || addr == 0x3f1c)
+				{
+					ret = memory[0x3f00 + addr - 0x10];
+				}
+				else ret = memory[ 0x3f00 + addr ];
 			}
 
 			addr+=VRAMaddressIncrement;
@@ -265,7 +270,7 @@ uint8_t PPU::Step( )
 void PPU::Render(SDL_Surface* s)
 {
 	SDL_FillRect( s, NULL, 0 );
-	//if (ShowBackground) 
+	if (ShowBackground) 
 	{
 		/* We have 2 types of mirroring:
                          ______
@@ -290,8 +295,9 @@ void PPU::Render(SDL_Surface* s)
 		uint8_t currentNametable = (BaseNametable-0x2000)/0x400;
 		uint8_t cnx = (currentNametable%2);
 		uint8_t cny = (currentNametable/2);
-		SDL_Surface* bg = SDL_CreateRGBSurface( SDL_SWSURFACE, 256, 256+32, 32, 0, 0, 0, 0 );
+		SDL_Surface* bg = SDL_CreateRGBSurface(0, 256, 256 + 32, 32, 0, 0, 0, 0xff000000);
 		if (!bg) Log->Fatal("PPU: Cannot create BG surface!");
+		SDL_SetSurfaceBlendMode(bg, SDL_BLENDMODE_ADD);
 		SDL_UnlockSurface( s );
 		for (int i = 0; i<4; i++)
 		{
