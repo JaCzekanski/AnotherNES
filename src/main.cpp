@@ -86,7 +86,7 @@ bool LoadGame( const char* path )
 	cpu->memory.prg_pages = rom->PRG_ROM_pages;
 	cpu->memory.prg_lowpage = 0;
 	cpu->memory.prg_highpage = rom->PRG_ROM_pages-1;
-	if (rom->Mapper == 104) cpu->memory.prg_highpage = 15; // Golden five fix
+	if (rom->Mapper == 104) cpu->memory.prg_highpage = 15; // Golden five fix  http://mamedev.org/source/src/mess/machine/nes_pcb.c
 
 	Log->Success("%dB PRG_ROM copied", rom->PRG_ROM_pages*16*1024);
 

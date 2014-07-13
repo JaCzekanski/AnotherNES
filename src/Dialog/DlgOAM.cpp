@@ -101,7 +101,10 @@ void DlgOAM::__DrawOAM(SDL_Surface* s, int i)
 					
 					color = c1 | c2<<1;
 
-					Palette_entry e = nes_palette[ cpu->ppu.memory[0x3F10 + ((spr.attr&0x3)*4) + color] ];
+					Palette_entry e;
+					if (color == 0) // Universal BG color
+						e = nes_palette[cpu->ppu.memory[0x3F00]];
+					else e = nes_palette[cpu->ppu.memory[0x3F10 + ((spr.attr & 0x3) * 4) + color]];
 
 					*(PIXEL++) = e.b;
 					*(PIXEL++) = e.g;
@@ -145,7 +148,10 @@ void DlgOAM::__DrawOAM(SDL_Surface* s, int i)
 					
 					color = c1 | c2<<1;
 
-					Palette_entry e = nes_palette[ cpu->ppu.memory[0x3F10 + ((spr.attr&0x3)*4) + color] ];
+					Palette_entry e;
+					if (color == 0) // Universal BG color
+						e = nes_palette[cpu->ppu.memory[0x3F00]];
+					else e = nes_palette[cpu->ppu.memory[0x3F10 + ((spr.attr & 0x3) * 4) + color]];
 
 					*(PIXEL++) = e.b;
 					*(PIXEL++) = e.g;
