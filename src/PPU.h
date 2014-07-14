@@ -64,6 +64,9 @@ private:
 	uint8_t ScrollX, _ScrollX;
 	uint8_t ScrollY, _ScrollY;
 
+	uint8_t screen[256][256]; // raw screen data, no palette lookup, [y][x]
+	void PaletteLookup(SDL_Surface *s);
+
 	void RenderSprite(SDL_Surface* s);
 	void RenderBackground(SDL_Surface* s, uint8_t nametable);
 public:

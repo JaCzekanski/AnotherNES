@@ -730,37 +730,38 @@ int main()
 			bool framerefresh = false;
 			while ( !framerefresh )
 			{
-				for (int i = (cycles==0)?3:cycles*3; i>0; i--)
+				for (int i = cycles*3; i>0; i--)
 				{
+					if (i%3 == 0) cycles--;
 					uint8_t ppuresult = cpu->ppu.Step();
 					if (ppuresult) // NMI requested
 					{
-						if (ppuresult == 100) 
+						static int ToolboxDelay = 0; // Performacne hit
+						if (ToolboxDelay%5 == 0)
 						{
-							static int ToolboxDelay = 0; // Performacne hit
-							if (ToolboxDelay%5 == 0)
-							{
-								if (ToolboxOAM) ToolboxOAM->Update();
-								if (ToolboxPalette) ToolboxPalette->Update();
-								if (ToolboxNametable) ToolboxNametable->Update();
-							}
-							ToolboxDelay++;
+							if (ToolboxOAM) ToolboxOAM->Update();
+							if (ToolboxPalette) ToolboxPalette->Update();
+							if (ToolboxNametable) ToolboxNametable->Update();
 						}
-						else
-						{
-							framerefresh = true;
-							SDL_LockSurface( canvas );
-							cpu->ppu.Render( canvas );
-							SDL_UnlockSurface( canvas );
+						ToolboxDelay++;
 
-							SDL_SoftStretch( canvas, NULL, screen, NULL );
-							SDL_UpdateWindowSurface( MainWindow );
+						framerefresh = true;
+						SDL_LockSurface( canvas );
+						cpu->ppu.Render( canvas );
+						SDL_UnlockSurface( canvas );
+
+						SDL_SoftStretch( canvas, NULL, screen, NULL );
+						SDL_UpdateWindowSurface( MainWindow );
 							
-							if (ppuresult==2) cpu->NMI();
+						if (ppuresult == 2)
+						{
+							cpu->NMI();
+							cycles += 7;
+							i += 7 * 3;
 						}
 					}
 				}
-				cycles = cpu->Step();
+				cycles += cpu->Step();
 				if (cycles == -1)
 				{
 					Log->Error("CPU Jammed.");

@@ -136,15 +136,13 @@ void PPU::Write( uint8_t reg, uint8_t data )
 			if (addr >= 0x3000 && addr <= 0x3eff) addr -= 0x1000;
 			if (addr>=0x3f00 && addr<=0x3fff) //Palette
 			{
-				addr -= 0x3f00;
-				addr = addr % 0x20;
-				addr += 0x3f00;
+				uint16_t tmpaddr = (addr - 0x3f00) % 0x20;
 
-				if (addr == 0x3f10 || addr == 0x3f14 || addr == 0x3f18 || addr == 0x3f1c)
+				if (tmpaddr == 0x10 || tmpaddr == 0x14 || tmpaddr == 0x18 || tmpaddr == 0x1c)
 				{
-					memory[ addr - 0x10 ] = data;
+					memory[0x3f00 + tmpaddr - 0x10] = data;
 				}
-				else memory[addr] = data;
+				else memory[0x3f00 + tmpaddr] = data;
 			}
 			else memory[ addr ] = data;
 
@@ -186,7 +184,7 @@ uint8_t PPU::Read( uint8_t reg)
 						
 		case 0x2004: //OAMDATA
 			ret = *((uint8_t *)OAM+OAMADDR);
-			if (((OAMADDR)%4) == 2 ) ret = ret&0xE3;
+			if (((OAMADDR) % 4) == 2) ret = ret & 0xE3;
 			break;
 			
 		case 0x2007: //PPUDATA
@@ -207,13 +205,13 @@ uint8_t PPU::Read( uint8_t reg)
 			}
 			else
 			{
-				addr -= 0x3f00;
-				addr = addr % 0x20;
-				if (addr == 0x3f10 || addr == 0x3f14 || addr == 0x3f18 || addr == 0x3f1c)
+				uint16_t tmpaddr = (addr - 0x3f00) % 0x20;
+
+				if (tmpaddr == 0x10 || tmpaddr == 0x14 || tmpaddr == 0x18 || tmpaddr == 0x1c)
 				{
-					ret = memory[0x3f00 + addr - 0x10];
+					ret = memory[0x3f00 + tmpaddr - 0x10];
 				}
-				else ret = memory[ 0x3f00 + addr ];
+				else ret = memory[0x3f00 + tmpaddr];
 			}
 
 			addr+=VRAMaddressIncrement;
@@ -234,98 +232,141 @@ uint8_t PPU::Step( )
 {
 	// 1 CPU cycles - 3 PPU cycles
 	// 1 scanline - 341 PPU cycles
-	uint8_t prevscanline = scanline;
-	cycles++;
-	if (cycles%341 == 0) 
+	if (cycles++ == 341) 
 	{
-		scanline++;
-	}
-	if (scanline>260) 
-	{
-		scanline = 0;
-		VBLANK = false;
+		cycles = 0;
+		if (scanline++>261)
+			scanline = 0;
 	}
 
-	//if (scanline<240) // rendering
-	//{
-	//	return 0;
-	//} 
-	//else if (scanline == 240) // idle, no vblank yet
-	//{
-	//	return 0;
-	//}
-	if (prevscanline == 200 && scanline == 201)
+	if (scanline >= 0 && scanline <= 239) // Visible scanlines
 	{
-		return 100; // Update toolboxes
+		if (cycles >= 1 && cycles <= 256)
+		{
+			uint8_t renderX = cycles - 1;
+			uint8_t renderY = scanline;
+			if (!ShowBackground)
+			{
+				screen[renderY][renderX] = 0x05; // Debug
+				return 0;
+			}
+			uint8_t currentNametable = (BaseNametable - 0x2000) / 0x400;
+			uint16_t x = renderX + ScrollX;
+			uint16_t y = renderY + ScrollY;
+
+			if (x >= 256)
+			{
+				x -= 256;
+				currentNametable ^= 0x01; // Toggle first bit (x)
+			}
+
+			if (y >= 240)
+			{
+				y -= 240;
+				currentNametable ^= 0x02; // Toggle second bit (y)
+			}
+
+			if (Mirroring == VERTICAL) currentNametable &= 0x01; // Clear second bit (y)
+			else currentNametable &= 0x02; //  Clear first bit (x), Horizontal
+
+			uint8_t b = y & 7; // y in tile == y % 8
+			uint8_t a = x & 7; // x in tile
+
+			y >>= 3;  // /= 8
+			x >>= 3;
+
+			uint16_t NametableAddress = (0x2000 + 0x400 * currentNametable);
+			uint16_t Attribute = NametableAddress + 0x3c0;
+			uint16_t tile = this->memory[NametableAddress + (y * 32) + x];
+
+			uint8_t tiledata  = memory[BackgroundPattenTable + tile * 16 + b];
+			uint8_t tiledata2 = memory[BackgroundPattenTable + tile * 16 + b + 8];
+
+			uint8_t color = (tiledata &(0x80 >> a)) >> (7 - a) |
+			              (((tiledata2&(0x80 >> a)) >> (7 - a)) << 1);
+
+			uint8_t InfoByte = memory[Attribute + ((y / 4) * 8) + (x / 4)];
+			uint8_t infopal = 0;
+			if (color != 0)
+			{
+				if ((y & 0x3) <= 1) // up
+				{
+					if ((x & 0x3) <= 1) infopal = InfoByte; // up-left
+					else                infopal = (InfoByte >> 2); // up-right
+				}
+				else // down
+				{
+					if ((x & 0x3) <= 1) infopal = (InfoByte >> 4); // down-left
+					else                infopal = (InfoByte >> 6); // down-right
+				}
+			}
+
+			screen[renderY][renderX] = memory[0x3F00 + ((infopal&0x03) * 4) + color];
+		}
+		else
+		{
+			if (cycles == 0) // Idle cycle
+			{
+				return 0;
+			}
+			else if (cycles >= 257 && cycles <= 320)
+			{
+				return 0;
+			}
+			else if (cycles >= 321 && cycles <= 336)
+			{
+				return 0;
+			}
+			else if (cycles >= 337 && cycles <= 340)
+			{
+				return 0;
+			}
+		}
 	}
-	else if (prevscanline == 240 && scanline == 241) // Set vblank && NMI
+	else if (scanline == 240) // Post-render scanline, no vblank yet
 	{
-		VBLANK = true;
-		if (NMI_enabled) return 2;
-		else return 1;
+	}
+	else if (scanline >= 241 && scanline <= 260) // Vertical blanking lines (
+	{
+		if (scanline == 241 && cycles == 1) // Vblank
+		{
+			VBLANK = true;
+			if (NMI_enabled) return 2;
+			else return 1;
+		}
+	}
+	else if (scanline == 261) // Pre-render scanline
+	{
+		if (cycles == 1) VBLANK = false;
 	}
 	return 0;
 }
 
 void PPU::Render(SDL_Surface* s)
 {
-	SDL_FillRect( s, NULL, 0 );
-	if (ShowBackground) 
-	{
-		/* We have 2 types of mirroring:
-                         ______
-		   Vertical:    |11|11|
-		                |--+--| 
-						|22|22|
-                         ``````
-                         ______
-		   Vertical:    |11|22|
-		                |--+--| 
-						|11|22|
-                         ``````
-
-		  For loop to draw them all!
-                         ______
-		  iteration:    |00|11|
-		                |--+--| 
-						|22|33|
-                         ``````
-        */
-
-		uint8_t currentNametable = (BaseNametable-0x2000)/0x400;
-		uint8_t cnx = (currentNametable%2);
-		uint8_t cny = (currentNametable/2);
-		SDL_Surface* bg = SDL_CreateRGBSurface(0, 256, 256 + 32, 32, 0, 0, 0, 0xff000000);
-		if (!bg) Log->Fatal("PPU: Cannot create BG surface!");
-		SDL_SetSurfaceBlendMode(bg, SDL_BLENDMODE_ADD);
-		SDL_UnlockSurface( s );
-		for (int i = 0; i<4; i++)
-		{
-			SDL_LockSurface( bg );
-			if (Mirroring == VERTICAL) // Vertical
-			{
-				if (i%2 == 0) RenderBackground(bg, cnx);
-				else RenderBackground(bg, !cnx);
-			}
-			else // Horizontal
-			{
-				if (i/2 == 0) RenderBackground(bg, (cny)*2);
-				else RenderBackground(bg, (!cny)*2);
-			}
-
-			SDL_Rect pos;
-			pos.x = (i%2)*256 - ScrollX;
-			pos.y = (i/2)*240 - ScrollY;
-
-			SDL_UnlockSurface( bg );
-			SDL_BlitSurface( bg, NULL, s, &pos );
-		}
-		SDL_FreeSurface( bg );
-
-		SDL_LockSurface( s );
-	}
+	PaletteLookup(s);
 	if (ShowSprites) this->RenderSprite(s);
 }
+
+
+void PPU::PaletteLookup(SDL_Surface *s)
+{
+	uint8_t *PIXEL = (uint8_t*)s->pixels;
+	for (int y = 0; y < 240; y++)
+	{
+		//PIXEL = (uint8_t*)s->pixels + s->pitch*y;
+		for (int x = 0; x < 256; x++)
+		{
+			Palette_entry e = nes_palette[screen[y][x]];
+
+			*(PIXEL++) = e.b;
+			*(PIXEL++) = e.g;
+			*(PIXEL++) = e.r;
+			PIXEL++;
+		}
+	}
+}
+
 
 void PPU::RenderSprite(SDL_Surface* s)
 {
@@ -441,18 +482,13 @@ void PPU::RenderBackground(SDL_Surface* s, uint8_t nametable)
 	int x = 0;
 	int y = 0;
 
-	uint8_t *PIXELS = (uint8_t*)s->pixels;
 	uint32_t color = 0;
-
 	uint16_t NametableAddress = (0x2000 + 0x400 * (nametable&0x03));
-
 	uint16_t Attribute = NametableAddress + 0x3c0;
 	for (int i = 0; i<960; i++)
 	{
 		// Assume that Surface is 256x240
 		uint16_t tile = this->memory[i+NametableAddress];
-		uint32_t dt = ( (y*256*8) + (x*8) ) * 4;
-		uint8_t *PIXEL = PIXELS+dt;
 		for (uint8_t b = 0; b<8; b++) //Y
 		{
 			uint8_t tiledata = memory[ BackgroundPattenTable + tile*16 + b];
@@ -485,11 +521,7 @@ void PPU::RenderBackground(SDL_Surface* s, uint8_t nametable)
 				}
 
 				//BG Palette + Infopal*4
-				Palette_entry e = nes_palette[ memory[0x3F00 + (infopal*4) + color] ];
-
-				*(PIXEL+((b*256)+a)*4) = e.b;
-				*(PIXEL+((b*256)+a)*4+1) = e.g;
-				*(PIXEL+((b*256)+a)*4+2) = e.r;
+				screen[y*8+b][x*8+a] = memory[0x3F00 + (infopal * 4) + color];
 			}
 		}
 		if (x++ == 31)
@@ -497,6 +529,5 @@ void PPU::RenderBackground(SDL_Surface* s, uint8_t nametable)
 			y++;
 			x = 0;
 		}
-
 	}
 }
