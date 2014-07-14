@@ -52,7 +52,7 @@ private:
 
 	bool ShowBackground;
 	bool ShowSprites;
-
+	bool Sprite0Hit;
 
 	bool PPUADDRhalf;
 	uint8_t PPUADDRhi;

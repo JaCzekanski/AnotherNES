@@ -11,7 +11,7 @@ PPU::PPU(void)
     memcpy( this->memory+0x3f00, "\x09,\x01,\x00,\x01,\x00,\x02,\x02,\x0D,\x08,\x10,\x08,\x24,\x00,\x00,\x04,\x2C,\x09,\x01,\x34,\x03,\x00,\x04,\x00,\x14,\x08,\x3A,\x00,\x02,\x00,\x20,\x2C,\x08", 32 );
 
 	cycles = 0;
-	scanline = 0;
+	scanline = 261;
 	NMI_enabled = false;
 	VBLANK = true;
 	SpriteSize = false;
@@ -162,8 +162,7 @@ uint8_t PPU::Read( uint8_t reg)
 	switch (reg+0x2000)
 	{
 		case 0x2002: //PPUSTATUS
-			sprite0 = !sprite0;
-			ret = (VBLANK<<7) | (sprite0<<6);
+			ret = (VBLANK << 7) | (Sprite0Hit << 6);
 			// 7 - Vertical blank has started (0: not in VBLANK; 1: in VBLANK)
 
 			// 6 - Sprite 0 Hit.  Set when a nonzero pixel of sprite 0 'hits', ignored
@@ -241,67 +240,135 @@ uint8_t PPU::Step( )
 
 	if (scanline >= 0 && scanline <= 239) // Visible scanlines
 	{
-		if (cycles >= 1 && cycles <= 256)
+		if (cycles == 0) // Prepare OAM
+		{
+
+		}
+		else if (cycles >= 1 && cycles <= 256)
 		{
 			uint8_t renderX = cycles - 1;
 			uint8_t renderY = scanline;
-			if (!ShowBackground)
+
+			uint8_t BackgroundByte = 0;
+			if (ShowBackground)
 			{
-				screen[renderY][renderX] = 0x05; // Debug
-				return 0;
-			}
-			uint8_t currentNametable = (BaseNametable - 0x2000) / 0x400;
-			uint16_t x = renderX + ScrollX;
-			uint16_t y = renderY + ScrollY;
+				uint8_t currentNametable = (BaseNametable - 0x2000) / 0x400;
+				uint16_t x = renderX + ScrollX;
+				uint16_t y = renderY + ScrollY;
 
-			if (x >= 256)
-			{
-				x -= 256;
-				currentNametable ^= 0x01; // Toggle first bit (x)
-			}
-
-			if (y >= 240)
-			{
-				y -= 240;
-				currentNametable ^= 0x02; // Toggle second bit (y)
-			}
-
-			if (Mirroring == VERTICAL) currentNametable &= 0x01; // Clear second bit (y)
-			else currentNametable &= 0x02; //  Clear first bit (x), Horizontal
-
-			uint8_t b = y & 7; // y in tile == y % 8
-			uint8_t a = x & 7; // x in tile
-
-			y >>= 3;  // /= 8
-			x >>= 3;
-
-			uint16_t NametableAddress = (0x2000 + 0x400 * currentNametable);
-			uint16_t Attribute = NametableAddress + 0x3c0;
-			uint16_t tile = this->memory[NametableAddress + (y * 32) + x];
-
-			uint8_t tiledata  = memory[BackgroundPattenTable + tile * 16 + b];
-			uint8_t tiledata2 = memory[BackgroundPattenTable + tile * 16 + b + 8];
-
-			uint8_t color = (tiledata &(0x80 >> a)) >> (7 - a) |
-			              (((tiledata2&(0x80 >> a)) >> (7 - a)) << 1);
-
-			uint8_t InfoByte = memory[Attribute + ((y / 4) * 8) + (x / 4)];
-			uint8_t infopal = 0;
-			if (color != 0)
-			{
-				if ((y & 0x3) <= 1) // up
+				if (x >= 256)
 				{
-					if ((x & 0x3) <= 1) infopal = InfoByte; // up-left
-					else                infopal = (InfoByte >> 2); // up-right
+					x -= 256;
+					currentNametable ^= 0x01; // Toggle first bit (x)
 				}
-				else // down
+
+				if (y >= 240)
 				{
-					if ((x & 0x3) <= 1) infopal = (InfoByte >> 4); // down-left
-					else                infopal = (InfoByte >> 6); // down-right
+					y -= 240;
+					currentNametable ^= 0x02; // Toggle second bit (y)
 				}
+
+				if (Mirroring == VERTICAL) currentNametable &= 0x01; // Clear second bit (y)
+				else currentNametable &= 0x02; //  Clear first bit (x), Horizontal
+
+				uint8_t b = y & 7; // y in tile == y % 8
+				uint8_t a = x & 7; // x in tile
+
+				y >>= 3;  // /= 8
+				x >>= 3;
+
+				uint16_t NametableAddress = (0x2000 + 0x400 * currentNametable);
+				uint16_t Attribute = NametableAddress + 0x3c0;
+				uint16_t tile = this->memory[NametableAddress + (y * 32) + x];
+
+				uint8_t tiledata = memory[BackgroundPattenTable + tile * 16 + b];
+				uint8_t tiledata2 = memory[BackgroundPattenTable + tile * 16 + b + 8];
+
+				uint8_t color = (tiledata &(0x80 >> a)) >> (7 - a) |
+					(((tiledata2&(0x80 >> a)) >> (7 - a)) << 1);
+
+				uint8_t InfoByte = memory[Attribute + ((y / 4) * 8) + (x / 4)];
+				uint8_t infopal = 0;
+				if (color != 0)
+				{
+					if ((y & 0x3) <= 1) // up
+					{
+						if ((x & 0x3) <= 1) infopal = InfoByte; // up-left
+						else                infopal = (InfoByte >> 2); // up-right
+					}
+					else // down
+					{
+						if ((x & 0x3) <= 1) infopal = (InfoByte >> 4); // down-left
+						else                infopal = (InfoByte >> 6); // down-right
+					}
+				}
+				BackgroundByte = memory[0x3F00 + ((infopal & 0x03) * 4) + color];
 			}
 
-			screen[renderY][renderX] = memory[0x3F00 + ((infopal&0x03) * 4) + color];
+			uint8_t SpriteByte = 0;
+			bool SpriteRendered = false;
+			bool SpriteFront = false;
+			if (ShowSprites)
+			{
+				for (int i = 63; i >= 0; i--) // OAM
+				{
+					SPRITE spr = OAM[i];
+					if (!(renderY >= spr.y + 1 && renderY < spr.y + (SpriteSize?16:8) + 1)) continue;
+					if (!(renderX >= spr.x     && renderX < spr.x + 8)) continue;
+
+					SpriteFront = (spr.attr & 0x20) ? false : true;
+
+					uint16_t spriteaddr = (SpriteSize ? 0 : SpritePattenTable) + spr.index * 16;
+
+					uint8_t sprite_x = renderX - spr.x; // x inside sprite
+					uint8_t sprite_y = renderY - (spr.y + 1); // y inside sprite
+
+					if (spr.attr & 0x80) sprite_y = (SpriteSize ? 15 : 7) - sprite_y; //Vertical flip
+					if (sprite_y>7) sprite_y += 8;
+
+					uint8_t spritedata = memory[spriteaddr + sprite_y];
+					uint8_t spritedata2 = memory[spriteaddr + sprite_y + 8];
+
+					if (spr.attr & 0x40) sprite_x = 7 - sprite_x; //Horizontal flip
+
+					bool c1 = (spritedata  &(1 << (7 - sprite_x))) ? true : false;
+					bool c2 = (spritedata2 &(1 << (7 - sprite_x))) ? true : false;
+
+					uint8_t color = c1 | c2 << 1;
+					if (color == 0) continue;
+
+					SpriteByte = memory[0x3F10 + ((spr.attr & 0x3) * 4) + color];
+					SpriteRendered = true;
+
+					if (i == 0 &&
+						renderX != 255 &&
+						ShowBackground &&
+						color != 0 &&
+						BackgroundByte != memory[0x3f00])
+					{
+						Sprite0Hit = true;
+					}
+				}
+			}
+			if (SpriteRendered)
+			{
+				if (SpriteFront) screen[renderY][renderX] = SpriteByte;
+				else
+				{
+					if (BackgroundByte == memory[0x3f00])
+					{
+						screen[renderY][renderX] = SpriteByte;
+					}
+					else
+					{
+						screen[renderY][renderX] = BackgroundByte;
+					}
+				}
+			}
+			else
+			{
+				screen[renderY][renderX] = BackgroundByte;
+			}
 		}
 		else
 		{
@@ -337,7 +404,11 @@ uint8_t PPU::Step( )
 	}
 	else if (scanline == 261) // Pre-render scanline
 	{
-		if (cycles == 1) VBLANK = false;
+		if (cycles == 1)
+		{
+			VBLANK = false;
+			Sprite0Hit = false;
+		}
 	}
 	return 0;
 }
@@ -345,7 +416,6 @@ uint8_t PPU::Step( )
 void PPU::Render(SDL_Surface* s)
 {
 	PaletteLookup(s);
-	if (ShowSprites) this->RenderSprite(s);
 }
 
 
@@ -354,7 +424,6 @@ void PPU::PaletteLookup(SDL_Surface *s)
 	uint8_t *PIXEL = (uint8_t*)s->pixels;
 	for (int y = 0; y < 240; y++)
 	{
-		//PIXEL = (uint8_t*)s->pixels + s->pitch*y;
 		for (int x = 0; x < 256; x++)
 		{
 			Palette_entry e = nes_palette[screen[y][x]];
@@ -363,171 +432,6 @@ void PPU::PaletteLookup(SDL_Surface *s)
 			*(PIXEL++) = e.g;
 			*(PIXEL++) = e.r;
 			PIXEL++;
-		}
-	}
-}
-
-
-void PPU::RenderSprite(SDL_Surface* s)
-{
-	uint8_t *PIXELS = (uint8_t*)s->pixels;
-	uint32_t color = 0;
-
-	if (!SpriteSize)
-	{
-		for (int i = 0; i<64; i++)
-		{
-			SPRITE spr = this->OAM[i];
-			if (spr.y<0xff) spr.y+=1;
-			if (spr.y >= 0xEF) continue;
-
-			uint16_t spriteaddr = SpritePattenTable + spr.index*16;
-
-			// 8x8px
-			for (int y = 0; y<8; y++)
-			{
-				int sprite_y = y;
-				if ( spr.attr&0x80 ) sprite_y = 7 - sprite_y; //Vertical flip
-
-				if ( sprite_y+spr.y+8 > 240 ) continue;
-
-				uint8_t spritedata = memory[ spriteaddr + sprite_y ];
-				uint8_t spritedata2 = memory[ spriteaddr + sprite_y + 8 ];
-				for (int x = 0; x<8; x++)
-				{
-					int sprite_x = x;
-					if ( spr.attr&0x40 ) sprite_x = 7 - sprite_x; //Horizontal flip
-
-					bool c1 = ( spritedata  &(1<<(7-sprite_x)) )? true: false;
-					bool c2 = ( spritedata2 &(1<<(7-sprite_x)) )? true: false;
-					
-					color = c1 | c2<<1;
-
-					if (color == 0) continue;
-
-					uint16_t _y = y+spr.y;
-					uint16_t _x = x+spr.x;
-
-					uint32_t dt = ( ( _y *256) +  _x  ) * 4;
-					uint8_t *PIXEL = PIXELS+dt;
-
-					Palette_entry e = nes_palette[ memory[0x3F10 + ((spr.attr&0x3)*4) + color] ];
-
-
-					*(PIXEL+0) = e.b;
-					*(PIXEL+1) = e.g;
-					*(PIXEL+2) = e.r;
-				}
-			}
-		}
-
-	}
-	else //8x16
-	{
-		for (int i = 0; i<64; i++)
-		{
-			SPRITE spr = this->OAM[i];
-			if (spr.y<0xff) spr.y+=1;
-			if (spr.y >= 0xEF) continue;
-
-
-			uint16_t spriteaddr = ( (spr.index&1) * 0x1000)  + ((spr.index>>1)*32);
-
-			// 8x16px
-			for (int y = 0; y<16; y++)
-			{
-				int sprite_y = y;
-				if ( spr.attr&0x80 ) 
-				{
-					sprite_y = 15 - sprite_y; //Vertical flip
-				}
-				if (sprite_y>7) sprite_y+=8;
-
-				uint8_t spritedata = memory[ spriteaddr + sprite_y ];
-				uint8_t spritedata2 = memory[ spriteaddr + sprite_y + 8 ];
-				for (int x = 0; x<8; x++)
-				{
-					int sprite_x = x;
-					if ( spr.attr&0x40 ) sprite_x = 7 - sprite_x; //Ver flip
-
-					bool c1 = ( spritedata  &(1<<(7-sprite_x)) )? true: false;
-					bool c2 = ( spritedata2 &(1<<(7-sprite_x)) )? true: false;
-					
-					color = c1 | c2<<1;
-
-					if (color == 0) continue;
-
-					uint16_t _y = y+spr.y;
-					uint16_t _x = x+spr.x;
-
-					uint32_t dt = ( ( _y *256) +  _x  ) * 4;
-					uint8_t *PIXEL = PIXELS+dt;
-
-					Palette_entry e = nes_palette[ memory[0x3F10 + ((spr.attr&0x3)*4) + color] ];
-
-
-					*(PIXEL+0) = e.b;
-					*(PIXEL+1) = e.g;
-					*(PIXEL+2) = e.r;
-				}
-			}
-		}
-
-	}
-
-}
-void PPU::RenderBackground(SDL_Surface* s, uint8_t nametable)
-{
-	//Q&D scrolling 
-	int x = 0;
-	int y = 0;
-
-	uint32_t color = 0;
-	uint16_t NametableAddress = (0x2000 + 0x400 * (nametable&0x03));
-	uint16_t Attribute = NametableAddress + 0x3c0;
-	for (int i = 0; i<960; i++)
-	{
-		// Assume that Surface is 256x240
-		uint16_t tile = this->memory[i+NametableAddress];
-		for (uint8_t b = 0; b<8; b++) //Y
-		{
-			uint8_t tiledata = memory[ BackgroundPattenTable + tile*16 + b];
-			uint8_t tiledata2 = memory[ BackgroundPattenTable + tile*16 + b +8];
-			for (uint8_t a = 0; a<8; a++) //X
-			{
-				bool c1 = ( tiledata&(1<<(7-a)) )? true: false;
-				bool c2 = ( tiledata2&(1<<(7-a)) )? true: false;
-
-				uint8_t InfoByte = memory[ Attribute + ((y/4)*8)+(x/4) ];
-				uint8_t infopal = 0;
-				if ( (y%4)<=1 ) //up
-				{
-					if ( (x%4)<=1 ) infopal = InfoByte; // up-left
-					else infopal = InfoByte>>2; // up-right
-				}
-				else 
-				{
-					if ( (x%4)<=1 ) infopal = InfoByte>>4; // down-left
-					else infopal = InfoByte>>6; // down-right
-				}
-
-				infopal = (infopal&0x03);
-
-				color = c1 | c2<<1;
-
-				if (color == 0)
-				{
-					infopal = 0;
-				}
-
-				//BG Palette + Infopal*4
-				screen[y*8+b][x*8+a] = memory[0x3F00 + (infopal * 4) + color];
-			}
-		}
-		if (x++ == 31)
-		{
-			y++;
-			x = 0;
 		}
 	}
 }
