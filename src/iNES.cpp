@@ -10,8 +10,16 @@ iNES::iNES(void)
 
 iNES::~iNES(void)
 {
-	if (PRG_ROM != NULL) delete PRG_ROM;
-	if (CHR_ROM != NULL) delete CHR_ROM;
+	if (PRG_ROM != NULL) 
+	{
+		delete PRG_ROM;
+		PRG_ROM = NULL;
+	}
+	if (CHR_ROM != NULL)
+	{
+		delete CHR_ROM;
+		CHR_ROM = NULL;
+	}
 	Log->Debug("iNES destroyed");
 }
 int iNES::Load( const char* name )
@@ -68,6 +76,16 @@ int iNES::Load( const char* name )
 
 	  Source: http://wiki.nesdev.com/w/index.php/INES
 	*/
+	if (flags9 & 0x01)
+	{
+		Pal = true;
+		Log->Info("iNes.cpp: PAL");
+	}
+	else
+	{
+		Pal = false;
+		Log->Info("iNes.cpp: NTSC");
+	}
 
 	if (flags6&0x01) 
 	{

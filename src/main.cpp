@@ -361,9 +361,10 @@ int main()
 	
 	EmulatorState = EmuState::Idle;
 
-
+	Uint32 oldticks = 0, ticks = 0;
+	Uint32 prevtimestamp = 0;
 	bool mouseUp = true;
-	int64_t cycles = 0;
+	int cycles = 0;
 	while( EmulatorState != EmuState::Quited )
 	{
 		bool PendingEvents = false;
@@ -373,6 +374,48 @@ int main()
 		{
 			EmulatorState = EmuState::Quited;
 			break;
+		}
+		if (event.type == SDL_DROPFILE && event.drop.timestamp != prevtimestamp)
+		{
+			Log->Info("File dropped on window.");
+			prevtimestamp = event.drop.timestamp;
+			
+			char FileName[2048];
+			strcpy(FileName, event.drop.file);
+			SDL_free(event.drop.file);
+
+			if (memcmp(FileName + strlen((const char*)FileName) - 3, "nsf", 3) == 0) // NSF
+			{
+				if (LoadNSF((const char*)FileName))
+				{
+					Log->Error("File %s opening problem.", FileName);
+					break;
+				}
+			}
+			else
+			{
+				if (EmulatorState != EmuState::Idle)
+				{
+					CloseGame();
+				}
+				if (LoadGame((const char*)FileName))
+				{
+					Log->Error("File %s opening problem.", FileName);
+				}
+				else
+				{
+					EnableMenuItem(Menu, FILE_CLOSE, MF_BYCOMMAND | MF_ENABLED);
+
+					CheckMenuItem(Menu, EMULATION_PAUSE, MF_BYCOMMAND | MF_UNCHECKED);
+					EnableMenuItem(Menu, EMULATION_PAUSE, MF_BYCOMMAND | MF_ENABLED);
+
+					EnableMenuItem(Menu, EMULATION_RESET_SOFT, MF_BYCOMMAND | MF_ENABLED);
+					EnableMenuItem(Menu, EMULATION_RESET_HARD, MF_BYCOMMAND | MF_ENABLED);
+
+					ClearMainWindow();
+					EmulatorState = EmuState::Running;
+				}
+			}
 		}
 		if (event.type == SDL_WINDOWEVENT)
 		{
@@ -649,6 +692,8 @@ int main()
 			}
 		}
 		if (PendingEvents) { PendingEvents = false; continue; }
+
+		ticks = SDL_GetTicks();
 		if ( EmulatorState == EmuState::Running )
 		{
 
@@ -725,12 +770,16 @@ int main()
 				//cpu->apu.Step();
 				++tick;
 			}
-			// Bad idea
-			// Compute how many msec we need to wait
-			// and just don't run the emulation then
 
 			if (ToolboxRAM) ToolboxRAM->Update();
-			Sleep(10); // 1/60
+
+			ticks = SDL_GetTicks();
+			if (rom->Pal) // Pal, 1/50 == 20ms
+				SDL_Delay(((ticks - oldticks) >= 20) ? 0 : (20 - (ticks - oldticks)));
+			else // NTSC, 1/60 == 16.6666ms
+				SDL_Delay(((ticks - oldticks) >= 16) ? 0 : (16 - (ticks - oldticks)));
+
+			oldticks = ticks;
 		}
 	}
 

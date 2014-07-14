@@ -14,6 +14,8 @@ public:
 	uint8_t Mirroring;
 	uint8_t Mapper;
 
+	bool Pal; // false - ntsc, true - pal
+
 
 	iNES(void);
 	~iNES(void);

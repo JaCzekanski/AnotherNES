@@ -182,7 +182,7 @@ public:
 		}
 		if (prg_pages == 1)
 		{
-			return prg_rom[ (n-0x4000)-0x8000 ]; // Return PRG-ROM
+			return prg_rom[(n - 0x8000) % 0x4000]; // Return PRG-ROM
 		}
 
 		if (mapper == 2 || mapper == 71 || mapper == 104)

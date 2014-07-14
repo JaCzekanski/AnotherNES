@@ -162,7 +162,8 @@ if (debug)
 	uint16_t oldPC = this->PC;
 	PCchanged = false;
 
-	if (memcmp(op.mnemnic, "KIL", 3) == 0)	return -1; // CPU JAM
+	if (memcmp(op.mnemnic, "KIL", 3) == 0 ||
+		memcmp(op.mnemnic, "UNK", 3) == 0)	return -1; // CPU JAM
 	if (op.number == 0x00) //BRK
 	{
 		if (cpuJam)
@@ -795,8 +796,8 @@ void CPU_interpreter::KIL(CPU_interpreter* c)
 void CPU_interpreter::UNK(CPU_interpreter* c)
 {
 	Log->Debug("0x%x: Unknown instruction (0x%x), halting!", c->PC, c->memory[c->PC]);
-	for(;;)
-	{
-		Sleep(1);
-	}
+	//for(;;)
+	//{
+	//	Sleep(1);
+	//}
 }
