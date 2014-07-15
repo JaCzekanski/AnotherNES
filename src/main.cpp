@@ -263,7 +263,7 @@ void audiocallback(void *userdata, Uint8 *stream, int len)
 	}
 }
 int64_t tick = 0;
-int main()
+int main( int argc, char *argv[] )
 {
 	HINSTANCE hInstance = GetModuleHandle(NULL);
 	Log = new Logger("log.txt");
@@ -278,7 +278,7 @@ int main()
 
 	MainWindow = SDL_CreateWindow( "AnotherNES", 
 		542, 20,
-		256*2, 240*2+20, SDL_WINDOW_SHOWN );
+		256 * 2, 240 * 2 + 20, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
 
 	if ( MainWindow == NULL )
 	{
@@ -345,7 +345,6 @@ int main()
 	SDL_PauseAudio(0);
 
 	Log->Success("Audio initialized.");
-	//SDL_WM_IconifyWindow();
 
 	XINPUT_STATE xstate;
 	bool XboxPresent = false;
@@ -361,13 +360,14 @@ int main()
 	
 	EmulatorState = EmuState::Idle;
 
+	bool FrameLimit = true;
 	Uint32 oldticks = 0, ticks = 0;
 	Uint32 prevtimestamp = 0;
 	bool mouseUp = true;
 	int cycles = 0;
 	while( EmulatorState != EmuState::Quited )
 	{
-		bool PendingEvents = false;
+		int PendingEvents = false;
 		if ( EmulatorState != EmuState::Running ) SDL_WaitEvent(&event);
 		else PendingEvents = SDL_PollEvent(&event);
 		if (event.type == SDL_QUIT) 
@@ -504,7 +504,7 @@ int main()
 						ofn.hInstance = hInstance;
 						memset(FileName, 0, sizeof(FileName) );
 						ofn.lpstrFile = (char*)FileName;
-						ofn.nMaxFile = sizeof(FileName);
+						ofn.nMaxFile = sizeof(FileName)-1;
 						ofn.lpstrFilter = "NES\0*.nes\0"
 										  "NSF\0*.nsf\0";
 						ofn.nFilterIndex = 0;
@@ -725,7 +725,9 @@ int main()
 			if ( keys[SDL_SCANCODE_UP] ) buttonState |= 1<<3;
 			if ( keys[SDL_SCANCODE_DOWN] ) buttonState |= 1<<2;
 			if ( keys[SDL_SCANCODE_LEFT] ) buttonState |= 1<<1;
-			if ( keys[SDL_SCANCODE_RIGHT] ) buttonState |= 1<<0;
+			if (keys[SDL_SCANCODE_RIGHT]) buttonState |= 1 << 0;
+			if (keys[SDL_SCANCODE_SPACE]) FrameLimit = false;
+			else FrameLimit = true;
 
 			bool framerefresh = false;
 			while ( !framerefresh )
@@ -775,10 +777,13 @@ int main()
 			if (ToolboxRAM) ToolboxRAM->Update();
 
 			ticks = SDL_GetTicks();
-			if (rom->Pal) // Pal, 1/50 == 20ms
-				SDL_Delay(((ticks - oldticks) >= 20) ? 0 : (20 - (ticks - oldticks)));
-			else // NTSC, 1/60 == 16.6666ms
-				SDL_Delay(((ticks - oldticks) >= 16) ? 0 : (16 - (ticks - oldticks)));
+			if (FrameLimit)
+			{
+				if (rom->Pal) // Pal, 1/50 == 20ms
+					SDL_Delay(((ticks - oldticks) >= 20) ? 0 : (20 - (ticks - oldticks)));
+				else // NTSC, 1/60 == 16.6666ms
+					SDL_Delay(((ticks - oldticks) >= 16) ? 0 : (16 - (ticks - oldticks)));
+			}
 
 			oldticks = ticks;
 		}

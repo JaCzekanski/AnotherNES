@@ -32,7 +32,7 @@ void CPU_ram::Load( uint16_t dst, const void* source, size_t num )
 		Log->Fatal("CPU_ram: dst+num>0xffff!");
 		return;
 	}
-	for (int i = dst; i<dst+num; i++)
+	for (uint16_t i = dst; i<dst+num; i++)
 	{
 		memory[i] = *_source++;
 	}

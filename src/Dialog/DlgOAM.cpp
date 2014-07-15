@@ -96,8 +96,8 @@ void DlgOAM::__DrawOAM(SDL_Surface* s, int i)
 					int sprite_x = x;
 					if ( spr.attr&0x40 ) sprite_x = 7 - sprite_x; //Horizontal flip
 
-					bool c1 = ( spritedata  &(1<<(7-sprite_x)) )? true: false;
-					bool c2 = ( spritedata2 &(1<<(7-sprite_x)) )? true: false;
+					uint8_t c1 = ( spritedata  &(1<<(7-sprite_x)) )? 1: 0;
+					uint8_t c2 = (spritedata2 &(1 << (7 - sprite_x))) ? 1 : 0;
 					
 					color = c1 | c2<<1;
 
@@ -143,8 +143,8 @@ void DlgOAM::__DrawOAM(SDL_Surface* s, int i)
 					int sprite_x = x;
 					if ( spr.attr&0x40 ) sprite_x = 7 - sprite_x; //Ver flip
 
-					bool c1 = ( spritedata  &(1<<(7-sprite_x)) )? true: false;
-					bool c2 = ( spritedata2 &(1<<(7-sprite_x)) )? true: false;
+					uint8_t c1 = (spritedata  &(1 << (7 - sprite_x))) ? 1 : 0;
+					uint8_t c2 = (spritedata2 &(1 << (7 - sprite_x))) ? 1 : 0;
 					
 					color = c1 | c2<<1;
 

@@ -4,7 +4,7 @@
 
 #define RES_MENU                                101
 #define DIALOG_ABOUT                            109
-#define RES_ICON                                116
+#define RES_ICON_SMALL                          116
 #define RES_ICON_BIG                            120
 #define ABOUT_IMAGE                             1003
 #define ABOUT_VERSION                           1004

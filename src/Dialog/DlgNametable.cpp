@@ -77,8 +77,8 @@ void DlgNametable::__DrawNametable(SDL_Surface* s, uint8_t nametable)
 			uint8_t tiledata2 = cpu->ppu.memory[ cpu->ppu.BackgroundPattenTable + tile*16 + b +8];
 			for (uint8_t a = 0; a<8; a++) //X
 			{
-				bool c1 = ( tiledata&(1<<(7-a)) )? true: false;
-				bool c2 = ( tiledata2&(1<<(7-a)) )? true: false;
+				uint8_t c1 = ( tiledata&(1 << (7 - a)) )? 1: 0;
+				uint8_t c2 = (tiledata2&(1 << (7 - a))) ? 1 : 0;
 
 				uint8_t InfoByte = cpu->ppu.memory[ Attribute + ((y/4)*8)+(x/4) ];
 				uint8_t infopal = 0;
