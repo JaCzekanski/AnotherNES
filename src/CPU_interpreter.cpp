@@ -26,7 +26,7 @@ CPU_interpreter::CPU_interpreter()
 
 extern bool debug;
 #ifdef _DEBUG
-#define DISASM(x,y) (sprintf(buffer,x,y))
+#define DISASM(x,y) //(sprintf(buffer,x,y))
 #endif
 #ifndef _DEBUG
 #define DISASM(x,y) 
@@ -37,8 +37,6 @@ int CPU_interpreter::Step()
 {
 	char buffer[512] = {0};
 	int opsize = 0;
-	static int cpuJamCount = 0;
-	static bool cpuJam = false;
 
 	OPCODE op = OpcodeTableOptimized[ this->memory[this->PC] ];
 
@@ -137,65 +135,36 @@ int CPU_interpreter::Step()
 	}
 	// Page crossed + 1 to cycles
 	cycles+= op.cycles;
-if (debug)
-{
-
-	char hexvals[32];
-	for (int i = 0; i<opsize; i++)
-	{
-		sprintf(hexvals+(i*3), "%.2X ", this->memory[this->PC+i] );
-	}
-	for (int i = 0; i<(3-opsize); i++)
-	{
-		sprintf(hexvals+((i+opsize)*3), "   "  );
-	}
-	int i;
-	int len = strlen(buffer);
-	for ( i = len; i< 10; i++)
-	{
-		buffer[i] = ' ';
-	}
-	buffer[++i] = 0;
-	Log->Debug("0x%x: %s\t%s %s", this->PC, hexvals, op.mnemnic, buffer );
-	//Log->Debug("$%.4X %X %s", this->PC, this->memory[this->PC], op.mnemnic);
-}
+//if (debug)
+//{
+//
+//	char hexvals[32];
+//	for (int i = 0; i<opsize; i++)
+//	{
+//		sprintf(hexvals+(i*3), "%.2X ", this->memory[this->PC+i] );
+//	}
+//	for (int i = 0; i<(3-opsize); i++)
+//	{
+//		sprintf(hexvals+((i+opsize)*3), "   "  );
+//	}
+//	int i;
+//	int len = strlen(buffer);
+//	for ( i = len; i< 10; i++)
+//	{
+//		buffer[i] = ' ';
+//	}
+//	buffer[++i] = 0;
+//	Log->Debug("0x%x: %s\t%s %s", this->PC, hexvals, op.mnemnic, buffer );
+//	//Log->Debug("$%.4X %X %s", this->PC, this->memory[this->PC], op.mnemnic);
+//}
 	uint16_t oldPC = this->PC;
 	PCchanged = false;
 
-	if (memcmp(op.mnemnic, "KIL", 3) == 0 ||
-		memcmp(op.mnemnic, "UNK", 3) == 0)	return -1; // CPU JAM
-	if (op.number == 0x00) //BRK
-	{
-		if (cpuJam)
-		{
-			if (cpuJamCount++ == 3) return -1;
-		}
-		else
-		{
-			cpuJam = true;
-			cpuJamCount = 0;
-		}
-	}
-	else
-	{
-		if (cpuJam) 
-		{
-			cpuJam = false;
-			cpuJamCount = 0;
-		}
-	}
+	if (memcmp(op.mnemnic, "KIL", 3) == 0 || memcmp(op.mnemnic, "UNK", 3) == 0) return -1; // CPU JAM
 
 	op.inst(this);
 
-	if (PCchanged || oldPC != this->PC) 
-	{
-		int jebut = 0;
-		jebut+=1;
-	}
-	else
-	{
-		this->PC += opsize;
-	}
+	if ( !(PCchanged || oldPC != this->PC) ) this->PC += opsize;
 	return CYCLE;
  }
 
@@ -333,7 +302,6 @@ void CPU_interpreter::BIT( CPU_interpreter* c ) // Bit Test
 }
 
 // Arithmetic
-// TODO: NOT SURE IF WORKING
 void CPU_interpreter::ADC( CPU_interpreter* c ) // Add with Carry
 {
 	uint16_t ret =  (uint16_t)c->Readv() + c->A + (c->P&CARRY_FLAG);
@@ -564,14 +532,11 @@ void CPU_interpreter::SEI( CPU_interpreter* c ) // Set interrupt disable flag
 // System Function
 void CPU_interpreter::BRK( CPU_interpreter* c ) // Force an interrupt
 {
-	//Log->Debug("0x%x: Break, suspicious... ", c->PC);
-	//c->IRQ();
 	c->Push16( c->PC+2 );
 	c->Push( c->P | 0x30 );
 	c->INTERRUPT(1);
 
 	c->PC = c->memory[0xFFFF]<<8 | c->memory[0xFFFE];
-	//c->BREAK(1);
 }
 void CPU_interpreter::NOP( CPU_interpreter* c ) // No Operation
 {
@@ -607,7 +572,7 @@ void CPU_interpreter::DCP( CPU_interpreter* c ) // Substract 1 from memory and C
 	c->CARRY( ret < 0x100 );
 	c->ZERO( (ret & 0xff)? 0 : 1 );
 	
-	c->Writev( ret );
+	c->Writev( (uint8_t)ret );
 
 	ret = c->A - c->Readv();
 
@@ -621,7 +586,7 @@ void CPU_interpreter::ISB( CPU_interpreter* c ) // Increase memory by one, then 
 	// INC
 	uint16_t ret = (uint8_t) (c->Readv()+1);
 	
-	c->Writev( ret );
+	c->Writev( (uint8_t)ret );
 
 	// SBC
 	ret = (uint16_t)c->A - c->Readv() - ((c->P&CARRY_FLAG) ? 0 : 1);
@@ -633,7 +598,7 @@ void CPU_interpreter::ISB( CPU_interpreter* c ) // Increase memory by one, then 
 	c->OVERFLOW_(  ( ( c->A ^ c->Readv() ) & 0x80 )
 		      &&  ( ( c->A ^ ret ) & 0x80)  );
 	
-	c->A = ret;
+	c->A = (uint8_t)ret;
 }
 
 void CPU_interpreter::SLO( CPU_interpreter* c ) // Shift left one bit in memory, then OR accumulator with memory
@@ -684,7 +649,7 @@ void CPU_interpreter::RRA( CPU_interpreter* c ) // Rotate one bit right in memor
 	uint16_t ret = (uint8_t)( c->Readv()>>1 | ((c->P&CARRY_FLAG)<<7));
 
 	c->CARRY( c->Readv()&0x1 );
-	c->Writev( ret );
+	c->Writev( (uint8_t)ret );
 
 
 	// ADC
@@ -698,7 +663,7 @@ void CPU_interpreter::RRA( CPU_interpreter* c ) // Rotate one bit right in memor
 		      &&  ( ( c->A ^ ret ) & 0x80) );
 
 	
-	c->A = ret;
+	c->A = (uint8_t)ret;
 }
 
 // UNTESTED
@@ -775,7 +740,7 @@ void CPU_interpreter::AXS( CPU_interpreter* c ) // AND X register with accumulat
 	c->CARRY( ret < 0x100 );
 	c->NEGATIVE( ret&0x80 );
 
-	c->X = ret;
+	c->X = (uint8_t)ret;
 }
 
 void CPU_interpreter::SYA( CPU_interpreter* c ) // AND Y register with the high byte of the target address of the argument + 1. Store the result in memory.
@@ -796,8 +761,4 @@ void CPU_interpreter::KIL(CPU_interpreter* c)
 void CPU_interpreter::UNK(CPU_interpreter* c)
 {
 	Log->Debug("0x%x: Unknown instruction (0x%x), halting!", c->PC, c->memory[c->PC]);
-	//for(;;)
-	//{
-	//	Sleep(1);
-	//}
 }

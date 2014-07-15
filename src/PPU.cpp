@@ -234,7 +234,7 @@ uint8_t PPU::Step( )
 {
 	// 1 CPU cycles - 3 PPU cycles
 	// 1 scanline - 341 PPU cycles
-	uint8_t prevscanline = scanline;
+	uint16_t prevscanline = scanline;
 	cycles++;
 	if (cycles%341 == 0) 
 	{
@@ -357,8 +357,8 @@ void PPU::RenderSprite(SDL_Surface* s)
 					int sprite_x = x;
 					if ( spr.attr&0x40 ) sprite_x = 7 - sprite_x; //Horizontal flip
 
-					bool c1 = ( spritedata  &(1<<(7-sprite_x)) )? true: false;
-					bool c2 = ( spritedata2 &(1<<(7-sprite_x)) )? true: false;
+					uint8_t c1 = ( spritedata  &(1 << (7 - sprite_x)) )? 1 : 0;
+					uint8_t c2 =  (spritedata2 &(1 << (7 - sprite_x))) ? 1 : 0;
 					
 					color = c1 | c2<<1;
 
@@ -409,8 +409,8 @@ void PPU::RenderSprite(SDL_Surface* s)
 					int sprite_x = x;
 					if ( spr.attr&0x40 ) sprite_x = 7 - sprite_x; //Ver flip
 
-					bool c1 = ( spritedata  &(1<<(7-sprite_x)) )? true: false;
-					bool c2 = ( spritedata2 &(1<<(7-sprite_x)) )? true: false;
+					uint8_t c1 = (spritedata  &(1 << (7 - sprite_x))) ? 1 : 0;
+					uint8_t c2 = (spritedata2 &(1 << (7 - sprite_x))) ? 1 : 0;
 					
 					color = c1 | c2<<1;
 
@@ -459,8 +459,8 @@ void PPU::RenderBackground(SDL_Surface* s, uint8_t nametable)
 			uint8_t tiledata2 = memory[ BackgroundPattenTable + tile*16 + b +8];
 			for (uint8_t a = 0; a<8; a++) //X
 			{
-				bool c1 = ( tiledata&(1<<(7-a)) )? true: false;
-				bool c2 = ( tiledata2&(1<<(7-a)) )? true: false;
+				uint8_t c1 = (tiledata &(1 << (7 - a))) ? 1 : 0;
+				uint8_t c2 = (tiledata2&(1 << (7 - a))) ? 1 : 0;
 
 				uint8_t InfoByte = memory[ Attribute + ((y/4)*8)+(x/4) ];
 				uint8_t infopal = 0;

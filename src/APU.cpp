@@ -37,7 +37,7 @@ void APU::audiocallback(void *userdata, Uint8 *stream, int len)
 	{
 		// SQ1_ENV ($4000);
 		uint8_t volume = AUDIO[0] & 0xf;
-		bool LengthCounterDisable = (AUDIO[0]&0x20)>>5;
+		uint8_t LengthCounterDisable = (AUDIO[0] & 0x20) >> 5;
 		uint8_t dutycycle = (AUDIO[0] & 0xC0) >> 6;
 
 		if (AUDIO[0]&0x10) // if 1 - Envelope
@@ -64,7 +64,7 @@ void APU::audiocallback(void *userdata, Uint8 *stream, int len)
 				uint16_t period = (AUDIO[3]&0x7)<<8 | AUDIO[2];
 				uint8_t length = (AUDIO[3]&0xf8)>>3;
 
-				int freq = 1789772.67f / (float)(16*(period+1));
+				int freq = (int)(1789772.67f / (float)(16*(period+1)));
 
 				for (int i = 0; i<len; i++)
 				{
@@ -94,7 +94,7 @@ void APU::audiocallback(void *userdata, Uint8 *stream, int len)
 	{
 		// SQ1_ENV ($4000);
 		uint8_t volume = AUDIO[0+4] & 0xf;
-		bool LengthCounterDisable = (AUDIO[0+4]&0x20)>>5;
+		uint8_t LengthCounterDisable = (AUDIO[0 + 4] & 0x20) >> 5;
 		uint8_t dutycycle = (AUDIO[0+4] & 0xC0) >> 6;
 
 		if (AUDIO[0+4]&0x10) // if 1 - Envelope
@@ -121,7 +121,7 @@ void APU::audiocallback(void *userdata, Uint8 *stream, int len)
 				uint16_t period = (AUDIO[3+4]&0x7)<<8 | AUDIO[2+4];
 				uint8_t length = (AUDIO[3+4]&0xf8)>>3;
 
-				int freq = 1789772.67f / (float)(16*(period+1));
+				int freq = (int)(1789772.67f / (float)(16*(period+1)));
 
 				for (int i = 0; i<len; i++)
 				{

@@ -263,7 +263,7 @@ void audiocallback(void *userdata, Uint8 *stream, int len)
 	}
 }
 int64_t tick = 0;
-int main()
+int main( int argc, char *argv[] )
 {
 	HINSTANCE hInstance = GetModuleHandle(NULL);
 	Log = new Logger("log.txt");
@@ -367,7 +367,7 @@ int main()
 	int cycles = 0;
 	while( EmulatorState != EmuState::Quited )
 	{
-		bool PendingEvents = false;
+		int PendingEvents = false;
 		if ( EmulatorState != EmuState::Running ) SDL_WaitEvent(&event);
 		else PendingEvents = SDL_PollEvent(&event);
 		if (event.type == SDL_QUIT) 
@@ -504,7 +504,7 @@ int main()
 						ofn.hInstance = hInstance;
 						memset(FileName, 0, sizeof(FileName) );
 						ofn.lpstrFile = (char*)FileName;
-						ofn.nMaxFile = sizeof(FileName);
+						ofn.nMaxFile = sizeof(FileName)-1;
 						ofn.lpstrFilter = "NES\0*.nes\0"
 										  "NSF\0*.nsf\0";
 						ofn.nFilterIndex = 0;
