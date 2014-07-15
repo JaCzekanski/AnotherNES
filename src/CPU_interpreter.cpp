@@ -35,7 +35,7 @@ extern bool debug;
 #undef _DEBUG
 int CPU_interpreter::Step()
 {
-	char buffer[512] = {0};
+	char buffer[512];
 	int opsize = 0;
 
 	OPCODE op = OpcodeTableOptimized[ this->memory[this->PC] ];
