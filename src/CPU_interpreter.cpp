@@ -769,7 +769,7 @@ void CPU_interpreter::AXS( CPU_interpreter* c ) // AND X register with accumulat
 {
 	c->X = c->X & c->A;
 
-	uint16_t ret = (uint16_t)c->X - c->Readv() - 1;
+	uint16_t ret = (uint16_t)c->X - c->Readv();
 
 	c->ZERO( (ret & 0xff)? 0 : 1 );
 	c->CARRY( ret < 0x100 );
