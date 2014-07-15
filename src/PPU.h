@@ -44,25 +44,21 @@ class PPU
 {
 private:
 	uint32_t cycles;
-	uint16_t scanline;
+	int16_t scanline;
 	bool VBLANK;
 	bool NMI_enabled;
 	uint8_t VRAMaddressIncrement;
-
 
 	bool ShowBackground;
 	bool ShowSprites;
 	bool Sprite0Hit;
 
-	bool PPUADDRhalf;
-	uint8_t PPUADDRhi;
-	uint8_t PPUADDRlo;
+	uint16_t loopy_v; // 15bits, current VRAM address
+	uint16_t loopy_t; // 15bits, temporary VRAM address
+	uint8_t  loopy_x; // 3bits, fine X scroll
+	bool     loopy_w; // First or second write toggle (PPUADDRhalf)
+
 	uint8_t PPUDATAbuffer;
-
-
-	// Scrolling
-	uint8_t ScrollX, _ScrollX;
-	uint8_t ScrollY, _ScrollY;
 
 	uint8_t screen[256][256]; // raw screen data, no palette lookup, [y][x]
 	void PaletteLookup(SDL_Surface *s);

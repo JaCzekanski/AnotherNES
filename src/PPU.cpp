@@ -11,17 +11,14 @@ PPU::PPU(void)
     memcpy( this->memory+0x3f00, "\x09,\x01,\x00,\x01,\x00,\x02,\x02,\x0D,\x08,\x10,\x08,\x24,\x00,\x00,\x04,\x2C,\x09,\x01,\x34,\x03,\x00,\x04,\x00,\x14,\x08,\x3A,\x00,\x02,\x00,\x20,\x2C,\x08", 32 );
 
 	cycles = 0;
-	scanline = 261;
+	scanline = -1;
 	NMI_enabled = false;
 	VBLANK = true;
 	SpriteSize = false;
-	PPUADDRhalf = true; // True - hi, false - lo
 	
 	ShowBackground = false;
 	ShowSprites = false;
 
-	PPUADDRhi = 0;
-	PPUADDRlo = 0;
 	PPUDATAbuffer = 0;
 	BackgroundPattenTable = 0;
 	SpritePattenTable = 0;
@@ -29,8 +26,10 @@ PPU::PPU(void)
 	VRAMaddressIncrement = 1;
 	OAMADDR = 0;
 
-	ScrollX = 0;
-	ScrollY = 0;
+	loopy_v = 0;
+	loopy_t = 0;
+	loopy_x = 0;
+	loopy_w = 0;
 	Log->Debug("PPU: created");
 }
 
@@ -73,6 +72,7 @@ void PPU::Write( uint8_t reg, uint8_t data )
 			//     (0 = $2000; 1 = $2400; 2 = $2800; 3 = $2C00)
 			BaseNametable = 0x2000 + 0x400*(data&0x03);
 
+			loopy_t = (loopy_t & ~0xc00) | ((data & 0x03) << 10); // t: ...BA.. ........ = d: ......BA
 			break;
 			
 		case 0x2001: //PPUMASK
@@ -107,30 +107,39 @@ void PPU::Write( uint8_t reg, uint8_t data )
 			break;
 			
 		case 0x2005: //PPUSCROLL
-			if (PPUADDRhalf) 
+			if (loopy_w == 0) // PPUADDRhalf == 1
 			{
-				_ScrollX = ScrollX;
-				ScrollX = data;
+				loopy_t = (loopy_t & ~0x1f) | ((data & 0xf8)>>3); // t: ....... ...HGFED = d: HGFED...
+				loopy_x = data & 0x7; // x:              CBA = d: .....CBA
+				loopy_w = 1;
 			}
-			else 
+			else // PPUADDRhalf == 0
 			{
-				_ScrollY = ScrollY;
-				ScrollY = data;
+				loopy_t = (loopy_t & ~0x73e0) | 
+					   ((data & 0x7) << 12) |
+					   ((data & 0xf8)<<  2); // t: CBA..HG FED..... = d: HGFEDCBA
+				loopy_w = 0;
 			}
-			PPUADDRhalf = !PPUADDRhalf;
-			
 			break;
 
 		case 0x2006: //PPUADDR
 			// Access to PPU memory from CPU, write x2
-			if (PPUADDRhalf) PPUADDRhi = data;
-			else PPUADDRlo = data;
-			PPUADDRhalf = !PPUADDRhalf;
+			if (loopy_w == 0) // PPUADDRhalf == 1
+			{
+				loopy_t = (loopy_t & ~0x7f00) | ((data & 0x3f) << 8); // t: .FEDCBA ........ = d: ..FEDCBA
+				loopy_w = 1;
+			}
+			else
+			{
+				loopy_t = (loopy_t & ~0xff) | data;
+				loopy_v = loopy_t;
+				loopy_w = 0;
+			}
 			break;
 			
 		case 0x2007: //PPUDATA
 			// Access to PPU memory from CPU
-			addr = (PPUADDRhi<<8) | PPUADDRlo;
+			addr = loopy_v;// (PPUADDRhi << 8) | PPUADDRlo;
 			addr = addr%0x4000;
 
 			if (addr >= 0x3000 && addr <= 0x3eff) addr -= 0x1000;
@@ -146,10 +155,8 @@ void PPU::Write( uint8_t reg, uint8_t data )
 			}
 			else memory[ addr ] = data;
 
-			addr+=VRAMaddressIncrement;
-
-			PPUADDRhi = (addr>>8)&0xff;
-			PPUADDRlo = addr&0xff;
+			if (scanline < 240 && (ShowBackground || ShowSprites)) Log->Info("Update of loopy_v during rendering");
+			loopy_v += VRAMaddressIncrement;
 			break;
 	}
 }
@@ -178,7 +185,7 @@ uint8_t PPU::Read( uint8_t reg)
 
 			// Reset PPUADDR latch to high
 			VBLANK = false;
-			PPUADDRhalf  = true;
+			loopy_w = 0;
 			break;
 						
 		case 0x2004: //OAMDATA
@@ -188,7 +195,7 @@ uint8_t PPU::Read( uint8_t reg)
 			
 		case 0x2007: //PPUDATA
 			// Access to PPU memory from CPU,
-			addr = (PPUADDRhi<<8) | PPUADDRlo;
+			addr = loopy_v;// (PPUADDRhi << 8) | PPUADDRlo;
 			addr = addr%0x4000;
 
 			/* Note 
@@ -213,10 +220,8 @@ uint8_t PPU::Read( uint8_t reg)
 				else ret = memory[0x3f00 + tmpaddr];
 			}
 
-			addr+=VRAMaddressIncrement;
-
-			PPUADDRhi = (addr>>8)&0xff;
-			PPUADDRlo = addr&0xff;
+			if (scanline < 240 && (ShowBackground || ShowSprites)) Log->Info("Update of loopy_v during rendering");
+			loopy_v += VRAMaddressIncrement;
 			break;
 
 		default:
@@ -229,68 +234,74 @@ uint8_t PPU::Read( uint8_t reg)
 
 uint8_t PPU::Step( )
 {
-	// 1 CPU cycles - 3 PPU cycles
-	// 1 scanline - 341 PPU cycles
-	if (cycles++ == 341) 
+	uint8_t ret = 0;
+	if (scanline == -1) // Pre-render scanline (or 261)
 	{
-		cycles = 0;
-		if (scanline++>261)
-			scanline = 0;
-	}
-
-	if (scanline >= 0 && scanline <= 239) // Visible scanlines
-	{
-		if (cycles == 0) // Prepare OAM
+		if (cycles == 1)
 		{
-
+			VBLANK = false;
+			Sprite0Hit = false;
 		}
-		else if (cycles >= 1 && cycles <= 256)
+		else if (cycles >= 280 && cycles <= 304 && (ShowBackground || ShowSprites))
 		{
-			uint8_t renderX = cycles - 1;
+			loopy_v = (loopy_v & ~0x7be0) | (loopy_t & 0x7BE0);
+		}
+	}
+	else if (scanline >= 0 && scanline <= 239) // Visible scanlines
+	{
+		static uint8_t xpos = 0;
+		if (cycles == 0)
+		{
+			xpos = 0;
+		}
+		if (cycles >= 1 && cycles <= 256)
+		{
+			uint8_t renderX = cycles - 1 - loopy_x;
 			uint8_t renderY = scanline;
 
 			uint8_t BackgroundByte = 0;
 			if (ShowBackground)
 			{
-				uint8_t currentNametable = (BaseNametable - 0x2000) / 0x400;
-				uint16_t x = renderX + ScrollX;
-				uint16_t y = renderY + ScrollY;
-
-				if (x >= 256)
-				{
-					x -= 256;
-					currentNametable ^= 0x01; // Toggle first bit (x)
-				}
-
-				if (y >= 240)
-				{
-					y -= 240;
-					currentNametable ^= 0x02; // Toggle second bit (y)
-				}
+				//uint16_t _loopy_v = loopy_v;
+				//for (int i = 0; i < 2; i++) // Temporary fix, some kind of off by one/two ( ;) ) error.
+				//{
+				//	if ((_loopy_v & 0x001f) == 0x00)
+				//	{
+				//		_loopy_v |= 0x1f;
+				//		_loopy_v ^= 0x0400; // Flip page bit
+				//	}
+				//	else
+				//	{
+				//		_loopy_v--;
+				//	}
+				//}
+				uint16_t tileaddr = (loopy_v & 0x03ff);
+				uint8_t currentNametable = (loopy_v & 0xc00) >> 10;
 
 				if (Mirroring == VERTICAL) currentNametable &= 0x01; // Clear second bit (y)
 				else currentNametable &= 0x02; //  Clear first bit (x), Horizontal
 
-				uint8_t b = y & 7; // y in tile == y % 8
-				uint8_t a = x & 7; // x in tile
+				uint8_t x = (loopy_v & 0x1f);
+				uint8_t y = (loopy_v >> 5) & 0x1f;
 
-				y >>= 3;  // /= 8
-				x >>= 3;
-
-				uint16_t NametableAddress = (0x2000 + 0x400 * currentNametable);
-				uint16_t Attribute = NametableAddress + 0x3c0;
-				uint16_t tile = this->memory[NametableAddress + (y * 32) + x];
-
+				uint8_t a = xpos;//+(renderX & 0x07)) & 0x07; // x in tile
+				xpos = (xpos + 1) & 0x7;
+				uint8_t b = ((loopy_v & 0x7000) >> 12); // y in tile == y % 8
+				
+				uint16_t NametableAddress = 0x2000 + 0x400 * currentNametable;
+				uint16_t tile = this->memory[NametableAddress + tileaddr];
+				
 				uint8_t tiledata = memory[BackgroundPattenTable + tile * 16 + b];
 				uint8_t tiledata2 = memory[BackgroundPattenTable + tile * 16 + b + 8];
 
 				uint8_t color = (tiledata &(0x80 >> a)) >> (7 - a) |
-					(((tiledata2&(0x80 >> a)) >> (7 - a)) << 1);
+					          (((tiledata2&(0x80 >> a)) >> (7 - a)) << 1);
 
-				uint8_t InfoByte = memory[Attribute + ((y / 4) * 8) + (x / 4)];
+				uint8_t InfoByte = memory[NametableAddress + 0x3c0 + ((y<<1)&0xf8) + (x / 4)];//memory[0x23C0 | (loopy_v & 0x0C00) | ((loopy_v >> 4) & 0x38) | ((loopy_v >> 2) & 0x07)];
 				uint8_t infopal = 0;
 				if (color != 0)
 				{
+					infopal = InfoByte;
 					if ((y & 0x3) <= 1) // up
 					{
 						if ((x & 0x3) <= 1) infopal = InfoByte; // up-left
@@ -320,7 +331,7 @@ uint8_t PPU::Step( )
 
 					uint16_t spriteaddr = (SpriteSize ? 0 : SpritePattenTable) + spr.index * 16;
 
-					uint8_t sprite_x = renderX - spr.x; // x inside sprite
+					uint8_t sprite_x = renderX - (spr.x); // x inside sprite
 					uint8_t sprite_y = renderY - (spr.y + 1); // y inside sprite
 
 					if (spr.attr & 0x80) sprite_y = (SpriteSize ? 15 : 7) - sprite_y; //Vertical flip
@@ -331,8 +342,8 @@ uint8_t PPU::Step( )
 
 					if (spr.attr & 0x40) sprite_x = 7 - sprite_x; //Horizontal flip
 
-					bool c1 = (spritedata  &(1 << (7 - sprite_x))) ? true : false;
-					bool c2 = (spritedata2 &(1 << (7 - sprite_x))) ? true : false;
+					uint8_t c1 = (spritedata  &(1 << (7 - sprite_x))) ? 1 : 0;
+					uint8_t c2 = (spritedata2 &(1 << (7 - sprite_x))) ? 1 : 0;
 
 					uint8_t color = c1 | c2 << 1;
 					if (color == 0) continue;
@@ -341,7 +352,7 @@ uint8_t PPU::Step( )
 					SpriteRendered = true;
 
 					if (i == 0 &&
-						renderX != 255 &&
+						//renderX != 255 &&
 						ShowBackground &&
 						color != 0 &&
 						BackgroundByte != memory[0x3f00])
@@ -352,65 +363,86 @@ uint8_t PPU::Step( )
 			}
 			if (SpriteRendered)
 			{
-				if (SpriteFront) screen[renderY][renderX] = SpriteByte;
+				if (SpriteFront || !ShowBackground) screen[renderY][renderX] = SpriteByte;
 				else
 				{
 					if (BackgroundByte == memory[0x3f00])
-					{
 						screen[renderY][renderX] = SpriteByte;
-					}
 					else
-					{
 						screen[renderY][renderX] = BackgroundByte;
-					}
 				}
 			}
 			else
-			{
 				screen[renderY][renderX] = BackgroundByte;
-			}
-		}
-		else
-		{
-			if (cycles == 0) // Idle cycle
-			{
-				return 0;
-			}
-			else if (cycles >= 257 && cycles <= 320)
-			{
-				return 0;
-			}
-			else if (cycles >= 321 && cycles <= 336)
-			{
-				return 0;
-			}
-			else if (cycles >= 337 && cycles <= 340)
-			{
-				return 0;
-			}
 		}
 	}
-	else if (scanline == 240) // Post-render scanline, no vblank yet
+	else if (scanline == 241)
 	{
-	}
-	else if (scanline >= 241 && scanline <= 260) // Vertical blanking lines (
-	{
-		if (scanline == 241 && cycles == 1) // Vblank
+		if (cycles == 1) // Vblank
 		{
 			VBLANK = true;
-			if (NMI_enabled) return 2;
-			else return 1;
+			if (NMI_enabled) ret = 2;
+			else ret = 1;
 		}
 	}
-	else if (scanline == 261) // Pre-render scanline
+
+	if (scanline < 240 && (ShowBackground || ShowSprites))
 	{
-		if (cycles == 1)
+		if ( (cycles >= 1 && cycles <= 256)/* || cycles >= 328*/) // Increment hor v
 		{
-			VBLANK = false;
-			Sprite0Hit = false;
+			if ((cycles % 8) == 0)
+			{
+				if ((loopy_v & 0x001f) == 0x1f)
+				{
+					loopy_v &= ~0x1f;
+					loopy_v ^= 0x0400; // Flip page bit
+				}
+				else
+				{
+					loopy_v++;
+				}
+			}
+		}
+		if (cycles == 256) // Increment vertical position in v
+		{
+			if ((loopy_v & 0x7000) == 0x7000) // Fine y bits overflow
+			{
+				loopy_v &= ~0x7000;
+				int y = (loopy_v & 0x3e0) >> 5;  // Coarse y bits
+				if (y == 29)
+				{
+					y = 0;
+					loopy_v ^= 0x800;
+				}
+				else if (y == 31)
+				{
+					y = 0;
+				}
+				else
+				{
+					y++;
+				}
+
+				loopy_v = (loopy_v & (~0x03e0)) | (y << 5);
+			}
+			else loopy_v += 0x1000; // Increment fine ybits
+		}
+		if (cycles == 257) // Copy horizonal pos from t to v
+		{
+			loopy_v = (loopy_v & ~0x41f) | (loopy_t & 0x41f);
 		}
 	}
-	return 0;
+
+
+	// 1 CPU cycles - 3 PPU cycles
+	// 1 scanline - 341 PPU cycles
+	if (++cycles > 340)
+	{
+		cycles = 0;
+		if (++scanline>260)
+			scanline = -1;
+	}
+	return ret;
 }
 
 void PPU::Render(SDL_Surface* s)
