@@ -1,3 +1,1 @@
-- Po wyjœciu z maina, program siê nie zamyka (problem spowodowany GetOpenFileName, nie znalaz³em sposobu na to).
-- Toolboxy nie zmieniaj¹ wskaŸnika na CPU po zmianie gry.
 - Po klikniêciu na menu program nie zawsze reaguje (wina SDLa?)

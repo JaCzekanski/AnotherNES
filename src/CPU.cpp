@@ -41,7 +41,6 @@ void CPU::Power()
 	this->PC = this->memory[0xFFFD]<<8 | this->memory[0xFFFC];
 	//this->PC = 0xc000;
 	this->SP = 0xFD;
-	this->cycles = 0;
 }
 
 void CPU::Reset() 

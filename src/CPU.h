@@ -66,7 +66,6 @@ public:
 	CPU_ram memory;
 	PPU ppu;
 	APU apu;
-	uint32_t cycles;
 
 	CPU(void);
 	~CPU(void);

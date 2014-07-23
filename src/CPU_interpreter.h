@@ -9,6 +9,9 @@ using namespace std;
 
 class CPU_interpreter : public CPU
 {
+private:
+	int CYCLE;
+	bool page_cross;
 public:
 	bool PCchanged; // pc+opcode?
 	uint32_t virtaddr; // Seen by 6502
@@ -389,7 +392,7 @@ static OPCODE OpcodeTable[] =
 	{0x6C, CPU_interpreter::JMP, "JMP", 5, Indirect},
 
 	// Jump to a subroutine
-	{0x20, CPU_interpreter::JSR, "JSR", 3, Absolute},
+	{0x20, CPU_interpreter::JSR, "JSR", 6, Absolute},
 
 	// Return form subroutine
 	{0x60, CPU_interpreter::RTS, "RTS", 6, Implicit},

@@ -41,100 +41,101 @@ int CPU_interpreter::Step()
 	OPCODE op = OpcodeTableOptimized[ this->memory[this->PC] ];
 
 	uint8_t low,high; // Temporary variables for address calculations
- 	uint8_t* arg1 = &this->memory[ this->PC+1 ];
-	uint8_t* arg2 = &this->memory[ this->PC+2 ];
+ 	uint8_t arg1 = this->memory[ this->PC+1 ];
+	uint8_t arg2 = this->memory[ this->PC+2 ];
 	uint16_t addrlo, addrhi;
 	int CYCLE = op.cycles;
+	bool page_crossed = false;
+	page_cross = true;
 	switch (op.address)
 	{
-	case Implicit: // No args, Working
+	case Implicit: // No args
 		this->virtaddr = 0;
 		opsize = 1;
 		DISASM("%c", 0);
 		break;
-	case Accumulator: // Accumulator, Working
+	case Accumulator:
 		opsize = 1;
-		this->virtaddr = 0xffff+1;
+		this->virtaddr = 0x10000;
 		DISASM("%c", 'A');
 		break;
-	case Immediate: // imm8 , Working
+	case Immediate: // imm8
 		this->virtaddr = this->PC+1;
 		opsize = 2;
 		DISASM("#$%.2X", Readv());
 		break;
 	case Zero_page: // $0000+arg1
-		this->virtaddr = *arg1;
+		this->virtaddr = arg1;
 		opsize = 2;
 		DISASM("$%.2X", virtaddr);
 		break;
-	case Zero_page_x: // $0000+arg1+X 00Ah - STY,X failure
-		this->virtaddr = (uint8_t) (*arg1 + this->X);
+	case Zero_page_x: // $0000+arg1+X, 00Ah - STY,X failure
+		this->virtaddr = (arg1 + this->X) & 0xff;
 		opsize = 2;
-		DISASM("$%.2X,X", *arg1);
+		DISASM("$%.2X,X", arg1);
 		break;
 	case Zero_page_y: // $0000+arg1+Y
-		this->virtaddr = (uint8_t) (*arg1 + this->Y);
+		this->virtaddr = (arg1 + this->Y) & 0xff;
 		opsize = 2;
-		DISASM("$%.2X,Y", *arg1);
+		DISASM("$%.2X,Y", arg1);
 		break;
 	case Relative: // -128 to +127
 		opsize = 2;
-		this->virtaddr = (this->PC+opsize) + (signed char)(*arg1);
+		this->virtaddr = (this->PC+opsize) + (signed char)(arg1);
 		DISASM("$%.4X", virtaddr);
 		break;
-	case Absolute: // 16bit address , Working
-		this->virtaddr = ((*arg2)<<8) | (*arg1);
+	case Absolute: // 16bit address
+		this->virtaddr = (arg2<<8) | arg1;
 		opsize = 3;
 		DISASM("$%.4X", virtaddr );
 		break;
-	case Absolute_x: // 16bit address + X, Working
-		this->virtaddr = (((*arg2)<<8) | (*arg1)) + this->X;
+	case Absolute_x: // 16bit address + X
+		this->virtaddr = ( ((arg2 << 8) | arg1) + this->X  ) & 0xffff;
+		if (this->virtaddr>>8 != arg2) page_crossed = true;
 		opsize = 3;
 		DISASM("$%.4X,X", virtaddr-this->X );
-		if (this->virtaddr>=0x10000) this->virtaddr-=0x10000;
 		break;
 	case Absolute_y: // 16bit address + Y, NOT Working 037h - LDA failure to wrap properly from ffffh to 0000h
-		this->virtaddr = (((*arg2)<<8) | (*arg1)) + this->Y;
+		this->virtaddr = ( ((arg2 << 8) | arg1) + this->Y  ) & 0xffff;
+		if (this->virtaddr >> 8 != arg2) page_crossed = true;
 		opsize = 3;
 		DISASM("$%.4X,Y", virtaddr-this->Y );
-		if (this->virtaddr>=0x10000) this->virtaddr-=0x10000;
 		break;
 	case Indirect:
-		addrlo = ((*arg2)<<8) | (*arg1);
-		addrhi = ((*arg2)<<8) | (uint8_t)((*arg1) +1);
+		addrlo = (arg2<<8) | arg1;
+		addrhi = (arg2<<8) | (uint8_t)(arg1 +1);
 		this->virtaddr = this->memory[ addrlo ] | 
 						 this->memory[ addrhi ]<<8;
 		opsize = 3;
-		DISASM("($%.4X)", ((*arg2)<<8) | (*arg1) );
+		DISASM("($%.4X)", (arg2<<8) | arg1 );
 		break;
 	case Indexed_indirect: 
 		opsize = 2;
-		addrlo = (uint8_t) ((*arg1) + this->X); 
-		addrhi = (uint8_t) ((*arg1+1) + this->X);
+		addrlo = (arg1 + this->X    ) & 0xff;
+		addrhi = (arg1 + this->X + 1) & 0xff;
 
-		low = this->memory[ addrlo ] ;
+		low  = this->memory[ addrlo ];
 		high = this->memory[ addrhi ];
 		this->virtaddr = low | (high<<8);
-		DISASM("($%.2X,X)", (*arg1) );
+		DISASM("($%.2X,X)", arg1 );
 		break;
-	case Indirect_indexed: // Working!
+	case Indirect_indexed:
 		opsize = 2;
-		addrlo = (uint8_t) (*arg1); 
-		addrhi = (uint8_t) ((*arg1)+1);
+		addrlo = arg1; 
+		addrhi = (arg1+1) & 0xff;
 
-		low = this->memory[ addrlo ] ;
+		low  = this->memory[ addrlo ];
 		high = this->memory[ addrhi ];
 
-		this->virtaddr = (uint16_t)( (low | (high<<8)) + this->Y) ;
+		this->virtaddr = (uint16_t)((low | (high << 8)) + this->Y);
+		if (this->virtaddr >> 8 != arg2) page_crossed = true;
 
-		DISASM("($%.2X),Y", (*arg1) );
+		DISASM("($%.2X),Y", arg1 );
 		break;
 	default:
 		Log->Error("CPU_interpreter::Step(): Unknown addressing mode!");
 		break;
 	}
-	// Page crossed + 1 to cycles
-	cycles+= op.cycles;
 //if (debug)
 //{
 //
@@ -164,7 +165,14 @@ int CPU_interpreter::Step()
 
 	op.inst(this);
 
-	if ( !(PCchanged || oldPC != this->PC) ) this->PC += opsize;
+	if (page_crossed && page_cross) CYCLE++;
+	if (op.address == Relative && (oldPC != this->PC || PCchanged))
+	{
+		CYCLE++; // Branch succeed
+		if (((oldPC + 2) & 0xff00) != (this->PC & 0xff00)) CYCLE++; // Branch to new page
+	}
+	if (!(PCchanged || oldPC != this->PC)) this->PC += opsize;
+	
 	return CYCLE;
  }
 
@@ -192,6 +200,7 @@ void CPU_interpreter::LDY( CPU_interpreter* c ) // Load Y
 void CPU_interpreter::STA( CPU_interpreter* c ) // Store Accumulator
 {
 	c->Writev( c->A );
+	c->page_cross = false;
 }
 
 void CPU_interpreter::STX( CPU_interpreter* c ) // Store X
@@ -578,7 +587,8 @@ void CPU_interpreter::DCP( CPU_interpreter* c ) // Substract 1 from memory and C
 
 	c->CARRY( (ret<256?1:0) ); // Set if A >= M
 	c->ZERO( (ret?0:1) );
-	c->NEGATIVE( ret&0x80 );
+	c->NEGATIVE(ret & 0x80);
+	c->page_cross = false;
 }
 
 void CPU_interpreter::ISB( CPU_interpreter* c ) // Increase memory by one, then subtract memory from A (with borrow)
@@ -599,6 +609,7 @@ void CPU_interpreter::ISB( CPU_interpreter* c ) // Increase memory by one, then 
 		      &&  ( ( c->A ^ ret ) & 0x80)  );
 	
 	c->A = (uint8_t)ret;
+	c->page_cross = false;
 }
 
 void CPU_interpreter::SLO( CPU_interpreter* c ) // Shift left one bit in memory, then OR accumulator with memory
@@ -612,7 +623,8 @@ void CPU_interpreter::SLO( CPU_interpreter* c ) // Shift left one bit in memory,
 	// OR
 	c->A = c->A | c->Readv();
 	c->ZERO( c->A?0:1 );
-	c->NEGATIVE( c->A&0x80 );
+	c->NEGATIVE(c->A & 0x80);
+	c->page_cross = false;
 }
 
 void CPU_interpreter::RLA( CPU_interpreter* c ) // Rotate one bit left in memory, then AND accumulator with memory
@@ -626,7 +638,8 @@ void CPU_interpreter::RLA( CPU_interpreter* c ) // Rotate one bit left in memory
 	// AND
 	c->A = c->A & c->Readv();
 	c->ZERO( c->A?0:1 );
-	c->NEGATIVE( c->A&0x80 );
+	c->NEGATIVE(c->A & 0x80);
+	c->page_cross = false;
 }
 
 void CPU_interpreter::SRE( CPU_interpreter* c ) // Shift right one bit in memory, then EOR accumulator with memory
@@ -640,7 +653,8 @@ void CPU_interpreter::SRE( CPU_interpreter* c ) // Shift right one bit in memory
 	// EOR
 	c->A = c->A ^ c->Readv();
 	c->ZERO( c->A?0:1 );
-	c->NEGATIVE( c->A&0x80 );
+	c->NEGATIVE(c->A & 0x80);
+	c->page_cross = false;
 }
 
 void CPU_interpreter::RRA( CPU_interpreter* c ) // Rotate one bit right in memory, then add memory to accumulator
@@ -664,6 +678,7 @@ void CPU_interpreter::RRA( CPU_interpreter* c ) // Rotate one bit right in memor
 
 	
 	c->A = (uint8_t)ret;
+	c->page_cross = false;
 }
 
 // UNTESTED
