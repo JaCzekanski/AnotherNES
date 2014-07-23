@@ -47,17 +47,17 @@ int CPU_interpreter::Step()
 	int CYCLE = op.cycles;
 	switch (op.address)
 	{
-	case Implicit: // No args, Working
+	case Implicit: // No args
 		this->virtaddr = 0;
 		opsize = 1;
 		DISASM("%c", 0);
 		break;
-	case Accumulator: // Accumulator, Working
+	case Accumulator:
 		opsize = 1;
 		this->virtaddr = 0xffff+1;
 		DISASM("%c", 'A');
 		break;
-	case Immediate: // imm8 , Working
+	case Immediate: // imm8
 		this->virtaddr = this->PC+1;
 		opsize = 2;
 		DISASM("#$%.2X", Readv());
@@ -67,7 +67,7 @@ int CPU_interpreter::Step()
 		opsize = 2;
 		DISASM("$%.2X", virtaddr);
 		break;
-	case Zero_page_x: // $0000+arg1+X 00Ah - STY,X failure
+	case Zero_page_x: // $0000+arg1+X, 00Ah - STY,X failure
 		this->virtaddr = (uint8_t) (*arg1 + this->X);
 		opsize = 2;
 		DISASM("$%.2X,X", *arg1);
@@ -82,19 +82,21 @@ int CPU_interpreter::Step()
 		this->virtaddr = (this->PC+opsize) + (signed char)(*arg1);
 		DISASM("$%.4X", virtaddr);
 		break;
-	case Absolute: // 16bit address , Working
+	case Absolute: // 16bit address
 		this->virtaddr = ((*arg2)<<8) | (*arg1);
 		opsize = 3;
 		DISASM("$%.4X", virtaddr );
 		break;
-	case Absolute_x: // 16bit address + X, Working
+	case Absolute_x: // 16bit address + X
 		this->virtaddr = (((*arg2)<<8) | (*arg1)) + this->X;
+		if ((this->virtaddr & 0xff00) != ((*arg2) << 8)) ++CYCLE; // Page cross
 		opsize = 3;
 		DISASM("$%.4X,X", virtaddr-this->X );
 		if (this->virtaddr>=0x10000) this->virtaddr-=0x10000;
 		break;
 	case Absolute_y: // 16bit address + Y, NOT Working 037h - LDA failure to wrap properly from ffffh to 0000h
-		this->virtaddr = (((*arg2)<<8) | (*arg1)) + this->Y;
+		this->virtaddr = (((*arg2) << 8) | (*arg1)) + this->Y;
+		if ((this->virtaddr & 0xff00) != ((*arg2) << 8)) ++CYCLE; // Page cross
 		opsize = 3;
 		DISASM("$%.4X,Y", virtaddr-this->Y );
 		if (this->virtaddr>=0x10000) this->virtaddr-=0x10000;
@@ -117,7 +119,7 @@ int CPU_interpreter::Step()
 		this->virtaddr = low | (high<<8);
 		DISASM("($%.2X,X)", (*arg1) );
 		break;
-	case Indirect_indexed: // Working!
+	case Indirect_indexed:
 		opsize = 2;
 		addrlo = (uint8_t) (*arg1); 
 		addrhi = (uint8_t) ((*arg1)+1);
@@ -125,7 +127,8 @@ int CPU_interpreter::Step()
 		low = this->memory[ addrlo ] ;
 		high = this->memory[ addrhi ];
 
-		this->virtaddr = (uint16_t)( (low | (high<<8)) + this->Y) ;
+		this->virtaddr = (uint16_t)((low | (high << 8)) + this->Y);
+		if ((this->virtaddr & 0xff00) != (high << 8)) ++CYCLE; // Page cross
 
 		DISASM("($%.2X),Y", (*arg1) );
 		break;
@@ -133,8 +136,6 @@ int CPU_interpreter::Step()
 		Log->Error("CPU_interpreter::Step(): Unknown addressing mode!");
 		break;
 	}
-	// Page crossed + 1 to cycles
-	cycles+= op.cycles;
 //if (debug)
 //{
 //
@@ -164,7 +165,12 @@ int CPU_interpreter::Step()
 
 	op.inst(this);
 
-	if ( !(PCchanged || oldPC != this->PC) ) this->PC += opsize;
+	if ( !(PCchanged || oldPC != this->PC) ) this->PC += opsize; 
+	else // Branch taken
+	{
+		++CYCLE; // Branch succeed
+		if ((oldPC & 0xff00) != (this->PC & 0xff00)) ++CYCLE; // Branch to new page
+	}
 	return CYCLE;
  }
 
