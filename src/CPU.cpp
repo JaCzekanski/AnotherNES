@@ -41,6 +41,7 @@ void CPU::Power()
 	this->PC = this->memory[0xFFFD]<<8 | this->memory[0xFFFC];
 	//this->PC = 0xc000;
 	this->SP = 0xFD;
+	jammed = false;
 }
 
 void CPU::Reset() 
@@ -53,7 +54,8 @@ void CPU::Reset()
 	// APU silenced $4015 = 0
 	this->SP-=3;
 	this->P |= INTERRUPT_FLAG;
-	this->PC = this->memory[0xFFFD]<<8 | this->memory[0xFFFC];
+	this->PC = this->memory[0xFFFD] << 8 | this->memory[0xFFFC];
+	jammed = false;
 }
 
 void CPU::NMI() 

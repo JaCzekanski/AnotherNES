@@ -161,7 +161,11 @@ int CPU_interpreter::Step()
 	uint16_t oldPC = this->PC;
 	PCchanged = false;
 
-	if (memcmp(op.mnemnic, "KIL", 3) == 0 || memcmp(op.mnemnic, "UNK", 3) == 0) return -1; // CPU JAM
+	if (memcmp(op.mnemnic, "KIL", 3) == 0 || memcmp(op.mnemnic, "UNK", 3) == 0)
+	{
+		jammed = true;
+		return -1; // CPU JAM
+	}
 
 	op.inst(this);
 

@@ -763,7 +763,7 @@ int main( int argc, char *argv[] )
 					}
 				}
 				cycles = cpu->Step();
-				if (cycles == -1)
+				if (cpu->isJammed())
 				{
 					Log->Error("CPU Jammed.");
 					framerefresh = true;
