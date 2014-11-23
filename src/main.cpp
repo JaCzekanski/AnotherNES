@@ -20,6 +20,7 @@ int buttonState = 0;
 #include "dialog/DlgOAM.h"
 #include "dialog/DlgPalette.h"
 #include "dialog/DlgNametable.h"
+#include "Dialog/DlgPatterntable.h"
 #include "dialog/DlgAbout.h"
 #include "dialog/DlgRAM.h"
 
@@ -32,6 +33,7 @@ iNES* rom;
 DlgOAM *ToolboxOAM;
 DlgPalette *ToolboxPalette;
 DlgNametable *ToolboxNametable;
+DlgPatterntable *ToolboxPatterntable;
 DlgRAM *ToolboxRAM;
 
 SDL_Window* MainWindow;
@@ -216,6 +218,11 @@ void CloseGame()
 		delete ToolboxNametable;
 		ToolboxNametable = NULL;
 		CheckMenuItem( Menu, DEBUG_WINDOWS_NAMETABLE, MF_BYCOMMAND | MF_UNCHECKED );
+	}
+	if (ToolboxPatterntable)	{
+		delete ToolboxPatterntable;
+		ToolboxPatterntable = NULL;
+		CheckMenuItem(Menu, DEBUG_WINDOWS_PATTERNTABLE, MF_BYCOMMAND | MF_UNCHECKED);
 	}
 	if ( ToolboxOAM )	{
 		delete ToolboxOAM;
@@ -434,6 +441,13 @@ int main( int argc, char *argv[] )
 							delete ToolboxNametable;
 							ToolboxNametable = NULL;
 							CheckMenuItem( Menu, DEBUG_WINDOWS_NAMETABLE, MF_BYCOMMAND | MF_UNCHECKED );
+						}
+					}
+					if (ToolboxPatterntable)	{
+						if (ID == ToolboxPatterntable->WindowID) {
+							delete ToolboxPatterntable;
+							ToolboxPatterntable = NULL;
+							CheckMenuItem(Menu, DEBUG_WINDOWS_PATTERNTABLE, MF_BYCOMMAND | MF_UNCHECKED);
 						}
 					}
 					if ( ToolboxOAM )	{
@@ -666,6 +680,25 @@ int main( int argc, char *argv[] )
 					break;
 
 					// --Nametable
+
+				case DEBUG_WINDOWS_PATTERNTABLE:
+					if (CheckMenuItem(Menu, DEBUG_WINDOWS_PATTERNTABLE, MF_BYCOMMAND) == MF_UNCHECKED)
+					{
+						CheckMenuItem(Menu, DEBUG_WINDOWS_PATTERNTABLE, MF_BYCOMMAND | MF_CHECKED);
+						ToolboxPatterntable = new DlgPatterntable(cpu);
+					}
+					else
+					{
+						CheckMenuItem(Menu, DEBUG_WINDOWS_PATTERNTABLE, MF_BYCOMMAND | MF_UNCHECKED);
+						if (ToolboxPatterntable)
+						{
+							delete ToolboxPatterntable;
+							ToolboxPatterntable = NULL;
+						}
+					}
+					break;
+
+					// --Patterntable
 				case DEBUG_WINDOWS_RAM:
 					if (CheckMenuItem(Menu, DEBUG_WINDOWS_RAM, MF_BYCOMMAND) == MF_UNCHECKED)
 					{
@@ -745,6 +778,7 @@ int main( int argc, char *argv[] )
 								if (ToolboxOAM) ToolboxOAM->Update();
 								if (ToolboxPalette) ToolboxPalette->Update();
 								if (ToolboxNametable) ToolboxNametable->Update();
+								if (ToolboxPatterntable) ToolboxPatterntable->Update();
 							}
 							ToolboxDelay++;
 						}
@@ -796,6 +830,7 @@ int main( int argc, char *argv[] )
 	delete ToolboxOAM; ToolboxOAM = NULL;
 	delete ToolboxPalette; ToolboxPalette = NULL;
 	delete ToolboxNametable; ToolboxNametable = NULL;
+	delete ToolboxPatterntable; ToolboxPatterntable = NULL;
 	
 	SDL_FreeSurface( canvas ); canvas = NULL;
 	SDL_DestroyWindow( MainWindow ); MainWindow = NULL;
