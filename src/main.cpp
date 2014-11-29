@@ -812,10 +812,14 @@ int main( int argc, char *argv[] )
 			ticks = SDL_GetTicks();
 			if (FrameLimit)
 			{
-				if (rom->Pal) // Pal, 1/50 == 20ms
-					SDL_Delay(((ticks - oldticks) >= 20) ? 0 : (20 - (ticks - oldticks)));
-				else // NTSC, 1/60 == 16.6666ms
-					SDL_Delay(((ticks - oldticks) >= 16) ? 0 : (16 - (ticks - oldticks)));
+				int ticksPerFrame = 16; // NTSC, 1/60 == 16.6666ms
+				if (rom->Pal) ticksPerFrame = 20; // Pal, 1/50 == 20ms
+					
+				while (ticks - oldticks < ticksPerFrame)
+				{
+					SDL_Delay(1);
+					ticks = SDL_GetTicks();
+				}	
 			}
 
 			oldticks = ticks;
