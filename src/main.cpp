@@ -203,9 +203,16 @@ new_song:
 		{
 			key_released = true;
 		}
+
+		int ticksPerFrame = 16; // NTSC, 1/60 == 16.6666ms
+		//if (nsf->pal_ntsc_bits) ticksPerFrame = 20; // Pal, 1/50 == 20ms
+
 		newticks = SDL_GetTicks();
-		delta = newticks - ticks;
-		Sleep( (delta>0)?0:16-delta);
+		while (newticks - ticks < ticksPerFrame)
+		{
+			SDL_Delay(1);
+			newticks = SDL_GetTicks();
+		}
 		ticks = newticks;
 	}
 

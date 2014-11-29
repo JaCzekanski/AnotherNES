@@ -22,6 +22,17 @@ struct oscillator
 	uint16_t length;
 	uint16_t lengthTimer;
 	bool constantVolume;
+
+	// Pulse
+	uint16_t sweepTimer;
+	bool sweepEnable;
+	bool sweepNegative;
+	uint8_t sweepPeriod;
+	uint8_t sweepShift;
+
+
+	// Noise
+	bool mode;
 	oscillator()
 	{
 		constantVolume = true;
