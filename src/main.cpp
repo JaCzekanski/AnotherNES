@@ -519,8 +519,9 @@ int main( int argc, char *argv[] )
 						memset(FileName, 0, sizeof(FileName) );
 						ofn.lpstrFile = (char*)FileName;
 						ofn.nMaxFile = sizeof(FileName)-1;
-						ofn.lpstrFilter = "NES\0*.nes\0"
-										  "NSF\0*.nsf\0";
+						ofn.lpstrFilter = "All supported files\0*.nes;*.nsf\0"
+										  "NES files\0*.nes\0"
+										  "NSF files\0*.nsf\0";
 						ofn.nFilterIndex = 0;
 						ofn.lpstrInitialDir = "./rom/";
 						ofn.Flags = OFN_EXPLORER | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
