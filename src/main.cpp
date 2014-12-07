@@ -731,6 +731,7 @@ int main( int argc, char *argv[] )
 				}
 			}
 		}
+
 		if (PendingEvents) { PendingEvents = false; continue; }
 
 		ticks = SDL_GetTicks();
@@ -812,6 +813,7 @@ int main( int argc, char *argv[] )
 				}
 				//cpu->apu.Step();
 				++tick;
+				cpu->apu.activeTimer++;
 			}
 
 			if (ToolboxRAM) ToolboxRAM->Update();

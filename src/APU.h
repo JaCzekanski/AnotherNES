@@ -54,6 +54,7 @@ private :
 
 	oscillator osc[4];
 public:
+	int activeTimer; // Timer incremented by emulator, if value is not changing then emu is inactive
 	APU(void);
 	~APU(void);
 
