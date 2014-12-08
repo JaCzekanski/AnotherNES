@@ -121,6 +121,7 @@ bool LoadNSF( const char* path )
 		return 0;
 	}
 	Log->Success("%s opened", path);
+	Log->Info("Press escape to exit player");
 
 
 
@@ -184,24 +185,28 @@ new_song:
 			cpu->Step();
 			if (cpu->PC == 0xfff0+1) returned = true;
 		}
-		SDL_PollEvent(&event);
-		if (event.type == SDL_KEYDOWN && key_released)
+		cpu->apu.activeTimer++;
+
+		while (1)
 		{
-			key_released = false;
-			if (event.key.keysym.sym == SDLK_LEFT)
+			int PendingEvents = SDL_PollEvent(&event);
+			if (event.type == SDL_KEYDOWN && key_released)
 			{
-				if (song > 0) song--;
-				goto new_song;
+				key_released = false;
+				if (event.key.keysym.sym == SDLK_LEFT)
+				{
+					if (song > 0) song--;
+					goto new_song;
+				}
+				if (event.key.keysym.sym == SDLK_RIGHT)
+				{
+					/*if (song > 0) */song++;
+					goto new_song;
+				}
+				if (event.key.keysym.sym == SDLK_ESCAPE) goto PlayerExit;
 			}
-			if (event.key.keysym.sym == SDLK_RIGHT)
-			{
-				/*if (song > 0) */song++;
-				goto new_song;
-			}
-		}
-		if (event.type == SDL_KEYUP)
-		{
-			key_released = true;
+			if (event.type == SDL_KEYUP) key_released = true;
+			if (!PendingEvents) break;
 		}
 
 		int ticksPerFrame = 16; // NTSC, 1/60 == 16.6666ms
@@ -215,7 +220,8 @@ new_song:
 		}
 		ticks = newticks;
 	}
-
+PlayerExit:
+	Log->Info("Player exited.");
 	return 0;
 }
 
@@ -526,8 +532,9 @@ int main( int argc, char *argv[] )
 						memset(FileName, 0, sizeof(FileName) );
 						ofn.lpstrFile = (char*)FileName;
 						ofn.nMaxFile = sizeof(FileName)-1;
-						ofn.lpstrFilter = "NES\0*.nes\0"
-										  "NSF\0*.nsf\0";
+						ofn.lpstrFilter = "All supported files\0*.nes;*.nsf\0"
+										  "NES files\0*.nes\0"
+										  "NSF files\0*.nsf\0";
 						ofn.nFilterIndex = 0;
 						ofn.lpstrInitialDir = "./rom/";
 						ofn.Flags = OFN_EXPLORER | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
