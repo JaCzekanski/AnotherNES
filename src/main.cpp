@@ -121,6 +121,7 @@ bool LoadNSF( const char* path )
 		return 0;
 	}
 	Log->Success("%s opened", path);
+	Log->Info("Press escape to exit player");
 
 
 
@@ -184,31 +185,35 @@ new_song:
 			cpu->Step();
 			if (cpu->PC == 0xfff0+1) returned = true;
 		}
-		SDL_PollEvent(&event);
-		if (event.type == SDL_KEYDOWN && key_released)
+
+		while (1)
 		{
-			key_released = false;
-			if (event.key.keysym.sym == SDLK_LEFT)
+			int PendingEvents = SDL_PollEvent(&event);
+			if (event.type == SDL_KEYDOWN && key_released)
 			{
-				if (song > 0) song--;
-				goto new_song;
+				key_released = false;
+				if (event.key.keysym.sym == SDLK_LEFT)
+				{
+					if (song > 0) song--;
+					goto new_song;
+				}
+				if (event.key.keysym.sym == SDLK_RIGHT)
+				{
+					/*if (song > 0) */song++;
+					goto new_song;
+				}
+				if (event.key.keysym.sym == SDLK_ESCAPE) goto PlayerExit;
 			}
-			if (event.key.keysym.sym == SDLK_RIGHT)
-			{
-				/*if (song > 0) */song++;
-				goto new_song;
-			}
-		}
-		if (event.type == SDL_KEYUP)
-		{
-			key_released = true;
+			if (event.type == SDL_KEYUP) key_released = true;
+			if (!PendingEvents) break;
 		}
 		newticks = SDL_GetTicks();
 		delta = newticks - ticks;
 		Sleep( (delta>0)?0:16-delta);
 		ticks = newticks;
 	}
-
+PlayerExit:
+	Log->Info("Player exited.");
 	return 0;
 }
 
