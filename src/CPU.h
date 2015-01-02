@@ -62,6 +62,7 @@ public:
 	uint16_t PC;// Program counter
 	uint8_t SP; // Stack pointer
 
+	bool jammed;
 public:
 	CPU_ram memory;
 	PPU ppu;
@@ -70,6 +71,7 @@ public:
 	CPU(void);
 	~CPU(void);
 
+	bool isJammed() { return jammed; }
 	
 	void Push( uint8_t v );
 	void Push16( uint16_t v );

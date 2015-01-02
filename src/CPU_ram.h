@@ -190,11 +190,11 @@ public:
 			n-=0x8000;
 			if (n>=0x4000) // high
 			{
-				return prg_rom[ prg_highpage*0x4000 + (n-0x4000) ];
+				return prg_rom[ (prg_highpage%prg_pages)*0x4000 + (n-0x4000) ];
 			}
-			return prg_rom[ prg_lowpage*0x4000 + n%0x4000 ];
+			return prg_rom[(prg_lowpage%prg_pages) * 0x4000 + n % 0x4000];
 		}
-		return prg_rom[ (prg_lowpage*0x4000) + n-0x8000 ]; // Return PRG-ROM
+		return prg_rom[(prg_lowpage * 0x4000) + n - 0x8000]; // Return PRG-ROM
 	}
 
 };

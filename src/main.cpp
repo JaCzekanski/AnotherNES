@@ -20,6 +20,7 @@ int buttonState = 0;
 #include "dialog/DlgOAM.h"
 #include "dialog/DlgPalette.h"
 #include "dialog/DlgNametable.h"
+#include "Dialog/DlgPatterntable.h"
 #include "dialog/DlgAbout.h"
 #include "dialog/DlgRAM.h"
 
@@ -32,6 +33,7 @@ iNES* rom;
 DlgOAM *ToolboxOAM;
 DlgPalette *ToolboxPalette;
 DlgNametable *ToolboxNametable;
+DlgPatterntable *ToolboxPatterntable;
 DlgRAM *ToolboxRAM;
 
 SDL_Window* MainWindow;
@@ -119,6 +121,7 @@ bool LoadNSF( const char* path )
 		return 0;
 	}
 	Log->Success("%s opened", path);
+	Log->Info("Press escape to exit player");
 
 
 
@@ -182,31 +185,35 @@ new_song:
 			cpu->Step();
 			if (cpu->PC == 0xfff0+1) returned = true;
 		}
-		SDL_PollEvent(&event);
-		if (event.type == SDL_KEYDOWN && key_released)
+
+		while (1)
 		{
-			key_released = false;
-			if (event.key.keysym.sym == SDLK_LEFT)
+			int PendingEvents = SDL_PollEvent(&event);
+			if (event.type == SDL_KEYDOWN && key_released)
 			{
-				if (song > 0) song--;
-				goto new_song;
+				key_released = false;
+				if (event.key.keysym.sym == SDLK_LEFT)
+				{
+					if (song > 0) song--;
+					goto new_song;
+				}
+				if (event.key.keysym.sym == SDLK_RIGHT)
+				{
+					/*if (song > 0) */song++;
+					goto new_song;
+				}
+				if (event.key.keysym.sym == SDLK_ESCAPE) goto PlayerExit;
 			}
-			if (event.key.keysym.sym == SDLK_RIGHT)
-			{
-				/*if (song > 0) */song++;
-				goto new_song;
-			}
-		}
-		if (event.type == SDL_KEYUP)
-		{
-			key_released = true;
+			if (event.type == SDL_KEYUP) key_released = true;
+			if (!PendingEvents) break;
 		}
 		newticks = SDL_GetTicks();
 		delta = newticks - ticks;
 		Sleep( (delta>0)?0:16-delta);
 		ticks = newticks;
 	}
-
+PlayerExit:
+	Log->Info("Player exited.");
 	return 0;
 }
 
@@ -216,6 +223,11 @@ void CloseGame()
 		delete ToolboxNametable;
 		ToolboxNametable = NULL;
 		CheckMenuItem( Menu, DEBUG_WINDOWS_NAMETABLE, MF_BYCOMMAND | MF_UNCHECKED );
+	}
+	if (ToolboxPatterntable)	{
+		delete ToolboxPatterntable;
+		ToolboxPatterntable = NULL;
+		CheckMenuItem(Menu, DEBUG_WINDOWS_PATTERNTABLE, MF_BYCOMMAND | MF_UNCHECKED);
 	}
 	if ( ToolboxOAM )	{
 		delete ToolboxOAM;
@@ -436,6 +448,13 @@ int main( int argc, char *argv[] )
 							CheckMenuItem( Menu, DEBUG_WINDOWS_NAMETABLE, MF_BYCOMMAND | MF_UNCHECKED );
 						}
 					}
+					if (ToolboxPatterntable)	{
+						if (ID == ToolboxPatterntable->WindowID) {
+							delete ToolboxPatterntable;
+							ToolboxPatterntable = NULL;
+							CheckMenuItem(Menu, DEBUG_WINDOWS_PATTERNTABLE, MF_BYCOMMAND | MF_UNCHECKED);
+						}
+					}
 					if ( ToolboxOAM )	{
 						if (ID == ToolboxOAM->WindowID) {
 							delete ToolboxOAM;
@@ -505,8 +524,9 @@ int main( int argc, char *argv[] )
 						memset(FileName, 0, sizeof(FileName) );
 						ofn.lpstrFile = (char*)FileName;
 						ofn.nMaxFile = sizeof(FileName)-1;
-						ofn.lpstrFilter = "NES\0*.nes\0"
-										  "NSF\0*.nsf\0";
+						ofn.lpstrFilter = "All supported files\0*.nes;*.nsf\0"
+										  "NES files\0*.nes\0"
+										  "NSF files\0*.nsf\0";
 						ofn.nFilterIndex = 0;
 						ofn.lpstrInitialDir = "./rom/";
 						ofn.Flags = OFN_EXPLORER | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
@@ -666,6 +686,25 @@ int main( int argc, char *argv[] )
 					break;
 
 					// --Nametable
+
+				case DEBUG_WINDOWS_PATTERNTABLE:
+					if (CheckMenuItem(Menu, DEBUG_WINDOWS_PATTERNTABLE, MF_BYCOMMAND) == MF_UNCHECKED)
+					{
+						CheckMenuItem(Menu, DEBUG_WINDOWS_PATTERNTABLE, MF_BYCOMMAND | MF_CHECKED);
+						ToolboxPatterntable = new DlgPatterntable(cpu);
+					}
+					else
+					{
+						CheckMenuItem(Menu, DEBUG_WINDOWS_PATTERNTABLE, MF_BYCOMMAND | MF_UNCHECKED);
+						if (ToolboxPatterntable)
+						{
+							delete ToolboxPatterntable;
+							ToolboxPatterntable = NULL;
+						}
+					}
+					break;
+
+					// --Patterntable
 				case DEBUG_WINDOWS_RAM:
 					if (CheckMenuItem(Menu, DEBUG_WINDOWS_RAM, MF_BYCOMMAND) == MF_UNCHECKED)
 					{
@@ -744,6 +783,7 @@ int main( int argc, char *argv[] )
 							if (ToolboxOAM) ToolboxOAM->Update();
 							if (ToolboxPalette) ToolboxPalette->Update();
 							if (ToolboxNametable) ToolboxNametable->Update();
+								if (ToolboxPatterntable) ToolboxPatterntable->Update();
 						}
 						ToolboxDelay++;
 
@@ -764,7 +804,7 @@ int main( int argc, char *argv[] )
 					}
 				}
 				cycles += cpu->Step();
-				if (cycles == -1)
+				if (cpu->isJammed())
 				{
 					Log->Error("CPU Jammed.");
 					framerefresh = true;
@@ -779,10 +819,14 @@ int main( int argc, char *argv[] )
 			ticks = SDL_GetTicks();
 			if (FrameLimit)
 			{
-				if (rom->Pal) // Pal, 1/50 == 20ms
-					SDL_Delay(((ticks - oldticks) >= 20) ? 0 : (20 - (ticks - oldticks)));
-				else // NTSC, 1/60 == 16.6666ms
-					SDL_Delay(((ticks - oldticks) >= 16) ? 0 : (16 - (ticks - oldticks)));
+				int ticksPerFrame = 16; // NTSC, 1/60 == 16.6666ms
+				if (rom->Pal) ticksPerFrame = 20; // Pal, 1/50 == 20ms
+					
+				while (ticks - oldticks < ticksPerFrame)
+				{
+					SDL_Delay(1);
+					ticks = SDL_GetTicks();
+				}	
 			}
 
 			oldticks = ticks;
@@ -797,6 +841,7 @@ int main( int argc, char *argv[] )
 	delete ToolboxOAM; ToolboxOAM = NULL;
 	delete ToolboxPalette; ToolboxPalette = NULL;
 	delete ToolboxNametable; ToolboxNametable = NULL;
+	delete ToolboxPatterntable; ToolboxPatterntable = NULL;
 	
 	SDL_FreeSurface( canvas ); canvas = NULL;
 	SDL_DestroyWindow( MainWindow ); MainWindow = NULL;

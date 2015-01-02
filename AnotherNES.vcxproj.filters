@@ -60,6 +60,9 @@
     <ClCompile Include="src\Dialog\DlgRAM.cpp">
       <Filter>Source Files\Dialog</Filter>
     </ClCompile>
+    <ClCompile Include="src\Dialog\DlgPatterntable.cpp">
+      <Filter>Source Files\Dialog</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\APU.h">
@@ -111,6 +114,9 @@
       <Filter>Header Files\Dialog</Filter>
     </ClInclude>
     <ClInclude Include="src\Dialog\DlgRAM.h">
+      <Filter>Header Files\Dialog</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Dialog\DlgPatterntable.h">
       <Filter>Header Files\Dialog</Filter>
     </ClInclude>
   </ItemGroup>
