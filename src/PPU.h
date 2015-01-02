@@ -52,6 +52,7 @@ private:
 	bool ShowBackground;
 	bool ShowSprites;
 	bool Sprite0Hit;
+	bool spriteOverflow;
 
 	uint16_t loopy_v; // 15bits, current VRAM address
 	uint16_t loopy_t; // 15bits, temporary VRAM address

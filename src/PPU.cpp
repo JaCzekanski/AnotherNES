@@ -18,6 +18,7 @@ PPU::PPU(void)
 	
 	ShowBackground = false;
 	ShowSprites = false;
+	spriteOverflow = false;
 
 	PPUDATAbuffer = 0;
 	BackgroundPattenTable = 0;
@@ -238,6 +239,7 @@ uint8_t PPU::Step( )
 		{
 			VBLANK = false;
 			Sprite0Hit = false;
+			spriteOverflow = false;
 		}
 		else if (cycles >= 280 && cycles <= 304 && renderingIsEnabled())
 			loopyCopyTtoV();
@@ -251,10 +253,18 @@ uint8_t PPU::Step( )
 	This byte is outputed
 	and register is shifted left <<
 	*/
+	static SPRITE secondOAM[8], oldSecondOAM[8];
+	static int secondOAMsprites, oldSecondOAMsprites;
 	static uint8_t paletteDatal, paletteDatah;
 	static bool paletteDataLatchl, paletteDataLatchh;
 
-	if (renderingIsEnabled() && scanline < 240 && ((cycles >= 1 && cycles <= 256) || (cycles >= 321)))  // Tile fetching
+	if (ShowSprites && scanline < 240 && cycles == 0)
+	{
+		memcpy(oldSecondOAM, secondOAM, sizeof(oldSecondOAM));
+		oldSecondOAMsprites = secondOAMsprites;
+	}
+
+	if (renderingIsEnabled() && scanline < 240 && ((cycles >= 1 && cycles <= 256) || (cycles >= 321 && cycles <= 336)))  // Tile fetching
 	{
 		static uint8_t newBackgroundDatal, newBackgroundDatah;
 		static uint8_t newPaletteData;
@@ -262,8 +272,8 @@ uint8_t PPU::Step( )
 		uint8_t step = ((cycles-1) % 8)+1;
 
 		uint16_t v = loopy_v;
-		if (Mirroring == VERTICAL) loopy_v &= ~0x0800; // Clear second bit (y)
-		else loopy_v &= ~0x0400; //  Clear first bit (x), Horizontal
+		if (Mirroring == VERTICAL) v &= ~0x0800; // Clear second bit (y)
+		else v &= ~0x0400; //  Clear first bit (x), Horizontal
 
 		if (step == 1) // Cycle 1 and 2, NT byte
 		{
@@ -304,6 +314,27 @@ uint8_t PPU::Step( )
 			uint8_t shift = ((coarseY & 0x2) * 2) + (coarseX & 0x2);
 			newPaletteData = (ATbyte >> shift);
 		}
+
+		if (cycles == 64) // <1,64> second OAM clear
+			memset(&secondOAM, 0xff, sizeof(secondOAM));
+		if (cycles == 256) // <65,256> second OAM evaluation
+		{
+			int j = 0;
+			for (int i = 0; i < 64; i++)
+			{
+				SPRITE &spr = OAM[i]; 
+				if (!(scanline >= spr.y && scanline < spr.y + (SpriteSize ? 16 : 8))) continue;
+
+				secondOAM[j] = spr;
+				if (i == 0) secondOAM[j].attr |= 4;
+				if (++j >= 8)
+				{
+					spriteOverflow = true;
+					break;
+				}
+			}
+			secondOAMsprites = j;
+		}
 	}
 
 	if (renderingIsEnabled() && scanline >= 0 && scanline <= 239) // Visible scanlines
@@ -312,7 +343,7 @@ uint8_t PPU::Step( )
 		{
 			uint8_t renderX = cycles - 1;
 			uint8_t renderY = scanline;
-			uint8_t BackgroundByte = 63;
+			uint8_t BackgroundByte = memory[0x3F00];
 			uint8_t SpriteByte = 0;
 			bool SpriteRendered = false;
 			bool SpriteFront = false;
@@ -331,15 +362,16 @@ uint8_t PPU::Step( )
 			
 			if (ShowSprites)
 			{
-				for (int i = 63; i >= 0; i--) // OAM
+				for (int i = 0; i < oldSecondOAMsprites; i++) // OAM
 				{
-					SPRITE spr = OAM[i];
-					if (!(renderY >= spr.y + 1 && renderY < spr.y + (SpriteSize?16:8) + 1)) continue;
-					if (!(renderX >= spr.x     && renderX < spr.x + 8)) continue;
+					SPRITE &spr = oldSecondOAM[i];
+					if (!(renderX >= spr.x && renderX < spr.x + 8)) continue;
 
 					SpriteFront = (spr.attr & 0x20) ? false : true;
 
-					uint16_t spriteaddr = (SpriteSize ? 0 : SpritePattenTable) + spr.index * 16;
+					uint16_t spriteaddr = (SpriteSize ? (spr.index & 0x01) * 0x1000 : SpritePattenTable) + 
+										  (SpriteSize ? (spr.index & 0xfe) : spr.index) * 16;
+					
 
 					uint8_t sprite_x = renderX - (spr.x); // x inside sprite
 					uint8_t sprite_y = renderY - (spr.y + 1); // y inside sprite
@@ -361,7 +393,7 @@ uint8_t PPU::Step( )
 					SpriteByte = memory[0x3F10 + ((spr.attr & 0x3) * 4) + color];
 					SpriteRendered = true;
 
-					if (i == 0 &&
+					if ((spr.attr & 4) &&
 						renderX != 255 &&
 						ShowBackground &&
 						color != 0 &&
@@ -394,19 +426,19 @@ uint8_t PPU::Step( )
 		else ret = 1;
 	}
 
-	if (renderingIsEnabled() &&  scanline < 240 && ((cycles >= 1 && cycles <= 256) || (cycles >= 321 && cycles <= 336)))  // shift register shifting
+	if (renderingIsEnabled() && scanline < 240 && ((cycles >= 1 && cycles <= 256) || (cycles >= 321 && cycles <= 336)))  // shift register shifting
 	{
 		backgroundDatal <<= 1;
 		backgroundDatah <<= 1;
 		paletteDatal = (paletteDatal << 1) | paletteDataLatchl;
 		paletteDatah = (paletteDatah << 1) | paletteDataLatchh;
+
+		if ((cycles % 8) == 0) loopyCoarseXIncrement();
 	}
 
 
 	if (scanline < 240 && renderingIsEnabled())
 	{
-		if ( ((cycles >= 1 && cycles <= 256) || cycles >= 328) && (cycles % 8) == 0) // Increment hor v
-			loopyCoarseXIncrement();
 		if (cycles == 256) // Increment vertical position in v
 			loopyYIncrement();
 		if (cycles == 257) // Copy horizonal pos from t to v
