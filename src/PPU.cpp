@@ -184,7 +184,7 @@ uint8_t PPU::Read( uint8_t reg)
 			//       (due to register not being updated for this address)
 
 			// Reset PPUADDR latch to high
-			Sprite0Hit = !Sprite0Hit; // SMB fix
+			//Sprite0Hit = !Sprite0Hit; // SMB fix
 			VBLANK = false;
 			loopy_w = 0;
 			break;
@@ -252,17 +252,14 @@ uint8_t PPU::Step( )
 		if (cycles == 0) xpos = 0;
 		if (cycles >= 1 && cycles <= 256)
 		{
-			uint8_t renderX = cycles - 1 - loopy_x;
+			uint8_t renderX = cycles - 1 -loopy_x;
 			uint8_t renderY = scanline;
 
 			uint8_t BackgroundByte = 0;
 			if (ShowBackground)
 			{
-				uint16_t tileaddr = (loopy_v & 0x03ff);
-				uint8_t currentNametable = (loopy_v & 0xc00) >> 10;
-
-				if (Mirroring == VERTICAL) currentNametable &= 0x01; // Clear second bit (y)
-				else currentNametable &= 0x02; //  Clear first bit (x), Horizontal
+				uint16_t tileaddr = 0x2000 | (loopy_v & 0x0fff);
+				uint16_t attraddr = 0x23c0 | (loopy_v & 0x0c00) | ((loopy_v >> 4) & 0x38) | ((loopy_v >> 2) & 0x07);
 
 				uint8_t x = (loopy_v & 0x1f);
 				uint8_t y = (loopy_v >> 5) & 0x1f;
@@ -271,20 +268,18 @@ uint8_t PPU::Step( )
 				xpos = (xpos + 1) & 0x7;
 				uint8_t b = ((loopy_v & 0x7000) >> 12); // y in tile == y % 8
 				
-				uint16_t NametableAddress = 0x2000 + 0x400 * currentNametable;
-				uint16_t tile = this->memory[NametableAddress + tileaddr];
+				uint16_t tile = memory[tileaddr];
 				
-				uint8_t tiledata = memory[BackgroundPattenTable + tile * 16 + b];
+				uint8_t tiledata  = memory[BackgroundPattenTable + tile * 16 + b];
 				uint8_t tiledata2 = memory[BackgroundPattenTable + tile * 16 + b + 8];
 
 				uint8_t color = (tiledata &(0x80 >> a)) >> (7 - a) |
 					          (((tiledata2&(0x80 >> a)) >> (7 - a)) << 1);
 
-				uint8_t InfoByte = memory[NametableAddress + 0x3c0 + ((y<<1)&0xf8) + (x / 4)];//memory[0x23C0 | (loopy_v & 0x0C00) | ((loopy_v >> 4) & 0x38) | ((loopy_v >> 2) & 0x07)];
+				uint8_t InfoByte = memory[attraddr];
 				uint8_t infopal = 0;
 				if (color != 0)
 				{
-					infopal = InfoByte;
 					if ((y & 0x3) <= 1) // up
 					{
 						if ((x & 0x3) <= 1) infopal = InfoByte; // up-left
