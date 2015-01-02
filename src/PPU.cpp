@@ -184,6 +184,7 @@ uint8_t PPU::Read( uint8_t reg)
 			//       (due to register not being updated for this address)
 
 			// Reset PPUADDR latch to high
+			Sprite0Hit = !Sprite0Hit; // SMB fix
 			VBLANK = false;
 			loopy_w = 0;
 			break;
@@ -242,18 +243,13 @@ uint8_t PPU::Step( )
 			VBLANK = false;
 			Sprite0Hit = false;
 		}
-		else if (cycles >= 280 && cycles <= 304 && (ShowBackground || ShowSprites))
-		{
-			loopy_v = (loopy_v & ~0x7be0) | (loopy_t & 0x7BE0);
-		}
+		else if (cycles >= 280 && cycles <= 304 && renderingIsEnabled())
+			loopyCopyTtoV();
 	}
 	else if (scanline >= 0 && scanline <= 239) // Visible scanlines
 	{
 		static uint8_t xpos = 0;
-		if (cycles == 0)
-		{
-			xpos = 0;
-		}
+		if (cycles == 0) xpos = 0;
 		if (cycles >= 1 && cycles <= 256)
 		{
 			uint8_t renderX = cycles - 1 - loopy_x;
@@ -262,19 +258,6 @@ uint8_t PPU::Step( )
 			uint8_t BackgroundByte = 0;
 			if (ShowBackground)
 			{
-				//uint16_t _loopy_v = loopy_v;
-				//for (int i = 0; i < 2; i++) // Temporary fix, some kind of off by one/two ( ;) ) error.
-				//{
-				//	if ((_loopy_v & 0x001f) == 0x00)
-				//	{
-				//		_loopy_v |= 0x1f;
-				//		_loopy_v ^= 0x0400; // Flip page bit
-				//	}
-				//	else
-				//	{
-				//		_loopy_v--;
-				//	}
-				//}
 				uint16_t tileaddr = (loopy_v & 0x03ff);
 				uint8_t currentNametable = (loopy_v & 0xc00) >> 10;
 
@@ -319,6 +302,7 @@ uint8_t PPU::Step( )
 			uint8_t SpriteByte = 0;
 			bool SpriteRendered = false;
 			bool SpriteFront = false;
+			
 			if (ShowSprites)
 			{
 				for (int i = 63; i >= 0; i--) // OAM
@@ -386,51 +370,14 @@ uint8_t PPU::Step( )
 		}
 	}
 
-	if (scanline < 240 && (ShowBackground || ShowSprites))
+	if (scanline < 240 && renderingIsEnabled())
 	{
-		if ( (cycles >= 1 && cycles <= 256)/* || cycles >= 328*/) // Increment hor v
-		{
-			if ((cycles % 8) == 0)
-			{
-				if ((loopy_v & 0x001f) == 0x1f)
-				{
-					loopy_v &= ~0x1f;
-					loopy_v ^= 0x0400; // Flip page bit
-				}
-				else
-				{
-					loopy_v++;
-				}
-			}
-		}
+		if ( (cycles >= 1 && cycles <= 256)/* || cycles >= 328*/ && (cycles % 8) == 0) // Increment hor v
+			loopyCoarseXIncrement();
 		if (cycles == 256) // Increment vertical position in v
-		{
-			if ((loopy_v & 0x7000) == 0x7000) // Fine y bits overflow
-			{
-				loopy_v &= ~0x7000;
-				int y = (loopy_v & 0x3e0) >> 5;  // Coarse y bits
-				if (y == 29)
-				{
-					y = 0;
-					loopy_v ^= 0x800;
-				}
-				else if (y == 31)
-				{
-					y = 0;
-				}
-				else
-				{
-					y++;
-				}
-
-				loopy_v = (loopy_v & (~0x03e0)) | (y << 5);
-			}
-			else loopy_v += 0x1000; // Increment fine ybits
-		}
+			loopyYIncrement();
 		if (cycles == 257) // Copy horizonal pos from t to v
-		{
-			loopy_v = (loopy_v & ~0x41f) | (loopy_t & 0x41f);
-		}
+			loopyCopyHorizontal();
 	}
 
 
@@ -466,4 +413,54 @@ void PPU::PaletteLookup(SDL_Surface *s)
 			PIXEL++;
 		}
 	}
+}
+
+
+// Loopy
+
+bool PPU::renderingIsEnabled()
+{
+	return (ShowSprites || ShowBackground);
+}
+
+void PPU::loopyCopyTtoV()
+{
+	loopy_v = (loopy_v & ~0x7be0) | (loopy_t & 0x7BE0);
+}
+
+void PPU::loopyCoarseXIncrement()
+{
+	if ((loopy_v & 0x001f) == 0x1f)
+	{
+		loopy_v &= ~0x1f;
+		loopy_v ^= 0x0400; // Flip page bit
+	}
+	else
+		loopy_v++;
+}
+
+void PPU::loopyYIncrement()
+{
+	if ((loopy_v & 0x7000) == 0x7000) // Fine y bits overflow
+	{
+		loopy_v &= ~0x7000;
+		int y = (loopy_v & 0x3e0) >> 5;  // Coarse y bits
+		if (y == 29)
+		{
+			y = 0;
+			loopy_v ^= 0x800;
+		}
+		else if (y == 31)
+			y = 0;
+		else
+			y++;
+
+		loopy_v = (loopy_v & (~0x03e0)) | (y << 5);
+	}
+	else loopy_v += 0x1000; // Increment fine ybits
+}
+
+void PPU::loopyCopyHorizontal()
+{
+	loopy_v = (loopy_v & ~0x41f) | (loopy_t & 0x41f);
 }

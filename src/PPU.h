@@ -83,4 +83,11 @@ public:
 	uint8_t Step();
 	
 	void Render(SDL_Surface* s);
+
+	// Loopy
+	inline bool renderingIsEnabled();
+	inline void loopyCopyTtoV();
+	inline void loopyCoarseXIncrement();
+	inline void loopyYIncrement();
+	inline void loopyCopyHorizontal();
 };
