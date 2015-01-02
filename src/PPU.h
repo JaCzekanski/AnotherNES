@@ -65,6 +65,14 @@ private:
 
 	void RenderSprite(SDL_Surface* s);
 	void RenderBackground(SDL_Surface* s, uint8_t nametable);
+
+	// Loopy
+	inline bool renderingIsEnabled();
+	inline void loopyCopyTtoV();
+	inline void loopyCoarseXIncrement();
+	inline void loopyYIncrement();
+	inline void loopyCopyHorizontal();
+
 public:
 	bool SpriteSize; // false - 8x8, true - 8x16
 	uint16_t BaseNametable;
@@ -84,10 +92,4 @@ public:
 	
 	void Render(SDL_Surface* s);
 
-	// Loopy
-	inline bool renderingIsEnabled();
-	inline void loopyCopyTtoV();
-	inline void loopyCoarseXIncrement();
-	inline void loopyYIncrement();
-	inline void loopyCopyHorizontal();
 };

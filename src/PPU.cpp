@@ -246,53 +246,83 @@ uint8_t PPU::Step( )
 		else if (cycles >= 280 && cycles <= 304 && renderingIsEnabled())
 			loopyCopyTtoV();
 	}
-	else if (scanline >= 0 && scanline <= 239) // Visible scanlines
+	static uint8_t newBackgroundDatal, newBackgroundDatah;
+	static uint8_t newPaletteData;
+
+
+	static uint16_t backgroundDatal, backgroundDatah;
+	static uint8_t paletteDatal, paletteDatah;
+	static bool paletteDataLatchl, paletteDataLatchh;
+
+	static uint8_t  NTbyte, ATbyte;
+	if (renderingIsEnabled() && scanline < 240 && ((cycles >= 1 && cycles <= 256) || (cycles >= 321)))  // Tile fetching
 	{
-		static uint8_t xpos = 0;
-		if (cycles == 0) xpos = 0;
+		uint8_t step = ((cycles-1) % 8)+1;
+		/*
+		aaaaaaaa bbbbbbbb
+		01234567 89abcdef
+		^
+		This byte is outputed
+		and register is shifted left <<
+		*/
+
+		if (step == 1) // Cycle 1 and 2, NT byte
+		{
+			// Copy new data
+			backgroundDatal = (backgroundDatal & 0xff00) | newBackgroundDatal;
+			backgroundDatah = (backgroundDatah & 0xff00) | newBackgroundDatah;
+
+			paletteDataLatchl = (newPaletteData & 1);
+			paletteDataLatchh = ((newPaletteData & 2) >> 1);
+
+			uint16_t tileaddr = 0x2000 | (loopy_v & 0x0fff);
+			NTbyte = memory[tileaddr];
+		}
+		else if (step == 3) // Cycle 3 and 4, AT byte
+		{
+			uint16_t attraddr = 0x23c0 | (loopy_v & 0x0c00) | ((loopy_v >> 4) & 0x38) | ((loopy_v >> 2) & 0x07);
+			ATbyte = memory[attraddr];
+		}
+		else if (step == 5) // Cycle 5 and 6, low BG tile byte
+		{
+			uint8_t b = ((loopy_v & 0x7000) >> 12);
+
+			newBackgroundDatal &= ~0xff;
+			newBackgroundDatal |= memory[BackgroundPattenTable + NTbyte * 16 + b];
+		}
+		else if (step == 7) // Cycle 7 and 8, high BG tile byte
+		{
+			uint8_t b = ((loopy_v & 0x7000) >> 12);
+
+			newBackgroundDatah &= ~0xff;
+			newBackgroundDatah |= memory[BackgroundPattenTable + NTbyte * 16 + b + 8];
+		}
+		else if (step == 8) // combine palette data
+		{
+			uint8_t x = (loopy_v & 0x1f);
+			uint8_t y = (loopy_v >> 5) & 0x1f;
+
+			uint8_t shift = ((y & 0x2)*2) + (x & 0x2);
+
+			newPaletteData = (ATbyte >> shift);
+		}
+	}
+
+	if (renderingIsEnabled() && scanline >= 0 && scanline <= 239) // Visible scanlines
+	{
 		if (cycles >= 1 && cycles <= 256)
 		{
-			uint8_t renderX = cycles - 1 -loopy_x;
+			uint8_t renderX = cycles - 1;
 			uint8_t renderY = scanline;
 
-			uint8_t BackgroundByte = 0;
-			if (ShowBackground)
-			{
-				uint16_t tileaddr = 0x2000 | (loopy_v & 0x0fff);
-				uint16_t attraddr = 0x23c0 | (loopy_v & 0x0c00) | ((loopy_v >> 4) & 0x38) | ((loopy_v >> 2) & 0x07);
+			uint8_t color = (((backgroundDatal << loopy_x) & 0x8000) >> 15) | 
+							(((backgroundDatah << loopy_x) & 0x8000) >> 14);
 
-				uint8_t x = (loopy_v & 0x1f);
-				uint8_t y = (loopy_v >> 5) & 0x1f;
+			uint8_t pal = (((paletteDatal << loopy_x) & 0x80) >> 7) |
+						  (((paletteDatah << loopy_x) & 0x80) >> 6);
 
-				uint8_t a = xpos;//+(renderX & 0x07)) & 0x07; // x in tile
-				xpos = (xpos + 1) & 0x7;
-				uint8_t b = ((loopy_v & 0x7000) >> 12); // y in tile == y % 8
-				
-				uint16_t tile = memory[tileaddr];
-				
-				uint8_t tiledata  = memory[BackgroundPattenTable + tile * 16 + b];
-				uint8_t tiledata2 = memory[BackgroundPattenTable + tile * 16 + b + 8];
-
-				uint8_t color = (tiledata &(0x80 >> a)) >> (7 - a) |
-					          (((tiledata2&(0x80 >> a)) >> (7 - a)) << 1);
-
-				uint8_t InfoByte = memory[attraddr];
-				uint8_t infopal = 0;
-				if (color != 0)
-				{
-					if ((y & 0x3) <= 1) // up
-					{
-						if ((x & 0x3) <= 1) infopal = InfoByte; // up-left
-						else                infopal = (InfoByte >> 2); // up-right
-					}
-					else // down
-					{
-						if ((x & 0x3) <= 1) infopal = (InfoByte >> 4); // down-left
-						else                infopal = (InfoByte >> 6); // down-right
-					}
-				}
-				BackgroundByte = memory[0x3F00 + ((infopal & 0x03) * 4) + color];
-			}
+			if (color == 0) pal = 0;
+			uint8_t BackgroundByte = memory[0x3F00 + (pal * 4) + color];
 
 			uint8_t SpriteByte = 0;
 			bool SpriteRendered = false;
@@ -331,13 +361,14 @@ uint8_t PPU::Step( )
 					SpriteRendered = true;
 
 					if (i == 0 &&
-						//renderX != 255 &&
+						renderX != 255 &&
 						ShowBackground &&
 						color != 0 &&
 						BackgroundByte != memory[0x3f00])
 					{
 						Sprite0Hit = true;
 					}
+					
 				}
 			}
 			if (SpriteRendered)
@@ -365,9 +396,20 @@ uint8_t PPU::Step( )
 		}
 	}
 
+	if (renderingIsEnabled() &&  scanline < 240 && ((cycles >= 1 && cycles <= 256) || (cycles >= 321 && cycles <= 336)))  // shift register shifting
+	{
+		backgroundDatal <<= 1;
+		backgroundDatah <<= 1;
+		paletteDatal <<= 1;
+		paletteDatah <<= 1;
+		paletteDatal |= paletteDataLatchl;
+		paletteDatah |= paletteDataLatchh;
+	}
+
+
 	if (scanline < 240 && renderingIsEnabled())
 	{
-		if ( (cycles >= 1 && cycles <= 256)/* || cycles >= 328*/ && (cycles % 8) == 0) // Increment hor v
+		if ( ((cycles >= 1 && cycles <= 256) || cycles >= 328) && (cycles % 8) == 0) // Increment hor v
 			loopyCoarseXIncrement();
 		if (cycles == 256) // Increment vertical position in v
 			loopyYIncrement();
