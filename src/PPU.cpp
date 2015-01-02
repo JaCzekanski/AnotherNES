@@ -50,10 +50,9 @@ void PPU::Write( uint8_t reg, uint8_t data )
 
 			// 6 - ppu slave/master, ignore
 
-			// 5 - Sprite size (0 - 8x8, 1 - 8x16), ignore
+			// 5 - Sprite size (0 - 8x8, 1 - 8x16)
 			if (data&0x20) SpriteSize = true;
-			else SpriteSize = false;
-				
+			else SpriteSize = false;	
 
 			// 4 - Background pattern table address (0: $0000; 1: $1000)
 			if (data&0x10) BackgroundPattenTable = 0x1000;
@@ -163,7 +162,6 @@ void PPU::Write( uint8_t reg, uint8_t data )
 
 uint8_t PPU::Read( uint8_t reg)
 {
-	static bool sprite0 = true;
 	int ret = 0;
 	int16_t addr;
 	switch (reg+0x2000)
@@ -226,8 +224,6 @@ uint8_t PPU::Read( uint8_t reg)
 			break;
 
 		default:
-			//Log->Error("CPU read from wrong PPU address");
-			int a = 0;
 			break;
 	}
 	return ret;
@@ -246,25 +242,28 @@ uint8_t PPU::Step( )
 		else if (cycles >= 280 && cycles <= 304 && renderingIsEnabled())
 			loopyCopyTtoV();
 	}
-	static uint8_t newBackgroundDatal, newBackgroundDatah;
-	static uint8_t newPaletteData;
-
 
 	static uint16_t backgroundDatal, backgroundDatah;
+	/*
+	aaaaaaaa bbbbbbbb
+	01234567 89abcdef
+	^
+	This byte is outputed
+	and register is shifted left <<
+	*/
 	static uint8_t paletteDatal, paletteDatah;
 	static bool paletteDataLatchl, paletteDataLatchh;
 
-	static uint8_t  NTbyte, ATbyte;
 	if (renderingIsEnabled() && scanline < 240 && ((cycles >= 1 && cycles <= 256) || (cycles >= 321)))  // Tile fetching
 	{
+		static uint8_t newBackgroundDatal, newBackgroundDatah;
+		static uint8_t newPaletteData;
+		static uint8_t NTbyte, ATbyte;
 		uint8_t step = ((cycles-1) % 8)+1;
-		/*
-		aaaaaaaa bbbbbbbb
-		01234567 89abcdef
-		^
-		This byte is outputed
-		and register is shifted left <<
-		*/
+
+		uint16_t v = loopy_v;
+		if (Mirroring == VERTICAL) loopy_v &= ~0x0800; // Clear second bit (y)
+		else loopy_v &= ~0x0400; //  Clear first bit (x), Horizontal
 
 		if (step == 1) // Cycle 1 and 2, NT byte
 		{
@@ -275,35 +274,34 @@ uint8_t PPU::Step( )
 			paletteDataLatchl = (newPaletteData & 1);
 			paletteDataLatchh = ((newPaletteData & 2) >> 1);
 
-			uint16_t tileaddr = 0x2000 | (loopy_v & 0x0fff);
+			uint16_t tileaddr = 0x2000 | (v & 0x0fff);
 			NTbyte = memory[tileaddr];
 		}
 		else if (step == 3) // Cycle 3 and 4, AT byte
 		{
-			uint16_t attraddr = 0x23c0 | (loopy_v & 0x0c00) | ((loopy_v >> 4) & 0x38) | ((loopy_v >> 2) & 0x07);
+			uint16_t attraddr = 0x23c0 | (v & 0x0c00) | ((v >> 4) & 0x38) | ((v >> 2) & 0x07);
 			ATbyte = memory[attraddr];
 		}
 		else if (step == 5) // Cycle 5 and 6, low BG tile byte
 		{
-			uint8_t b = ((loopy_v & 0x7000) >> 12);
+			uint8_t fineY = ((v & 0x7000) >> 12);
 
 			newBackgroundDatal &= ~0xff;
-			newBackgroundDatal |= memory[BackgroundPattenTable + NTbyte * 16 + b];
+			newBackgroundDatal |= memory[BackgroundPattenTable + NTbyte * 16 + fineY];
 		}
 		else if (step == 7) // Cycle 7 and 8, high BG tile byte
 		{
-			uint8_t b = ((loopy_v & 0x7000) >> 12);
+			uint8_t fineY = ((v & 0x7000) >> 12);
 
 			newBackgroundDatah &= ~0xff;
-			newBackgroundDatah |= memory[BackgroundPattenTable + NTbyte * 16 + b + 8];
+			newBackgroundDatah |= memory[BackgroundPattenTable + NTbyte * 16 + fineY + 8];
 		}
 		else if (step == 8) // combine palette data
 		{
-			uint8_t x = (loopy_v & 0x1f);
-			uint8_t y = (loopy_v >> 5) & 0x1f;
+			uint8_t coarseX = (v & 0x1f);
+			uint8_t coarseY = (v >> 5) & 0x1f;
 
-			uint8_t shift = ((y & 0x2)*2) + (x & 0x2);
-
+			uint8_t shift = ((coarseY & 0x2) * 2) + (coarseX & 0x2);
 			newPaletteData = (ATbyte >> shift);
 		}
 	}
@@ -314,19 +312,22 @@ uint8_t PPU::Step( )
 		{
 			uint8_t renderX = cycles - 1;
 			uint8_t renderY = scanline;
-
-			uint8_t color = (((backgroundDatal << loopy_x) & 0x8000) >> 15) | 
-							(((backgroundDatah << loopy_x) & 0x8000) >> 14);
-
-			uint8_t pal = (((paletteDatal << loopy_x) & 0x80) >> 7) |
-						  (((paletteDatah << loopy_x) & 0x80) >> 6);
-
-			if (color == 0) pal = 0;
-			uint8_t BackgroundByte = memory[0x3F00 + (pal * 4) + color];
-
+			uint8_t BackgroundByte = 63;
 			uint8_t SpriteByte = 0;
 			bool SpriteRendered = false;
 			bool SpriteFront = false;
+
+			if (ShowBackground)
+			{
+				uint8_t color = (((backgroundDatal << loopy_x) & 0x8000) >> 15) |
+					(((backgroundDatah << loopy_x) & 0x8000) >> 14);
+
+				uint8_t pal = (((paletteDatal << loopy_x) & 0x80) >> 7) |
+					(((paletteDatah << loopy_x) & 0x80) >> 6);
+
+				if (color == 0) pal = 0;
+				BackgroundByte = memory[0x3F00 + (pal * 4) + color];
+			}
 			
 			if (ShowSprites)
 			{
@@ -371,7 +372,7 @@ uint8_t PPU::Step( )
 					
 				}
 			}
-			if (SpriteRendered)
+			if (SpriteRendered || !ShowBackground)
 			{
 				if (SpriteFront || !ShowBackground) screen[renderY][renderX] = SpriteByte;
 				else
@@ -386,24 +387,19 @@ uint8_t PPU::Step( )
 				screen[renderY][renderX] = BackgroundByte;
 		}
 	}
-	else if (scanline == 241)
+	if (scanline == 241 && cycles == 1) // Vblank
 	{
-		if (cycles == 1) // Vblank
-		{
-			VBLANK = true;
-			if (NMI_enabled) ret = 2;
-			else ret = 1;
-		}
+		VBLANK = true;
+		if (NMI_enabled) ret = 2;
+		else ret = 1;
 	}
 
 	if (renderingIsEnabled() &&  scanline < 240 && ((cycles >= 1 && cycles <= 256) || (cycles >= 321 && cycles <= 336)))  // shift register shifting
 	{
 		backgroundDatal <<= 1;
 		backgroundDatah <<= 1;
-		paletteDatal <<= 1;
-		paletteDatah <<= 1;
-		paletteDatal |= paletteDataLatchl;
-		paletteDatah |= paletteDataLatchh;
+		paletteDatal = (paletteDatal << 1) | paletteDataLatchl;
+		paletteDatah = (paletteDatah << 1) | paletteDataLatchh;
 	}
 
 
@@ -432,6 +428,7 @@ uint8_t PPU::Step( )
 void PPU::Render(SDL_Surface* s)
 {
 	PaletteLookup(s);
+	memset(screen, 63, 256 * 256); // Not the best solution?
 }
 
 
