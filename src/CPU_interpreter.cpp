@@ -9,13 +9,10 @@ CPU_interpreter::CPU_interpreter()
 		OpcodeTableOptimized[i] = op;
 	}
 	Log->Debug("Opcode table cleaned");
-	int i;
-	for (i = 0; i< 256; i++)
+
+	for (int i = 0; i< 256; i++)
 	{
-		if (OpcodeTable[i].number == 0x02)
-		{
-			break;
-		}
+		if (OpcodeTable[i].number == 0x02)	break;
 		OpcodeTableOptimized[ OpcodeTable[i].number ] = OpcodeTable[i];
 	}
 
@@ -24,18 +21,8 @@ CPU_interpreter::CPU_interpreter()
 	Log->Debug("CPU_interpreter created");
 }
 
-extern bool debug;
-#ifdef _DEBUG
-#define DISASM(x,y) //(sprintf(buffer,x,y))
-#endif
-#ifndef _DEBUG
-#define DISASM(x,y) 
-#endif
-
-#undef _DEBUG
 int CPU_interpreter::Step()
 {
-	char buffer[512];
 	int opsize = 0;
 
 	OPCODE op = OpcodeTableOptimized[ this->memory[this->PC] ];
@@ -52,54 +39,44 @@ int CPU_interpreter::Step()
 	case Implicit: // No args
 		this->virtaddr = 0;
 		opsize = 1;
-		DISASM("%c", 0);
 		break;
 	case Accumulator:
 		opsize = 1;
 		this->virtaddr = 0x10000;
-		DISASM("%c", 'A');
 		break;
 	case Immediate: // imm8
 		this->virtaddr = this->PC+1;
 		opsize = 2;
-		DISASM("#$%.2X", Readv());
 		break;
 	case Zero_page: // $0000+arg1
 		this->virtaddr = arg1;
 		opsize = 2;
-		DISASM("$%.2X", virtaddr);
 		break;
-	case Zero_page_x: // $0000+arg1+X, 00Ah - STY,X failure
+	case Zero_page_x: // $0000+arg1+X
 		this->virtaddr = (arg1 + this->X) & 0xff;
 		opsize = 2;
-		DISASM("$%.2X,X", arg1);
 		break;
 	case Zero_page_y: // $0000+arg1+Y
 		this->virtaddr = (arg1 + this->Y) & 0xff;
 		opsize = 2;
-		DISASM("$%.2X,Y", arg1);
 		break;
 	case Relative: // -128 to +127
 		opsize = 2;
 		this->virtaddr = (this->PC+opsize) + (signed char)(arg1);
-		DISASM("$%.4X", virtaddr);
 		break;
 	case Absolute: // 16bit address
 		this->virtaddr = (arg2<<8) | arg1;
 		opsize = 3;
-		DISASM("$%.4X", virtaddr );
 		break;
 	case Absolute_x: // 16bit address + X
 		this->virtaddr = ( ((arg2 << 8) | arg1) + this->X  ) & 0xffff;
 		if (this->virtaddr>>8 != arg2) page_crossed = true;
 		opsize = 3;
-		DISASM("$%.4X,X", virtaddr-this->X );
 		break;
-	case Absolute_y: // 16bit address + Y, NOT Working 037h - LDA failure to wrap properly from ffffh to 0000h
+	case Absolute_y: // 16bit address + Y
 		this->virtaddr = ( ((arg2 << 8) | arg1) + this->Y  ) & 0xffff;
 		if (this->virtaddr >> 8 != arg2) page_crossed = true;
 		opsize = 3;
-		DISASM("$%.4X,Y", virtaddr-this->Y );
 		break;
 	case Indirect:
 		addrlo = (arg2<<8) | arg1;
@@ -107,7 +84,6 @@ int CPU_interpreter::Step()
 		this->virtaddr = this->memory[ addrlo ] | 
 						 this->memory[ addrhi ]<<8;
 		opsize = 3;
-		DISASM("($%.4X)", (arg2<<8) | arg1 );
 		break;
 	case Indexed_indirect: 
 		opsize = 2;
@@ -117,7 +93,6 @@ int CPU_interpreter::Step()
 		low  = this->memory[ addrlo ];
 		high = this->memory[ addrhi ];
 		this->virtaddr = low | (high<<8);
-		DISASM("($%.2X,X)", arg1 );
 		break;
 	case Indirect_indexed:
 		opsize = 2;
@@ -130,42 +105,16 @@ int CPU_interpreter::Step()
 		this->virtaddr = (uint16_t)((low | (high << 8)) + this->Y);
 		if (this->virtaddr >> 8 != arg2) page_crossed = true;
 
-		DISASM("($%.2X),Y", arg1 );
 		break;
 	default:
 		Log->Error("CPU_interpreter::Step(): Unknown addressing mode!");
+		jammed = true;
+		return 0;
 		break;
 	}
-//if (debug)
-//{
-//
-//	char hexvals[32];
-//	for (int i = 0; i<opsize; i++)
-//	{
-//		sprintf(hexvals+(i*3), "%.2X ", this->memory[this->PC+i] );
-//	}
-//	for (int i = 0; i<(3-opsize); i++)
-//	{
-//		sprintf(hexvals+((i+opsize)*3), "   "  );
-//	}
-//	int i;
-//	int len = strlen(buffer);
-//	for ( i = len; i< 10; i++)
-//	{
-//		buffer[i] = ' ';
-//	}
-//	buffer[++i] = 0;
-//	Log->Debug("0x%x: %s\t%s %s", this->PC, hexvals, op.mnemnic, buffer );
-//	//Log->Debug("$%.4X %X %s", this->PC, this->memory[this->PC], op.mnemnic);
-//}
+
 	uint16_t oldPC = this->PC;
 	PCchanged = false;
-
-	if (memcmp(op.mnemnic, "KIL", 3) == 0 || memcmp(op.mnemnic, "UNK", 3) == 0)
-	{
-		jammed = true;
-		return -1; // CPU JAM
-	}
 
 	op.inst(this);
 
@@ -774,10 +723,12 @@ void CPU_interpreter::SXA( CPU_interpreter* c ) // AND X register with the high 
 
 void CPU_interpreter::KIL(CPU_interpreter* c)
 {
+	c->jammed = true;
 	Log->Fatal("0x%x: CPU Jam (0x%x), halting!", c->PC, c->memory[c->PC]);
 }
 	
 void CPU_interpreter::UNK(CPU_interpreter* c)
 {
+	c->jammed = true;
 	Log->Debug("0x%x: Unknown instruction (0x%x), halting!", c->PC, c->memory[c->PC]);
 }

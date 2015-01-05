@@ -12,11 +12,11 @@ class CPU_interpreter : public CPU
 private:
 	int CYCLE;
 	bool page_cross;
-public:
 	bool PCchanged; // pc+opcode?
 	uint32_t virtaddr; // Seen by 6502
 	uint8_t* realaddr; // Seen by computer
 
+public:
 	CPU_interpreter(void);
 	~CPU_interpreter(void);
 

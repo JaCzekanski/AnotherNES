@@ -52,20 +52,18 @@ public:
 
 	void Write( uint16_t n, uint8_t data )
 	{
-		if (n < 0x2000) // Zero page, stack, ram, Mirrors
+		switch ((n & 0xE000) >> 13)
 		{
+		case 0: // 0x0000 - 0x1FFF: Zero page, stack, ram, Mirrors
 			if (!memoryLock[n % 2048])
-				memory[n%2048] = data; // Mirror
-			return ;
-		}
-		if (n < 0x4000) // PPU ports
-		{
-			//Log->Debug("IO write at 0x%x: 0x%x", n, data);
-  			ppu->Write( (n-0x2000)%8, data );
-			return ;
-		}
-		if (n < 0x4020) // IO / APU
-		{
+				memory[n % 2048] = data; // Mirror
+			return;
+
+		case 1: // 0x2000 - 0x3FFF: PPU ports
+			ppu->Write((n - 0x2000) % 8, data);
+			return;
+
+		case 2: // 0x4000 - 0x5FFF: APU and IO registers
 			// 0x4000-0x4003 - Pulse 1
 			// 0x4004-0x4007 - Pulse 2
 			// 0x4008-0x400B - Triangle
@@ -73,7 +71,7 @@ public:
 			// 0x4010-0x4013 - DMC
 			if (n <= 0x4013 || n == 0x4015 || n == 0x4017)
 			{
-				apu->Write(n-0x4000, data);
+				apu->Write(n - 0x4000, data);
 				return;
 			}
 			if (n == 0x4014) // OAM_DMA 
@@ -84,117 +82,86 @@ public:
 				int oamptr = ppu->OAMADDR;
 				for (int i = 0; i<256; i++)
 				{
-					*((uint8_t *)ppu->OAM+oamptr) = memory[ data<<8 | i ];
+					*((uint8_t *)ppu->OAM + oamptr) = memory[data << 8 | i];
 					if (++oamptr>0xff) oamptr = 0;
 				}
-
-				//for (int i = ppu->OAMADDR; i<64; i++)
-				//{
-				//	SPRITE spr;
-				//	spr.y =     memory[ data<<8 | i*4 + 0];
-				//	spr.index = memory[ data<<8 | i*4 + 1];
-				//	spr.attr =  memory[ data<<8 | i*4 + 2];
-				//	spr.x =     memory[ data<<8 | i*4 + 3];
-				//	ppu->OAM[i] = spr;
-				//}
 			}
 			else if (n == 0x4016) // JOY1
 			{
 				bit = 7; // Strobe
-				return ;
+				return;
 			}
 			else if (n == 0x4017) // JOY2 and Frame counter control
 			{
 				bit = 7; // Strobe
-				return ;
+				return;
 			}
-			memory[ n ] = data;
+			memory[n] = data;
 			return;
-			// TODO: Interface with APU and IO
-		}
-		if (n < 0x6000) // Expansion rom (Mappers not implemented, return 0)
-		{
+
+		case 3: // 0x6000 - 0x7FFF: SRAM (SRAM not implemented, return memory)
 			return;
-		}
-		if (n < 0x8000) // SRAM (SRAM not implemented)
-		{
-			memory[ n ] = data;
-			return;
-		}
-		else
-		{
+
+		case 4: // 0x8000 - 0x9FFF: Low rom
+		case 5: // 0xA000 - 0xBFFF
+		case 6: // 0xC000 - 0xDFFF: High rom
+		case 7: // 0xE000 - 0xFFFF
 			// Mapper 2
 			// $8000-$FFFF [PPPP PPPP]
 			if (mapper == 2 || mapper == 71 || mapper == 104)
-			{
 				prg_lowpage = data;
-				//Log->Debug("Mapper: 0x%.4x: 0x%x", n, data);
-			}
 			else
 			{
-				//Log->Fatal("Unsupported mapper.");
-				return ;
+				Log->Fatal("Unsupported mapper.");
+				return;
 			}
+			return;
 		}
 	}
 
 	uint8_t & operator[](size_t n)
 	{
-		if (n < 0x2000) // Zero page, stack, ram, Mirrors
+		switch ((n & 0xE000) >> 13)
 		{
-			return memory[n%2048]; // Mirror
-		}
-		if (n < 0x4000) // PPU ports
-		{
-			/*
-			$2002 - R
-			$2004 - RW (treat as wo)
-			$2007 - RW*/
-			//Log->Debug("IO read at 0x%x", n);
-
-			RET = ppu->Read( (n-0x2000)%8 );
+		case 0: // 0x0000 - 0x1FFF: Zero page, stack, ram, Mirrors
+			return memory[n & 0x7FF];
+		case 1: // 0x2000 - 0x3FFF: PPU ports
+			RET = ppu->Read((n - 0x2000) & 0x07);
 			return RET;
-
-			//return memory[ 0x2000 + (n-0x2000)%8 ]; // Mirror
-		}
-		if (n < 0x4020) // IO / APU
-		{
+		case 2: // 0x4000 - 0x5FFF: APU and IO registers
 			if (n == 0x4016) // JOY1 
 			{
 				//A, B, Select, Start, Up, Down, Left, Right.
-				if ( buttonState & (1<<bit) ) RET = 1; //Strobe
+				if (buttonState & (1 << bit)) RET = 1; //Strobe
 				else RET = 0;
 				bit--;
 				return RET;
 			}
 			return ZERO;
-			// TODO: Interface with APU and IO
-		}
-		if (n < 0x6000) // Expansion rom (Mappers not implemented, return 0)
-		{
-			return ZERO;
-			// TODO: Interface with APU and IO
-		}
-		if (n < 0x8000) // SRAM (SRAM not implemented, return memory)
-		{
-			return memory[ n ];
-			// TODO: Interface with APU and IO
-		}
-		if (prg_pages == 1)
-		{
-			return prg_rom[(n - 0x8000) % 0x4000]; // Return PRG-ROM
-		}
 
-		if (mapper == 2 || mapper == 71 || mapper == 104)
-		{
-			n-=0x8000;
-			if (n>=0x4000) // high
+		case 3: // 0x6000 - 0x7FFF: SRAM (SRAM not implemented, return memory)
+			return ZERO;
+
+		case 4: // 0x8000 - 0x9FFF: Low rom
+		case 5: // 0xA000 - 0xBFFF
+			if (prg_pages == 1) return prg_rom[(n - 0x8000) % 0x4000]; // Return PRG-ROM
+			if (mapper == 2 || mapper == 71 || mapper == 104)
 			{
-				return prg_rom[ (prg_highpage%prg_pages)*0x4000 + (n-0x4000) ];
+				n -= 0x8000;
+				return prg_rom[(prg_lowpage%prg_pages) * 0x4000 + n % 0x4000];
 			}
-			return prg_rom[(prg_lowpage%prg_pages) * 0x4000 + n % 0x4000];
+			return prg_rom[(prg_lowpage * 0x4000) + n - 0x8000]; // Return PRG-ROM
+
+		case 6: // 0xC000 - 0xDFFF: High rom
+		case 7: // 0xE000 - 0xFFFF
+			if (prg_pages == 1) return prg_rom[(n - 0x8000) % 0x4000]; // Return PRG-ROM
+			if (mapper == 2 || mapper == 71 || mapper == 104)
+			{
+				n -= 0x8000;
+				return prg_rom[(prg_highpage%prg_pages) * 0x4000 + (n - 0x4000)];
+			}
+			return prg_rom[(prg_lowpage * 0x4000) + n - 0x8000]; // Return PRG-ROM
 		}
-		return prg_rom[(prg_lowpage * 0x4000) + n - 0x8000]; // Return PRG-ROM
 	}
 
 };
