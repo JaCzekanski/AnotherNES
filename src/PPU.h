@@ -2,6 +2,7 @@
 #include "headers.h"
 #include <SDL.h>
 
+
 #define HORIZONTAL 0
 #define VERTICAL 1
 
@@ -53,6 +54,9 @@ private:
 	bool ShowSprites;
 	bool Sprite0Hit;
 	bool spriteOverflow;
+	
+	bool showLeftSprites;
+	bool showLeftBackground;
 
 	uint16_t loopy_v; // 15bits, current VRAM address
 	uint16_t loopy_t; // 15bits, temporary VRAM address
@@ -68,7 +72,9 @@ private:
 	void RenderBackground(SDL_Surface* s, uint8_t nametable);
 
 	// Loopy
-	inline bool renderingIsEnabled();
+	//__forceinline  bool renderingIsEnabled();
+	// Unfortunately define macro is far mor faster than inline funcion (even if called only once)
+	#define renderingIsEnabled() (ShowSprites || ShowBackground)
 	inline void loopyCopyTtoV();
 	inline void loopyCoarseXIncrement();
 	inline void loopyYIncrement();

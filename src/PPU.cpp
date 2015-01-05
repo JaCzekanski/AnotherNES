@@ -1,5 +1,6 @@
 #include "PPU.h"
 
+
 PPU::PPU(void)
 {
 	memset( this->memory, 0, 0x4000 );
@@ -19,6 +20,8 @@ PPU::PPU(void)
 	ShowBackground = false;
 	ShowSprites = false;
 	spriteOverflow = false;
+	showLeftSprites = false;
+	showLeftBackground = false;
 
 	PPUDATAbuffer = 0;
 	BackgroundPattenTable = 0;
@@ -81,24 +84,29 @@ void PPU::Write( uint8_t reg, uint8_t data )
 			// 5 - Intensify reds (and darken other colors)
 			// 4 - 1: Show sprites
 			// 3 - 1: Show background
-			// 2 - 1: Show sprites in leftmost 8 pixels of screen; 0: Hide, ignored
-			// 1 - 1: Show background in leftmost 8 pixels of screen; 0: Hide, ignored
+			// 2 - 1: Show sprites in leftmost 8 pixels of screen; 0: Hide
+			// 1 - 1: Show background in leftmost 8 pixels of screen; 0: Hide
 			// 0 - Grayscale (0: normal color; 1: produce a monochrome display), ignored
+
 			if (data&0x10) ShowSprites = true;
 			else ShowSprites = false;
 
 			if (data&0x08) ShowBackground = true;
 			else ShowBackground = false;
+
+			if (data & 0x04) showLeftSprites = true;
+			else showLeftSprites = false;
+
+			if (data & 0x02) showLeftBackground = true;
+			else showLeftBackground = false;
+
 			break;
 
 		case 0x2002: //PPUSTATUS
-			// Writes here have no effect.
 			break;
 			
 		case 0x2003: //OAMADDR
-			//Log->Debug("PPU: 0x2003 <- 0x%.2x", data);
 			OAMADDR = data;
-			// Object Attribute Memory (sprites), ignored
 			break;
 			
 		case 0x2004: //OAMDATA
@@ -168,7 +176,7 @@ uint8_t PPU::Read( uint8_t reg)
 	switch (reg+0x2000)
 	{
 		case 0x2002: //PPUSTATUS
-			ret = (VBLANK << 7) | (Sprite0Hit << 6);
+			ret = (VBLANK << 7) | (Sprite0Hit << 6) | (spriteOverflow << 5);
 			// 7 - Vertical blank has started (0: not in VBLANK; 1: in VBLANK)
 
 			// 6 - Sprite 0 Hit.  Set when a nonzero pixel of sprite 0 'hits', ignored
@@ -182,8 +190,6 @@ uint8_t PPU::Read( uint8_t reg)
 			// 4:0 - Least significant bits previously written into a PPU register
 			//       (due to register not being updated for this address)
 
-			// Reset PPUADDR latch to high
-			//Sprite0Hit = !Sprite0Hit; // SMB fix
 			VBLANK = false;
 			loopy_w = 0;
 			break;
@@ -214,13 +220,10 @@ uint8_t PPU::Read( uint8_t reg)
 				uint16_t tmpaddr = (addr - 0x3f00) % 0x20;
 
 				if (tmpaddr == 0x10 || tmpaddr == 0x14 || tmpaddr == 0x18 || tmpaddr == 0x1c)
-				{
 					ret = memory[0x3f00 + tmpaddr - 0x10];
-				}
 				else ret = memory[0x3f00 + tmpaddr];
 			}
 
-			if (scanline < 240 && (ShowBackground || ShowSprites)) Log->Info("Update of loopy_v during rendering");
 			loopy_v += VRAMaddressIncrement;
 			break;
 
@@ -233,6 +236,7 @@ uint8_t PPU::Read( uint8_t reg)
 uint8_t PPU::Step( )
 {
 	uint8_t ret = 0;
+
 	if (scanline == -1) // Pre-render scanline (or 261)
 	{
 		if (cycles == 1)
@@ -315,25 +319,29 @@ uint8_t PPU::Step( )
 			newPaletteData = (ATbyte >> shift);
 		}
 
-		if (cycles == 64) // <1,64> second OAM clear
+		if (cycles == 64 && ShowSprites) // <1,64> second OAM clear
 			memset(&secondOAM, 0xff, sizeof(secondOAM));
 		if (cycles == 256) // <65,256> second OAM evaluation
 		{
-			int j = 0;
-			for (int i = 0; i < 64; i++)
+			secondOAMsprites = 0;
+			if (scanline != -1 && ShowSprites)
 			{
-				SPRITE &spr = OAM[i]; 
-				if (!(scanline >= spr.y && scanline < spr.y + (SpriteSize ? 16 : 8))) continue;
-
-				secondOAM[j] = spr;
-				if (i == 0) secondOAM[j].attr |= 4;
-				if (++j >= 8)
+				int j = 0;
+				for (int i = 0; i < 64; i++)
 				{
-					spriteOverflow = true;
-					break;
+					SPRITE &spr = OAM[i];
+					if (!(scanline >= spr.y && scanline < spr.y + (SpriteSize ? 16 : 8))) continue;
+					secondOAM[j] = spr;
+					if (i == 0) secondOAM[j].attr |= 4;
+					j++;
+					if ( j == 9)
+					{
+						spriteOverflow = true;
+						break;
+					}
 				}
+				secondOAMsprites = j;
 			}
-			secondOAMsprites = j;
 		}
 	}
 
@@ -344,11 +352,12 @@ uint8_t PPU::Step( )
 			uint8_t renderX = cycles - 1;
 			uint8_t renderY = scanline;
 			uint8_t BackgroundByte = memory[0x3F00];
+			uint8_t backgroundColor = 0;
 			uint8_t SpriteByte = 0;
 			bool SpriteRendered = false;
 			bool SpriteFront = false;
 
-			if (ShowBackground)
+			if (ShowBackground && (showLeftBackground || renderX >= 8))
 			{
 				uint8_t color = (((backgroundDatal << loopy_x) & 0x8000) >> 15) |
 					(((backgroundDatah << loopy_x) & 0x8000) >> 14);
@@ -356,11 +365,12 @@ uint8_t PPU::Step( )
 				uint8_t pal = (((paletteDatal << loopy_x) & 0x80) >> 7) |
 					(((paletteDatah << loopy_x) & 0x80) >> 6);
 
+				backgroundColor = color;
 				if (color == 0) pal = 0;
 				BackgroundByte = memory[0x3F00 + (pal * 4) + color];
 			}
 			
-			if (ShowSprites)
+			if (ShowSprites && (showLeftSprites || renderX >= 8))
 			{
 				for (int i = 0; i < oldSecondOAMsprites; i++) // OAM
 				{
@@ -372,7 +382,6 @@ uint8_t PPU::Step( )
 					uint16_t spriteaddr = (SpriteSize ? (spr.index & 0x01) * 0x1000 : SpritePattenTable) + 
 										  (SpriteSize ? (spr.index & 0xfe) : spr.index) * 16;
 					
-
 					uint8_t sprite_x = renderX - (spr.x); // x inside sprite
 					uint8_t sprite_y = renderY - (spr.y + 1); // y inside sprite
 
@@ -397,14 +406,14 @@ uint8_t PPU::Step( )
 						renderX != 255 &&
 						ShowBackground &&
 						color != 0 &&
-						BackgroundByte != memory[0x3f00])
-					{
+						backgroundColor != 0 && 
+						(showLeftBackground || renderX >= 8))
 						Sprite0Hit = true;
-					}
+					if (SpriteFront) break;
 					
 				}
 			}
-			if (SpriteRendered || !ShowBackground)
+			if (SpriteRendered)
 			{
 				if (SpriteFront || !ShowBackground) screen[renderY][renderX] = SpriteByte;
 				else
@@ -460,6 +469,7 @@ uint8_t PPU::Step( )
 void PPU::Render(SDL_Surface* s)
 {
 	PaletteLookup(s);
+	//memset(screen, memory[0x3f00], 256 * 256);
 	memset(screen, 63, 256 * 256); // Not the best solution?
 }
 
@@ -483,11 +493,11 @@ void PPU::PaletteLookup(SDL_Surface *s)
 
 
 // Loopy
-
-bool PPU::renderingIsEnabled()
-{
-	return (ShowSprites || ShowBackground);
-}
+//
+//bool PPU::renderingIsEnabled()
+//{
+//	return (ShowSprites || ShowBackground);
+//}
 
 void PPU::loopyCopyTtoV()
 {
