@@ -262,92 +262,91 @@ uint8_t PPU::Step( )
 	static uint8_t paletteDatal, paletteDatah;
 	static bool paletteDataLatchl, paletteDataLatchh;
 
-	if (ShowSprites && scanline < 240 && cycles == 0)
+	if (renderingIsEnabled() && scanline < 240)
 	{
-		memcpy(oldSecondOAM, secondOAM, sizeof(oldSecondOAM));
-		oldSecondOAMsprites = secondOAMsprites;
-	}
-
-	if (renderingIsEnabled() && scanline < 240 && ((cycles >= 1 && cycles <= 256) || (cycles >= 321 && cycles <= 336)))  // Tile fetching
-	{
-		static uint8_t newBackgroundDatal, newBackgroundDatah;
-		static uint8_t newPaletteData;
-		static uint8_t NTbyte, ATbyte;
-		uint8_t step = ((cycles-1) % 8)+1;
-
-		uint16_t v = loopy_v;
-		if (Mirroring == VERTICAL) v &= ~0x0800; // Clear second bit (y)
-		else v &= ~0x0400; //  Clear first bit (x), Horizontal
-
-		if (step == 1) // Cycle 1 and 2, NT byte
+		if (ShowSprites && cycles == 0)
 		{
-			// Copy new data
-			backgroundDatal = (backgroundDatal & 0xff00) | newBackgroundDatal;
-			backgroundDatah = (backgroundDatah & 0xff00) | newBackgroundDatah;
-
-			paletteDataLatchl = (newPaletteData & 1);
-			paletteDataLatchh = ((newPaletteData & 2) >> 1);
-
-			uint16_t tileaddr = 0x2000 | (v & 0x0fff);
-			NTbyte = memory[tileaddr];
+			memcpy(oldSecondOAM, secondOAM, sizeof(oldSecondOAM));
+			oldSecondOAMsprites = secondOAMsprites;
 		}
-		else if (step == 3) // Cycle 3 and 4, AT byte
+		if ((cycles >= 1 && cycles <= 256) || (cycles >= 321 && cycles <= 336)) // Tile fetching
 		{
-			uint16_t attraddr = 0x23c0 | (v & 0x0c00) | ((v >> 4) & 0x38) | ((v >> 2) & 0x07);
-			ATbyte = memory[attraddr];
-		}
-		else if (step == 5) // Cycle 5 and 6, low BG tile byte
-		{
-			uint8_t fineY = ((v & 0x7000) >> 12);
+			static uint8_t newBackgroundDatal, newBackgroundDatah;
+			static uint8_t newPaletteData;
+			static uint8_t NTbyte, ATbyte;
+			uint8_t step = ((cycles - 1) % 8) + 1;
 
-			newBackgroundDatal &= ~0xff;
-			newBackgroundDatal |= memory[BackgroundPattenTable + NTbyte * 16 + fineY];
-		}
-		else if (step == 7) // Cycle 7 and 8, high BG tile byte
-		{
-			uint8_t fineY = ((v & 0x7000) >> 12);
+			uint16_t v = loopy_v;
+			if (Mirroring == VERTICAL) v &= ~0x0800; // Clear second bit (y)
+			else v &= ~0x0400; //  Clear first bit (x), Horizontal
 
-			newBackgroundDatah &= ~0xff;
-			newBackgroundDatah |= memory[BackgroundPattenTable + NTbyte * 16 + fineY + 8];
-		}
-		else if (step == 8) // combine palette data
-		{
-			uint8_t coarseX = (v & 0x1f);
-			uint8_t coarseY = (v >> 5) & 0x1f;
-
-			uint8_t shift = ((coarseY & 0x2) * 2) + (coarseX & 0x2);
-			newPaletteData = (ATbyte >> shift);
-		}
-
-		if (cycles == 64 && ShowSprites) // <1,64> second OAM clear
-			memset(&secondOAM, 0xff, sizeof(secondOAM));
-		if (cycles == 256) // <65,256> second OAM evaluation
-		{
-			secondOAMsprites = 0;
-			if (scanline != -1 && ShowSprites)
+			if (step == 1) // Cycle 1 and 2, NT byte
 			{
-				int j = 0;
-				for (int i = 0; i < 64; i++)
+				// Copy new data
+				backgroundDatal = (backgroundDatal & 0xff00) | newBackgroundDatal;
+				backgroundDatah = (backgroundDatah & 0xff00) | newBackgroundDatah;
+
+				paletteDataLatchl = (newPaletteData & 1);
+				paletteDataLatchh = ((newPaletteData & 2) >> 1);
+
+				uint16_t tileaddr = 0x2000 | (v & 0x0fff);
+				NTbyte = memory[tileaddr];
+			}
+			else if (step == 3) // Cycle 3 and 4, AT byte
+			{
+				uint16_t attraddr = 0x23c0 | (v & 0x0c00) | ((v >> 4) & 0x38) | ((v >> 2) & 0x07);
+				ATbyte = memory[attraddr];
+			}
+			else if (step == 5) // Cycle 5 and 6, low BG tile byte
+			{
+				uint8_t fineY = ((v & 0x7000) >> 12);
+
+				newBackgroundDatal &= ~0xff;
+				newBackgroundDatal |= memory[BackgroundPattenTable + NTbyte * 16 + fineY];
+			}
+			else if (step == 7) // Cycle 7 and 8, high BG tile byte
+			{
+				uint8_t fineY = ((v & 0x7000) >> 12);
+
+				newBackgroundDatah &= ~0xff;
+				newBackgroundDatah |= memory[BackgroundPattenTable + NTbyte * 16 + fineY + 8];
+			}
+			else if (step == 8) // combine palette data
+			{
+				uint8_t coarseX = (v & 0x1f);
+				uint8_t coarseY = (v >> 5) & 0x1f;
+
+				uint8_t shift = ((coarseY & 0x2) * 2) + (coarseX & 0x2);
+				newPaletteData = (ATbyte >> shift);
+			}
+
+			if (cycles == 64 && ShowSprites) // <1,64> second OAM clear
+				memset(&secondOAM, 0xff, sizeof(secondOAM));
+			if (cycles == 256) // <65,256> second OAM evaluation
+			{
+				secondOAMsprites = 0;
+				if (scanline != -1 && ShowSprites)
 				{
-					SPRITE &spr = OAM[i];
-					if (!(scanline >= spr.y && scanline < spr.y + (SpriteSize ? 16 : 8))) continue;
-					secondOAM[j] = spr;
-					if (i == 0) secondOAM[j].attr |= 4;
-					j++;
-					if ( j == 9)
+					int j = 0;
+					for (int i = 0; i < 64; i++)
 					{
-						spriteOverflow = true;
-						break;
+						SPRITE &spr = OAM[i];
+						if (!(scanline >= spr.y && scanline < spr.y + (SpriteSize ? 16 : 8))) continue;
+						secondOAM[j] = spr;
+						if (i == 0) secondOAM[j].attr |= 4;
+						j++;
+						if (j == 9)
+						{
+							spriteOverflow = true;
+							break;
+						}
 					}
+					secondOAMsprites = j;
 				}
-				secondOAMsprites = j;
 			}
 		}
-	}
 
-	if (renderingIsEnabled() && scanline >= 0 && scanline <= 239) // Visible scanlines
-	{
-		if (cycles >= 1 && cycles <= 256)
+		if (scanline >= 0 && cycles >= 1 && cycles <= 256)
 		{
 			uint8_t renderX = cycles - 1;
 			uint8_t renderY = scanline;
@@ -427,6 +426,20 @@ uint8_t PPU::Step( )
 			else
 				screen[renderY][renderX] = BackgroundByte;
 		}
+
+		if ((cycles >= 1 && cycles <= 256) || (cycles >= 321 && cycles <= 336)) // shift register shifting
+		{
+			backgroundDatal <<= 1;
+			backgroundDatah <<= 1;
+			paletteDatal = (paletteDatal << 1) | paletteDataLatchl;
+			paletteDatah = (paletteDatah << 1) | paletteDataLatchh;
+
+			if ((cycles % 8) == 0) loopyCoarseXIncrement();
+		}
+		if (cycles == 256) // Increment vertical position in v
+			loopyYIncrement();
+		if (cycles == 257) // Copy horizonal pos from t to v
+			loopyCopyHorizontal();
 	}
 	if (scanline == 241 && cycles == 1) // Vblank
 	{
@@ -434,26 +447,6 @@ uint8_t PPU::Step( )
 		if (NMI_enabled) ret = 2;
 		else ret = 1;
 	}
-
-	if (renderingIsEnabled() && scanline < 240 && ((cycles >= 1 && cycles <= 256) || (cycles >= 321 && cycles <= 336)))  // shift register shifting
-	{
-		backgroundDatal <<= 1;
-		backgroundDatah <<= 1;
-		paletteDatal = (paletteDatal << 1) | paletteDataLatchl;
-		paletteDatah = (paletteDatah << 1) | paletteDataLatchh;
-
-		if ((cycles % 8) == 0) loopyCoarseXIncrement();
-	}
-
-
-	if (scanline < 240 && renderingIsEnabled())
-	{
-		if (cycles == 256) // Increment vertical position in v
-			loopyYIncrement();
-		if (cycles == 257) // Copy horizonal pos from t to v
-			loopyCopyHorizontal();
-	}
-
 
 	// 1 CPU cycles - 3 PPU cycles
 	// 1 scanline - 341 PPU cycles
