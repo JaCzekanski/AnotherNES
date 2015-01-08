@@ -96,6 +96,7 @@
     <ClCompile Include="src\Dialog\DlgRAM.cpp" />
     <ClCompile Include="src\iNES.cpp" />
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\NES.cpp" />
     <ClCompile Include="src\NSF.cpp" />
     <ClCompile Include="src\PPU.cpp" />
     <ClCompile Include="src\Dialog\DlgAbout.cpp" />
@@ -113,6 +114,7 @@
     <ClInclude Include="src\headers.h" />
     <ClInclude Include="src\iNES.h" />
     <ClInclude Include="src\logger.h" />
+    <ClInclude Include="src\NES.h" />
     <ClInclude Include="src\NSF.h" />
     <ClInclude Include="src\PPU.h" />
     <ClInclude Include="src\resource.h" />

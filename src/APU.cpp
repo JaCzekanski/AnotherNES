@@ -8,12 +8,10 @@ APU::APU(void)
 	gvolume = 0x0f;
 	dir = false;
 	dir2 = false;
-	Log->Debug("APU created");
 }
 
 APU::~APU(void)
 {
-	Log->Debug("APU destroyed");
 }
 
 void APU::Write( uint8_t reg, uint8_t data )

@@ -2,7 +2,5 @@
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
+#include <memory>
 #include "logger.h"
-#include "stdint.h"
-
-extern Logger* Log;

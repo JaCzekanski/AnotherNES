@@ -2,33 +2,22 @@
 
 iNES::iNES(void)
 {
-	PRG_ROM = NULL;
-	CHR_ROM = NULL;
-	Mapper = 0;
-	Log->Debug("iNES created");
+	PRG_ROM.clear();
+	CHR_ROM.clear();
+	mapper = 0;
 }
 
 iNES::~iNES(void)
 {
-	if (PRG_ROM != NULL) 
-	{
-		delete PRG_ROM;
-		PRG_ROM = NULL;
-	}
-	if (CHR_ROM != NULL)
-	{
-		delete CHR_ROM;
-		CHR_ROM = NULL;
-	}
-	Log->Debug("iNES destroyed");
 }
+
 int iNES::Load( const char* name )
 {
 	FILE* rom = fopen(name, "rb");
 
 	if (!rom)
 	{
-		Log->Error("iNES.cpp: Cannot open %s", rom);
+		Log->Error("iNES: Cannot open %s", rom);
 		return 1;
 	}
 	
@@ -36,7 +25,7 @@ int iNES::Load( const char* name )
 	fread( magic, 1, 4, rom );
 	if (memcmp( magic, "NES\x1A", 4))
 	{
-		Log->Error("iNES.cpp: Wrong magic: expected NES\\x1a");
+		Log->Error("iNES: Wrong magic: expected NES\\x1a");
 		return 2; // Wrong MAGIC
 	}
 
@@ -78,38 +67,37 @@ int iNES::Load( const char* name )
 	*/
 	if (flags9 & 0x01)
 	{
-		Pal = true;
-		Log->Info("iNes.cpp: PAL");
+		region = Region::PAL;
+		Log->Info("iNes: PAL");
 	}
 	else
 	{
-		Pal = false;
-		Log->Info("iNes.cpp: NTSC");
+		region = Region::NTSC;
+		Log->Info("iNes: NTSC");
 	}
 
 	if (flags6&0x01) 
 	{
-		Log->Info("iNes.cpp: Vertical mirroring");
-		Mirroring = 1;
+		mirroring = Mirroring::Vertical;
+		Log->Info("iNes: Vertical mirroring");
 	}
 	else 
 	{
-		Log->Info("iNes.cpp: Horizontal mirroring");
-		Mirroring = 0;
+		mirroring = Mirroring::Horizontal;
+		Log->Info("iNes: Horizontal mirroring");
 	}
 
-	Mapper = ((flags6&0xf0)>>4) | (flags7&0xf0);
+	mapper = ((flags6&0xf0)>>4) | (flags7&0xf0);
+	Log->Info("iNes: Mapper %d", mapper);
 
 	if (flags6&0x04) // Trainer
-	{
 		fseek(rom, 512, SEEK_CUR);
-	}
 
-	PRG_ROM = new uint8_t[ PRG_ROM_pages*16*1024 ];
-	CHR_ROM = new uint8_t[ CHR_ROM_pages*8*1024 ];
+	PRG_ROM.resize(PRG_ROM_pages * prgPageSize);
+	CHR_ROM.resize(CHR_ROM_pages * chrPageSize);
 
-	fread( PRG_ROM, 1, PRG_ROM_pages*16*1024, rom );
-	fread( CHR_ROM, 1, CHR_ROM_pages*8*1024, rom );
+	if (PRG_ROM_pages>0) fread(&PRG_ROM[0], 1, PRG_ROM_pages * prgPageSize, rom);
+	if (CHR_ROM_pages>0) fread(&CHR_ROM[0], 1, CHR_ROM_pages * chrPageSize, rom);
 
 	fclose( rom );
 	Log->Debug("iNES loaded");

@@ -63,6 +63,9 @@
     <ClCompile Include="src\Dialog\DlgPatterntable.cpp">
       <Filter>Source Files\Dialog</Filter>
     </ClCompile>
+    <ClCompile Include="src\NES.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\APU.h">
@@ -118,6 +121,9 @@
     </ClInclude>
     <ClInclude Include="src\Dialog\DlgPatterntable.h">
       <Filter>Header Files\Dialog</Filter>
+    </ClInclude>
+    <ClInclude Include="src\NES.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

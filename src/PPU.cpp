@@ -31,12 +31,10 @@ PPU::PPU(void)
 
 	ScrollX = 0;
 	ScrollY = 0;
-	Log->Debug("PPU: created");
 }
 
 PPU::~PPU(void)
 {
-	Log->Debug("PPU: destroyed");
 }
 
 void PPU::Write( uint8_t reg, uint8_t data )

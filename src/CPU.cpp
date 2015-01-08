@@ -2,13 +2,10 @@
 
 CPU::CPU(void)
 {
-	this->Power();
-	Log->Debug("CPU created");
 }
 
 CPU::~CPU(void)
 {
-	Log->Debug("CPU destroyed");
 }
 
 void CPU::Push( uint8_t v )
@@ -33,7 +30,7 @@ uint16_t CPU::Pop16( )
 
 void CPU::Power()
 {
-	Log->Debug("CPU power up state");
+	Log->Debug("CPU power up");
 	this->A = 0;
 	this->X = 0;
 	this->Y = 0;

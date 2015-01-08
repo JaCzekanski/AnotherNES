@@ -1,21 +1,18 @@
-#ifdef _DEBUG
-//#include <vld.h>
-#endif
-bool debug = false;
 int buttonState = 0;
 #include <windows.h>
 #include <xinput.h>
-#include <iostream>
 #include <SDL.h>
 #include <SDL_syswm.h>
 #undef main
 #include "headers.h"
 #include "resource.h"
+
 #include "iNES.h"
 #include "NSF.h"
 #include "CPU.h"
 #include "CPU_interpreter.h"
 #include "APU.h"
+#include "NES.h"
 
 #include "dialog/DlgOAM.h"
 #include "dialog/DlgPalette.h"
@@ -26,17 +23,13 @@ int buttonState = 0;
 
 #include "version.h"
 
-Logger* Log;
-CPU* cpu;
-iNES* rom;
-
 DlgOAM *ToolboxOAM;
 DlgPalette *ToolboxPalette;
 DlgNametable *ToolboxNametable;
 DlgPatterntable *ToolboxPatterntable;
 DlgRAM *ToolboxRAM;
+SDL_Window* mainWindow;
 
-SDL_Window* MainWindow;
 HMENU Menu;
 
 namespace EmuState
@@ -49,175 +42,216 @@ namespace EmuState
 	};
 };
 
-EmuState::State EmulatorState = EmuState::Idle;
-
-	SDL_Event event;
-void ClearMainWindow()
+std::string getFilename(std::string name)
 {
-	SDL_Surface *tns = SDL_GetWindowSurface( MainWindow );
-	SDL_FillRect( tns, NULL, 0x000000 );
-	SDL_UpdateWindowSurface( MainWindow );
+	std::size_t found = name.find_last_of('.');
+	if (found == std::string::npos) return name;
+	else return name.substr(0, found);
 }
 
-// Loads rom with path as argument
-bool LoadGame( const char* path )
+std::string getExtension(std::string name)
 {
-	Log->Info("Opening %s", path);
-	rom = new iNES();
-	if (rom->Load( (const char*)path ))
-	{
-		Log->Error("Cannot load %s", path);
-		return 0;
-	}
-	Log->Success("%s opened", path);
+	std::size_t found = name.find_last_of('.');
+	if (found == std::string::npos) return "";
+	else return name.substr(found + 1);
+}
 
 
+EmuState::State EmulatorState = EmuState::Idle;
 
-	Log->Info("Creating CPU interpreter");
-	cpu = new CPU_interpreter();
-
-	Log->Info("Mapper: %d", rom->Mapper);
-	cpu->memory.mapper = rom->Mapper;
-
-	if (rom->PRG_ROM_pages>128)
-	{
-		Log->Error("PRG_ROM pages > 128 (more than 2MB, unsupported)");
-		return 1;
-	}
-	memcpy( cpu->memory.prg_rom, rom->PRG_ROM, rom->PRG_ROM_pages*16*1024 );
-	cpu->memory.prg_pages = rom->PRG_ROM_pages;
-	cpu->memory.prg_lowpage = 0;
-	cpu->memory.prg_highpage = rom->PRG_ROM_pages-1;
-	if (rom->Mapper == 104) cpu->memory.prg_highpage = 15; // Golden five fix  http://mamedev.org/source/src/mess/machine/nes_pcb.c
-
-	Log->Success("%dB PRG_ROM copied", rom->PRG_ROM_pages*16*1024);
+SDL_Event event;
 
 
-	if (rom->CHR_ROM_pages>1)
-	{
-		Log->Error("CHR_ROM pages > 1 will cause crash (no mappers supported). Breaking.");
-		return 1;
-	}
-	memcpy( cpu->ppu.memory, rom->CHR_ROM, rom->CHR_ROM_pages*8*1024 );
-	Log->Success("%dB CHR_ROM copied", rom->CHR_ROM_pages*8*1024 );
-
-	cpu->memory.ppu = &cpu->ppu;
-	cpu->memory.apu = &cpu->apu;
-	cpu->ppu.Mirroring = rom->Mirroring;
-	cpu->Reset();
-
-	SDL_PauseAudio(0);
-	return 0;
+void audiocallback(void *userdata, Uint8 *stream, int len)
+{
+	memset(stream, 0x7f, len);
+	//if (cpu)
+	//{
+	//	cpu->apu.audiocallback( userdata, stream, len );
+	//}
 }
 
 // Loads nsf with path as argument
 bool LoadNSF( const char* path )
 {
-	Log->Info("Opening %s", path);
-	NSF* nsf = new NSF();
-	if (nsf->Load( (const char*)path ))
-	{
-		Log->Error("Cannot load %s", path);
-		return 0;
-	}
-	Log->Success("%s opened", path);
-	Log->Info("Press escape to exit player");
-
-
-
-	Log->Info("Creating CPU interpreter");
-	cpu = new CPU_interpreter();
-
-	cpu->memory.mapper = 0;
-
-	memcpy( cpu->memory.prg_rom+(nsf->load_address-0x8000), nsf->data, nsf->size );
-	cpu->memory.prg_pages = 2;
-	cpu->memory.prg_lowpage = 0;
-	cpu->memory.prg_highpage = 1;
-
-	Log->Success("%dB bytes of NSF data copid", nsf->size);
-
-
-	cpu->memory.ppu = &cpu->ppu;
-	cpu->memory.apu = &cpu->apu;
-	cpu->Reset();
-
-	int song = 0;
-	bool key_released = true;
-new_song:
-	Log->Info("Song %d", song);
-
-	cpu->PC = nsf->init_address;
-	cpu->A = song;
-	cpu->X = 0; // ntsc
-
-	for (int i = 0; i<=0x07ff; i++) cpu->memory.Write(i,0);
-	for (int i = 0x6000; i<=0x7fff; i++) cpu->memory.Write(i,0);
-	for (int i = 0x4000; i<=0x400f; i++) cpu->memory.Write(i,0);
-	cpu->memory.Write(0x4010,0x10);
-	for (int i = 0x4011; i<=0x4013; i++) cpu->memory.Write(i,0);
-
-	cpu->memory.Write(0x4017,0x40);
-	cpu->memory.Write(0x4015,0x0f);
-
-	// c->Push16(c->PC+2); // Corrected
-
-	cpu->Push16(0xfff0);
-	bool returned = false;
-	while ( !returned )
-	{
-		cpu->Step();
-			if (cpu->PC == 0xfff0+1) returned = true;
-	}
-	SDL_PauseAudio(0);
-
-	while (1)
-	{
-		cpu->PC = nsf->play_address;
-		//cpu->SP -= 2;
-		cpu->Push16(0xfff0);
-		returned = false;
-		Uint32 ticks = SDL_GetTicks();
-		Uint32 newticks =0;
-		Uint32 delta = 0;
-		while ( !returned )
-		{
-			cpu->Step();
-			if (cpu->PC == 0xfff0+1) returned = true;
-		}
-
-		while (1)
-		{
-			int PendingEvents = SDL_PollEvent(&event);
-			if (event.type == SDL_KEYDOWN && key_released)
-			{
-				key_released = false;
-				if (event.key.keysym.sym == SDLK_LEFT)
-				{
-					if (song > 0) song--;
-					goto new_song;
-				}
-				if (event.key.keysym.sym == SDLK_RIGHT)
-				{
-					/*if (song > 0) */song++;
-					goto new_song;
-				}
-				if (event.key.keysym.sym == SDLK_ESCAPE) goto PlayerExit;
-			}
-			if (event.type == SDL_KEYUP) key_released = true;
-			if (!PendingEvents) break;
-		}
-		newticks = SDL_GetTicks();
-		delta = newticks - ticks;
-		Sleep( (delta>0)?0:16-delta);
-		ticks = newticks;
-	}
-PlayerExit:
-	Log->Info("Player exited.");
+//	Log->Info("Opening %s", path);
+//	NSF* nsf = new NSF();
+//	if (nsf->Load( (const char*)path ))
+//	{
+//		Log->Error("Cannot load %s", path);
+//		return 0;
+//	}
+//	Log->Success("%s opened", path);
+//	Log->Info("Press escape to exit player");
+//
+//
+//
+//	Log->Info("Creating CPU interpreter");
+//	cpu = new CPU_interpreter();
+//
+//	cpu->memory.mapper = 0;
+//
+//	memcpy( cpu->memory.prg_rom+(nsf->load_address-0x8000), nsf->data, nsf->size );
+//	cpu->memory.prg_pages = 2;
+//	cpu->memory.prg_lowpage = 0;
+//	cpu->memory.prg_highpage = 1;
+//
+//	Log->Success("%dB bytes of NSF data copid", nsf->size);
+//
+//
+//	cpu->memory.ppu = &cpu->ppu;
+//	cpu->memory.apu = &cpu->apu;
+//	cpu->Reset();
+//
+//	int song = 0;
+//	bool key_released = true;
+//new_song:
+//	Log->Info("Song %d", song);
+//
+//	cpu->PC = nsf->init_address;
+//	cpu->A = song;
+//	cpu->X = 0; // ntsc
+//
+//	for (int i = 0; i<=0x07ff; i++) cpu->memory.Write(i,0);
+//	for (int i = 0x6000; i<=0x7fff; i++) cpu->memory.Write(i,0);
+//	for (int i = 0x4000; i<=0x400f; i++) cpu->memory.Write(i,0);
+//	cpu->memory.Write(0x4010,0x10);
+//	for (int i = 0x4011; i<=0x4013; i++) cpu->memory.Write(i,0);
+//
+//	cpu->memory.Write(0x4017,0x40);
+//	cpu->memory.Write(0x4015,0x0f);
+//
+//	// c->Push16(c->PC+2); // Corrected
+//
+//	cpu->Push16(0xfff0);
+//	bool returned = false;
+//	while ( !returned )
+//	{
+//		cpu->Step();
+//			if (cpu->PC == 0xfff0+1) returned = true;
+//	}
+//	SDL_PauseAudio(0);
+//
+//	while (1)
+//	{
+//		cpu->PC = nsf->play_address;
+//		//cpu->SP -= 2;
+//		cpu->Push16(0xfff0);
+//		returned = false;
+//		Uint32 ticks = SDL_GetTicks();
+//		Uint32 newticks =0;
+//		Uint32 delta = 0;
+//		while ( !returned )
+//		{
+//			cpu->Step();
+//			if (cpu->PC == 0xfff0+1) returned = true;
+//		}
+//
+//		while (1)
+//		{
+//			int PendingEvents = SDL_PollEvent(&event);
+//			if (event.type == SDL_KEYDOWN && key_released)
+//			{
+//				key_released = false;
+//				if (event.key.keysym.sym == SDLK_LEFT)
+//				{
+//					if (song > 0) song--;
+//					goto new_song;
+//				}
+//				if (event.key.keysym.sym == SDLK_RIGHT)
+//				{
+//					/*if (song > 0) */song++;
+//					goto new_song;
+//				}
+//				if (event.key.keysym.sym == SDLK_ESCAPE) goto PlayerExit;
+//			}
+//			if (event.type == SDL_KEYUP) key_released = true;
+//			if (!PendingEvents) break;
+//		}
+//		newticks = SDL_GetTicks();
+//		delta = newticks - ticks;
+//		Sleep( (delta>0)?0:16-delta);
+//		ticks = newticks;
+//	}
+//PlayerExit:
+//	Log->Info("Player exited.");
 	return 0;
 }
 
-void CloseGame()
+bool initializeSDL()
+{
+	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0)
+	{
+		Log->Fatal("SDL_Init failed");
+		return false;
+	}
+	return true;
+}
+
+bool initializeAudio()
+{
+	SDL_AudioSpec requested, obtained;
+	requested.channels = 1;
+	requested.format = AUDIO_U8;
+	requested.freq = 44100;
+	requested.samples = 2048;
+	requested.callback = audiocallback;
+	if (SDL_OpenAudio(&requested, &obtained) == -1)
+	{
+		Log->Error("SDL_OpenAudio error.");
+		return false;
+	}
+	SDL_PauseAudio(1);
+	return true;
+}
+
+bool XboxPresent = false;
+void initializeXInput()
+{
+	XINPUT_STATE xstate;
+	if (XInputGetState(0, &xstate) == ERROR_SUCCESS)
+	{
+		Log->Success("XInput: Xbox360 controller connected.");
+		XboxPresent = true;
+	}
+	else
+		Log->Info("XInput: No Xbox360 controller found.");
+}
+
+void clearWindow( SDL_Window* window)
+{
+	SDL_Surface *tns = SDL_GetWindowSurface(window);
+	SDL_FillRect(tns, NULL, 0x000000);
+	SDL_UpdateWindowSurface(window);
+}
+
+SDL_Window* createMainWindow()
+{
+	SDL_Window* mainWindow = SDL_CreateWindow("AnotherNES",
+		542, 20,
+		256 * 2, 240 * 2 + 20, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+
+	if (mainWindow == NULL)
+	{
+		Log->Fatal("Cannot create main window");
+		return false;
+	}
+	Log->Success("Main window created");
+
+	SDL_Surface *icon = SDL_LoadBMP("icon.bmp");
+	if (!icon)
+		Log->Error("Cannot load icon.bmp");
+	else
+	{
+		SDL_SetWindowIcon(mainWindow, icon);
+		SDL_FreeSurface(icon);
+	}
+
+	clearWindow(mainWindow);
+	return mainWindow;
+}
+
+void CloseGame( )
 {
 	if ( ToolboxNametable )	{
 		delete ToolboxNametable;
@@ -256,68 +290,35 @@ void CloseGame()
 
 	EmulatorState = EmuState::Idle;
 
-	SDL_PauseAudio(1);
-	delete rom; rom = NULL;
-	delete cpu; cpu = NULL;
-	
-	ClearMainWindow();
-
+	SDL_PauseAudio(1);	
+	clearWindow(mainWindow);
 
 	Log->Info("Emulation closed");
 }
 
-void audiocallback(void *userdata, Uint8 *stream, int len)
-{
-	memset( stream,0x7f, len );
-	if (cpu)
-	{
-		cpu->apu.audiocallback( userdata, stream, len );
-	}
-}
-int64_t tick = 0;
 int main( int argc, char *argv[] )
 {
-	HINSTANCE hInstance = GetModuleHandle(NULL);
-	Log = new Logger("log.txt");
+#ifdef _DEBUG
+	Log->Verbose();
+#endif
+
 	Log->Info("AnotherNES version %d.%d", MAJOR_VERSION, MINOR_VERSION);
 	
-	if ( SDL_Init( SDL_INIT_VIDEO | SDL_INIT_AUDIO ) < 0 )
-	{
-		Log->Fatal("SDL_Init failed");
-		return 1;
-	}
-	Log->Success("SDL initialized");
+	if (!initializeSDL()) return 1;
+	initializeAudio();
+	initializeXInput();
 
-	MainWindow = SDL_CreateWindow( "AnotherNES", 
-		542, 20,
-		256 * 2, 240 * 2 + 20, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
-
-	if ( MainWindow == NULL )
-	{
-		Log->Fatal("Cannot create main window");
-		return 1;
-	}
-	Log->Success("Main window created");
-	ClearMainWindow();
+	mainWindow = createMainWindow();
+	if (!mainWindow) return 1;
 	
 	SDL_SysWMinfo WindowInfo;
 	SDL_VERSION(&WindowInfo.version);
-	SDL_GetWindowWMInfo( MainWindow, &WindowInfo);
+	SDL_GetWindowWMInfo( mainWindow, &WindowInfo);
 
 	HWND MainWindowHwnd = WindowInfo.info.win.window;
 
-	// Icon
-	SDL_Surface *SurfaceIcon = SDL_LoadBMP("icon.bmp");
-	if (!SurfaceIcon)
-	{
-		Log->Error("Cannot load icon.bmp");
-		SurfaceIcon = NULL;
-	}
-	else
-		SDL_SetWindowIcon( MainWindow, SurfaceIcon );
-
 	// Menu
-	Menu = LoadMenu( hInstance, MAKEINTRESOURCE( RES_MENU ) );
+	Menu = LoadMenu(GetModuleHandle(NULL), MAKEINTRESOURCE(RES_MENU));
 	if (!SetMenu( MainWindowHwnd, Menu ))
 	{
 		Log->Fatal("Problem loading resource (menu)");
@@ -325,58 +326,34 @@ int main( int argc, char *argv[] )
 	}
 	SDL_EventState( SDL_SYSWMEVENT, SDL_ENABLE );
 
-	SDL_DisplayMode mode;
-	mode.format = SDL_PIXELFORMAT_RGBA8888;
-	mode.w = 256*2;
-	mode.h = 240*2;
-	mode.refresh_rate = 0;
-	mode.driverdata = 0;
+	//SDL_DisplayMode mode;
+	//mode.format = SDL_PIXELFORMAT_RGBA8888;
+	//mode.w = 256*2;
+	//mode.h = 240*2;
+	//mode.refresh_rate = 0;
+	//mode.driverdata = 0;
 
 
-	if ( SDL_SetWindowDisplayMode( MainWindow, &mode ) < 0 )
-	{
-		Log->Fatal("SDL_SetWindowDisplayMode error");
-		return 1;
-	}
+	//if ( SDL_SetWindowDisplayMode( MainWindow, &mode ) < 0 )
+	//{
+	//	Log->Fatal("SDL_SetWindowDisplayMode error");
+	//	return 1;
+	//}
 
-	SDL_Surface* screen = SDL_GetWindowSurface( MainWindow );
+
+	SDL_Surface* screen = SDL_GetWindowSurface( mainWindow );
 
 	SDL_Surface* canvas = SDL_CreateRGBSurface( 0, 256, 240, 32, 0, 0, 0, 0xff000000 );
 	if (!canvas) Log->Fatal("Cannot create canvas surface!");
 
-	SDL_AudioSpec requested, obtained;
-	requested.channels = 1;
-	requested.format = AUDIO_U8;
-	requested.freq = 44100 ;
-	requested.samples = 2048;
-	requested.callback = audiocallback;
-	if ( SDL_OpenAudio( &requested, &obtained ) == -1 )
-	{
-		Log->Error("SDL_OpenAudio error.");
-	}
-	SDL_PauseAudio(0);
-
-	Log->Success("Audio initialized.");
-
-	XINPUT_STATE xstate;
-	bool XboxPresent = false;
-	if (XInputGetState(0, &xstate) == ERROR_SUCCESS)
-	{
-		Log->Success("XInput: Xbox360 controller connected.");
-		XboxPresent = true;
-	}
-	else
-	{
-		Log->Info("XInput: No Xbox360 controller found.");
-	}
 	
 	EmulatorState = EmuState::Idle;
+	NES nes;
 
 	bool FrameLimit = true;
 	Uint32 oldticks = 0, ticks = 0;
-	Uint32 prevtimestamp = 0;
 	bool mouseUp = true;
-	int cycles = 0;
+
 	while( EmulatorState != EmuState::Quited )
 	{
 		int PendingEvents = false;
@@ -387,45 +364,38 @@ int main( int argc, char *argv[] )
 			EmulatorState = EmuState::Quited;
 			break;
 		}
-		if (event.type == SDL_DROPFILE && event.drop.timestamp != prevtimestamp)
+		if (event.type == SDL_DROPFILE)
 		{
-			Log->Info("File dropped on window.");
-			prevtimestamp = event.drop.timestamp;
-			
-			char FileName[2048];
-			strcpy(FileName, event.drop.file);
-			SDL_free(event.drop.file);
+			static Uint32 prevtimestamp = 0;
+			if (event.drop.timestamp != prevtimestamp) 
+			{
+				Log->Info("File dropped on window.");
+				prevtimestamp = event.drop.timestamp;
 
-			if (memcmp(FileName + strlen((const char*)FileName) - 3, "nsf", 3) == 0) // NSF
-			{
-				if (LoadNSF((const char*)FileName))
+				std::string filename = event.drop.file;
+				SDL_free(event.drop.file);
+
+				if (getExtension(filename).compare("nsf") == 0)
 				{
-					Log->Error("File %s opening problem.", FileName);
-					break;
-				}
-			}
-			else
-			{
-				if (EmulatorState != EmuState::Idle)
-				{
-					CloseGame();
-				}
-				if (LoadGame((const char*)FileName))
-				{
-					Log->Error("File %s opening problem.", FileName);
+					if (LoadNSF(filename.c_str())) Log->Error("File %s opening problem.", filename.c_str());
 				}
 				else
 				{
-					EnableMenuItem(Menu, FILE_CLOSE, MF_BYCOMMAND | MF_ENABLED);
+					if (EmulatorState != EmuState::Idle) CloseGame();
+					if (nes.loadGame(filename.c_str()))	Log->Error("File %s opening problem.", filename.c_str());
+					else
+					{
+						EnableMenuItem(Menu, FILE_CLOSE, MF_BYCOMMAND | MF_ENABLED);
 
-					CheckMenuItem(Menu, EMULATION_PAUSE, MF_BYCOMMAND | MF_UNCHECKED);
-					EnableMenuItem(Menu, EMULATION_PAUSE, MF_BYCOMMAND | MF_ENABLED);
+						CheckMenuItem(Menu, EMULATION_PAUSE, MF_BYCOMMAND | MF_UNCHECKED);
+						EnableMenuItem(Menu, EMULATION_PAUSE, MF_BYCOMMAND | MF_ENABLED);
 
-					EnableMenuItem(Menu, EMULATION_RESET_SOFT, MF_BYCOMMAND | MF_ENABLED);
-					EnableMenuItem(Menu, EMULATION_RESET_HARD, MF_BYCOMMAND | MF_ENABLED);
+						EnableMenuItem(Menu, EMULATION_RESET_SOFT, MF_BYCOMMAND | MF_ENABLED);
+						EnableMenuItem(Menu, EMULATION_RESET_HARD, MF_BYCOMMAND | MF_ENABLED);
 
-					ClearMainWindow();
-					EmulatorState = EmuState::Running;
+						clearWindow(mainWindow);
+						EmulatorState = EmuState::Running;
+					}
 				}
 			}
 		}
@@ -434,7 +404,7 @@ int main( int argc, char *argv[] )
 			if ( event.window.event == SDL_WINDOWEVENT_CLOSE )
 			{
 				int ID = event.window.windowID;
-				if ( ID == SDL_GetWindowID(MainWindow) )
+				if ( ID == SDL_GetWindowID(mainWindow) )
 				{
 					event.type = SDL_QUIT;
 					SDL_PushEvent(&event);
@@ -483,16 +453,12 @@ int main( int argc, char *argv[] )
 		if (event.type == SDL_KEYDOWN)
 		{
 			if (ToolboxRAM && event.key.windowID == ToolboxRAM->WindowID)
-			{
 				ToolboxRAM->Key(event.key.keysym.sym);
-			}
 		}
 		if (event.type == SDL_MOUSEMOTION)
 		{
 			if (ToolboxRAM && event.motion.windowID == ToolboxRAM->WindowID)
-			{
 				ToolboxRAM->Move(event.motion.x , event.motion.y);
-			}
 		}
 		if (event.type == SDL_MOUSEBUTTONDOWN)
 		{
@@ -520,7 +486,7 @@ int main( int argc, char *argv[] )
 						memset( &ofn, 0, sizeof(ofn) );
 						ofn.lStructSize = sizeof( ofn );
 						ofn.hwndOwner = MainWindowHwnd;
-						ofn.hInstance = hInstance;
+						ofn.hInstance = GetModuleHandle(NULL);
 						memset(FileName, 0, sizeof(FileName) );
 						ofn.lpstrFile = (char*)FileName;
 						ofn.nMaxFile = sizeof(FileName)-1;
@@ -546,10 +512,8 @@ int main( int argc, char *argv[] )
 						else
 						{
 						if (EmulatorState != EmuState::Idle)
-						{
 							CloseGame();
-						}
-							if ( LoadGame( (const char*)FileName ) )
+							if ( nes.loadGame( (const char*)FileName ) )
 							{
 								Log->Error("File %s opening problem.", FileName);
 								break;
@@ -563,7 +527,7 @@ int main( int argc, char *argv[] )
 							EnableMenuItem( Menu, EMULATION_RESET_SOFT, MF_BYCOMMAND | MF_ENABLED );
 							EnableMenuItem( Menu, EMULATION_RESET_HARD, MF_BYCOMMAND | MF_ENABLED );
 
-							ClearMainWindow();
+							clearWindow(mainWindow);
 							EmulatorState = EmuState::Running;
 						}
 					break;
@@ -607,7 +571,7 @@ int main( int argc, char *argv[] )
 					break;
 					// -Reset (soft)
 				case EMULATION_RESET_SOFT:
-					cpu->Reset(); 
+					nes.reset(); 
 					break;
 
 					// Options
@@ -636,7 +600,7 @@ int main( int argc, char *argv[] )
 					if ( CheckMenuItem( Menu, DEBUG_WINDOWS_OAM, MF_BYCOMMAND ) == MF_UNCHECKED ) 
 					{
 						CheckMenuItem( Menu, DEBUG_WINDOWS_OAM, MF_BYCOMMAND | MF_CHECKED );
-						ToolboxOAM = new DlgOAM(cpu);
+						//ToolboxOAM = new DlgOAM(cpu);
 					}
 					else 
 					{
@@ -654,7 +618,7 @@ int main( int argc, char *argv[] )
 					if ( CheckMenuItem( Menu, DEBUG_WINDOWS_PALETTE, MF_BYCOMMAND ) == MF_UNCHECKED ) 
 					{
 						CheckMenuItem( Menu, DEBUG_WINDOWS_PALETTE, MF_BYCOMMAND | MF_CHECKED );
-						ToolboxPalette = new DlgPalette(cpu);
+						//ToolboxPalette = new DlgPalette(cpu);
 					}
 					else 
 					{
@@ -672,7 +636,7 @@ int main( int argc, char *argv[] )
 					if ( CheckMenuItem( Menu, DEBUG_WINDOWS_NAMETABLE, MF_BYCOMMAND ) == MF_UNCHECKED ) 
 					{
 						CheckMenuItem( Menu, DEBUG_WINDOWS_NAMETABLE, MF_BYCOMMAND | MF_CHECKED );
-						ToolboxNametable = new DlgNametable(cpu);
+						//ToolboxNametable = new DlgNametable(cpu);
 					}
 					else 
 					{
@@ -691,7 +655,7 @@ int main( int argc, char *argv[] )
 					if (CheckMenuItem(Menu, DEBUG_WINDOWS_PATTERNTABLE, MF_BYCOMMAND) == MF_UNCHECKED)
 					{
 						CheckMenuItem(Menu, DEBUG_WINDOWS_PATTERNTABLE, MF_BYCOMMAND | MF_CHECKED);
-						ToolboxPatterntable = new DlgPatterntable(cpu);
+						//ToolboxPatterntable = new DlgPatterntable(cpu);
 					}
 					else
 					{
@@ -709,7 +673,7 @@ int main( int argc, char *argv[] )
 					if (CheckMenuItem(Menu, DEBUG_WINDOWS_RAM, MF_BYCOMMAND) == MF_UNCHECKED)
 					{
 						CheckMenuItem(Menu, DEBUG_WINDOWS_RAM, MF_BYCOMMAND | MF_CHECKED);
-						ToolboxRAM = new DlgRAM(cpu);
+						//ToolboxRAM = new DlgRAM(cpu);
 					}
 					else
 					{
@@ -735,24 +699,20 @@ int main( int argc, char *argv[] )
 		ticks = SDL_GetTicks();
 		if ( EmulatorState == EmuState::Running )
 		{
-
+			buttonState = 0;
 			if ( XboxPresent )
 			{
-					if ((tick%1000) == 0)
-					{
-						buttonState = 0;
-						XInputGetState(0, &xstate);
-						if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_B) buttonState |= 1<<7;
-						if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_A) buttonState |= 1<<6;
-						if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_BACK) buttonState |= 1<<5;
-						if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_START) buttonState |= 1<<4;
-						if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_UP) buttonState |= 1<<3;
-						if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN) buttonState |= 1<<2;
-						if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_LEFT) buttonState |= 1<<1;
-						if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_RIGHT) buttonState |= 1<<0;
-					}
+				XINPUT_STATE xstate;
+				XInputGetState(0, &xstate);
+				if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_B) buttonState |= 1<<7;
+				if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_A) buttonState |= 1<<6;
+				if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_BACK) buttonState |= 1<<5;
+				if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_START) buttonState |= 1<<4;
+				if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_UP) buttonState |= 1<<3;
+				if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN) buttonState |= 1<<2;
+				if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_LEFT) buttonState |= 1<<1;
+				if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_RIGHT) buttonState |= 1<<0;
 			}
-			else buttonState = 0;
 
 			Uint8 *keys = (Uint8*) SDL_GetKeyboardState(NULL);
 			if ( keys[SDL_SCANCODE_ESCAPE] ) break;
@@ -764,62 +724,28 @@ int main( int argc, char *argv[] )
 			if ( keys[SDL_SCANCODE_UP] ) buttonState |= 1<<3;
 			if ( keys[SDL_SCANCODE_DOWN] ) buttonState |= 1<<2;
 			if ( keys[SDL_SCANCODE_LEFT] ) buttonState |= 1<<1;
-			if (keys[SDL_SCANCODE_RIGHT]) buttonState |= 1 << 0;
-			if (keys[SDL_SCANCODE_SPACE]) FrameLimit = false;
+			if ( keys[SDL_SCANCODE_RIGHT] ) buttonState |= 1 << 0;
+			if ( keys[SDL_SCANCODE_SPACE] ) FrameLimit = false;
 			else FrameLimit = true;
 
-			bool framerefresh = false;
-			while ( !framerefresh )
-			{
-				for (int i = (cycles==0)?3:cycles*3; i>0; i--)
-				{
-					uint8_t ppuresult = cpu->ppu.Step();
-					if (ppuresult) // NMI requested
-					{
-						if (ppuresult == 100) 
-						{
-							static int ToolboxDelay = 0; // Performacne hit
-							if (ToolboxDelay%5 == 0)
-							{
-								if (ToolboxOAM) ToolboxOAM->Update();
-								if (ToolboxPalette) ToolboxPalette->Update();
-								if (ToolboxNametable) ToolboxNametable->Update();
-								if (ToolboxPatterntable) ToolboxPatterntable->Update();
-							}
-							ToolboxDelay++;
-						}
-						else
-						{
-							framerefresh = true;
-							SDL_LockSurface( canvas );
-							cpu->ppu.Render( canvas );
-							SDL_UnlockSurface( canvas );
-
-							SDL_SoftStretch( canvas, NULL, screen, NULL );
-							SDL_UpdateWindowSurface( MainWindow );
-							
-							if (ppuresult==2) cpu->NMI();
-						}
-					}
-				}
-				cycles = cpu->Step();
-				if (cpu->isJammed())
-				{
-					Log->Error("CPU Jammed.");
-					framerefresh = true;
-					EmulatorState = EmuState::Paused;
-				}
-				//cpu->apu.Step();
-				++tick;
-			}
-
 			if (ToolboxRAM) ToolboxRAM->Update();
+
+			if (nes.emulateFrame())
+			{
+				SDL_LockSurface(canvas);
+				nes.render(canvas);
+				SDL_UnlockSurface(canvas);
+
+				SDL_SoftStretch(canvas, NULL, screen, NULL);
+				SDL_UpdateWindowSurface(mainWindow);
+			}
+			else EmulatorState = EmuState::Paused;
 
 			ticks = SDL_GetTicks();
 			if (FrameLimit)
 			{
 				int ticksPerFrame = 16; // NTSC, 1/60 == 16.6666ms
-				if (rom->Pal) ticksPerFrame = 20; // Pal, 1/50 == 20ms
+				if (nes.getRegion() == Region::PAL) ticksPerFrame = 20; // Pal, 1/50 == 20ms
 					
 				while (ticks - oldticks < ticksPerFrame)
 				{
@@ -834,8 +760,6 @@ int main( int argc, char *argv[] )
 
 	SDL_PauseAudio(1);
 	SDL_CloseAudio();
-	delete rom; rom = NULL;
-	delete cpu; cpu = NULL;
 
 	delete ToolboxOAM; ToolboxOAM = NULL;
 	delete ToolboxPalette; ToolboxPalette = NULL;
@@ -843,8 +767,6 @@ int main( int argc, char *argv[] )
 	delete ToolboxPatterntable; ToolboxPatterntable = NULL;
 	
 	SDL_FreeSurface( canvas ); canvas = NULL;
-	SDL_DestroyWindow( MainWindow ); MainWindow = NULL;
 	SDL_Quit();
-	delete Log; Log = NULL;
 	return 0;
 }

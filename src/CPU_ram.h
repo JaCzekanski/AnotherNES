@@ -1,5 +1,6 @@
 #pragma once
 #include "headers.h"
+#include <vector>
 #include "PPU.h"
 #include "APU.h"
 
@@ -31,11 +32,11 @@ class CPU_ram
 public:
 	uint8_t mapper;
 
-	uint8_t prg_rom[2024*1024]; // 2MB
+	std::vector<uint8_t> prg_rom; // 2MB
 	uint8_t prg_lowpage;
 	uint8_t prg_highpage;
 	uint8_t prg_pages;
-	uint8_t memory[0xffff]; // Not sure if this is good idea 
+	uint8_t memory[2048]; // Not sure if this is good idea 
 	bool memoryLock[2048];
 
 	uint8_t ZERO;
@@ -96,7 +97,6 @@ public:
 				bit = 7; // Strobe
 				return;
 			}
-			memory[n] = data;
 			return;
 
 		case 3: // 0x6000 - 0x7FFF: SRAM (SRAM not implemented, return memory)

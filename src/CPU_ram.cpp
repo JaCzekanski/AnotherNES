@@ -7,21 +7,19 @@ CPU_ram::CPU_ram(void)
 	prg_highpage = 0;
 	prg_lowpage = 0;
 	prg_pages = 0;
-	memset( this->memory, 0, 0xffff );
-	this->memory[0x0008] = 0xf7;
-	this->memory[0x0009] = 0xef;
-	this->memory[0x000a] = 0xdf;
-	this->memory[0x000f] = 0xbf;
+	memset( memory, 0, 2048 );
+	memory[0x0008] = 0xf7;
+	memory[0x0009] = 0xef;
+	memory[0x000a] = 0xdf;
+	memory[0x000f] = 0xbf;
 
-	memset(this->memoryLock, 0, 2048);
+	memset(memoryLock, 0, 2048);
 
 	ppu = NULL;
-	Log->Debug("CPU_ram: created");
 }
 
 CPU_ram::~CPU_ram(void)
 {
-	Log->Debug("CPU_ram: destroyed");
 }
 
 void CPU_ram::Load( uint16_t dst, const void* source, size_t num )
