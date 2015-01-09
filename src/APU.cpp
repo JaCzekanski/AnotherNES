@@ -28,7 +28,7 @@ APU::~APU(void)
 	Log->Debug("APU destroyed");
 }
 
-const float CPU_frequency = 1789773;
+const float CPU_frequency = 1789773 *1.5f;
 
 uint8_t APU::Step()
 {
