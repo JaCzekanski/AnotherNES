@@ -110,6 +110,10 @@ public:
 			// $8000-$FFFF [PPPP PPPP]
 			if (mapper == 2 || mapper == 71 || mapper == 104)
 				prg_lowpage = data;
+			else if (mapper == 0)
+			{
+
+			}
 			else
 			{
 				Log->Fatal("Unsupported mapper.");

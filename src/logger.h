@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdio>
 #include <cstdarg>
+#include <string>
 #include <ctime>
 #include <windows.h>
 
@@ -25,6 +26,7 @@ enum LogType
 class Logger
 {
 private:
+	std::string programName;
 	FILE* file;
 	bool initialized;
 
@@ -74,7 +76,7 @@ private:
 		{
 			char message_buffer[4096];
 			sprintf( message_buffer, "FATAL ERROR: %s", buffer );
-			MessageBox( NULL, message_buffer, "GTA2_remake", MB_OK );
+			MessageBox(NULL, message_buffer, programName.c_str(), MB_OK);
 		}
 
 		fflush( file );
@@ -108,6 +110,7 @@ public:
 	{
 		Close();
 	}
+	void setProgramName(std::string name) { programName = name;  }
 	void Info( const char* format, ... )
 	{
 		va_list list;

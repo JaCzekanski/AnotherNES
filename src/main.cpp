@@ -26,6 +26,8 @@ int buttonState = 0;
 
 #include "version.h"
 
+#pragma comment(linker,"/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
+
 Logger* Log;
 CPU* cpu;
 iNES* rom;
@@ -78,6 +80,11 @@ bool LoadGame( const char* path )
 
 	Log->Info("Mapper: %d", rom->Mapper);
 	cpu->memory.mapper = rom->Mapper;
+
+	if (rom->Mapper != 0 &&
+		rom->Mapper != 2 &&
+		rom->Mapper != 71 &&
+		rom->Mapper != 104) return 1;
 
 	if (rom->PRG_ROM_pages>128)
 	{
@@ -277,9 +284,10 @@ void audiocallback(void *userdata, Uint8 *stream, int len)
 int64_t tick = 0;
 int main( int argc, char *argv[] )
 {
-	HINSTANCE hInstance = GetModuleHandle(NULL);
 	Log = new Logger("log.txt");
+	Log->setProgramName("AnotherNES");
 	Log->Info("AnotherNES version %d.%d", MAJOR_VERSION, MINOR_VERSION);
+	HINSTANCE hInstance = GetModuleHandle(NULL);
 	
 	if ( SDL_Init( SDL_INIT_VIDEO | SDL_INIT_AUDIO ) < 0 )
 	{
@@ -478,6 +486,11 @@ int main( int argc, char *argv[] )
 					}
 
 				}
+			}
+			else if (event.window.event == SDL_WINDOWEVENT_RESIZED)
+			{
+				screen = SDL_GetWindowSurface(MainWindow);
+				ClearMainWindow();
 			}
 		}
 		if (event.type == SDL_KEYDOWN)
@@ -735,24 +748,19 @@ int main( int argc, char *argv[] )
 		ticks = SDL_GetTicks();
 		if ( EmulatorState == EmuState::Running )
 		{
-
+			buttonState = 0;
 			if ( XboxPresent )
 			{
-					if ((tick%1000) == 0)
-					{
-						buttonState = 0;
-						XInputGetState(0, &xstate);
-						if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_B) buttonState |= 1<<7;
-						if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_A) buttonState |= 1<<6;
-						if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_BACK) buttonState |= 1<<5;
-						if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_START) buttonState |= 1<<4;
-						if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_UP) buttonState |= 1<<3;
-						if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN) buttonState |= 1<<2;
-						if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_LEFT) buttonState |= 1<<1;
-						if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_RIGHT) buttonState |= 1<<0;
-					}
+				XInputGetState(0, &xstate);
+				if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_B) buttonState |= 1<<7;
+				if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_A) buttonState |= 1<<6;
+				if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_BACK) buttonState |= 1<<5;
+				if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_START) buttonState |= 1<<4;
+				if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_UP) buttonState |= 1<<3;
+				if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN) buttonState |= 1<<2;
+				if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_LEFT) buttonState |= 1<<1;
+				if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_RIGHT) buttonState |= 1<<0;
 			}
-			else buttonState = 0;
 
 			Uint8 *keys = (Uint8*) SDL_GetKeyboardState(NULL);
 			if ( keys[SDL_SCANCODE_ESCAPE] ) break;
