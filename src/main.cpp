@@ -191,6 +191,7 @@ new_song:
 			cpu->Step();
 			if (cpu->PC == 0xfff0+1) returned = true;
 		}
+		cpu->apu.activeTimer++;
 
 		while (1)
 		{
@@ -213,9 +214,16 @@ new_song:
 			if (event.type == SDL_KEYUP) key_released = true;
 			if (!PendingEvents) break;
 		}
+
+		int ticksPerFrame = 16; // NTSC, 1/60 == 16.6666ms
+		//if (nsf->pal_ntsc_bits) ticksPerFrame = 20; // Pal, 1/50 == 20ms
+
 		newticks = SDL_GetTicks();
-		delta = newticks - ticks;
-		Sleep( (delta>0)?0:16-delta);
+		while (newticks - ticks < ticksPerFrame)
+		{
+			SDL_Delay(1);
+			newticks = SDL_GetTicks();
+		}
 		ticks = newticks;
 	}
 PlayerExit:
@@ -742,6 +750,7 @@ int main( int argc, char *argv[] )
 				}
 			}
 		}
+
 		if (PendingEvents) { PendingEvents = false; continue; }
 
 		ticks = SDL_GetTicks();
@@ -818,6 +827,7 @@ int main( int argc, char *argv[] )
 				}
 				//cpu->apu.Step();
 				++tick;
+				cpu->apu.activeTimer++;
 			}
 
 			if (ToolboxRAM) ToolboxRAM->Update();
