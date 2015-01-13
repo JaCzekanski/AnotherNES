@@ -72,7 +72,8 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
-      <Optimization>Disabled</Optimization>
+      <Optimization>
+      </Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>

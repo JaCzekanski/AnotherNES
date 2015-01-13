@@ -3,6 +3,7 @@
 #include <SDL.h>
 #include <vector>
 
+
 #define HORIZONTAL 0
 #define VERTICAL 1
 
@@ -45,28 +46,41 @@ class PPU
 {
 private:
 	uint32_t cycles;
-	uint16_t scanline;
+	int16_t scanline;
 	bool VBLANK;
 	bool NMI_enabled;
 	uint8_t VRAMaddressIncrement;
 
-
 	bool ShowBackground;
 	bool ShowSprites;
+	bool Sprite0Hit;
+	bool spriteOverflow;
+	
+	bool showLeftSprites;
+	bool showLeftBackground;
 
+	uint16_t loopy_v; // 15bits, current VRAM address
+	uint16_t loopy_t; // 15bits, temporary VRAM address
+	uint8_t  loopy_x; // 3bits, fine X scroll
+	bool     loopy_w; // First or second write toggle (PPUADDRhalf)
 
-	bool PPUADDRhalf;
-	uint8_t PPUADDRhi;
-	uint8_t PPUADDRlo;
 	uint8_t PPUDATAbuffer;
 
-
-	// Scrolling
-	uint8_t ScrollX, _ScrollX;
-	uint8_t ScrollY, _ScrollY;
+	uint8_t screen[256][256]; // raw screen data, no palette lookup, [y][x]
+	void PaletteLookup(SDL_Surface *s);
 
 	void RenderSprite(SDL_Surface* s);
 	void RenderBackground(SDL_Surface* s, uint8_t nametable);
+
+	// Loopy
+	//__forceinline  bool renderingIsEnabled();
+	// Unfortunately define macro is far mor faster than inline funcion (even if called only once)
+	#define renderingIsEnabled() (ShowSprites || ShowBackground)
+	inline void loopyCopyTtoV();
+	inline void loopyCoarseXIncrement();
+	inline void loopyYIncrement();
+	inline void loopyCopyHorizontal();
+
 public:
 	bool SpriteSize; // false - 8x8, true - 8x16
 	uint16_t BaseNametable;
@@ -86,4 +100,5 @@ public:
 	uint8_t Step();
 	
 	void Render(SDL_Surface* s);
+
 };
