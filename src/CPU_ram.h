@@ -29,8 +29,10 @@ $00FF - $0000 - Zero Page
 */
 class CPU_ram
 {
-	bool slotSelect = false;
-	bool PRG_mode = false;
+	uint8_t bit;
+
+	bool slotSelect = true;
+	bool PRG_mode = true;
 	bool CHR_mode = false;
 	uint8_t CHR_reg0 = 0, CHR_reg1 = 0, PRG_reg = 0;
 
@@ -39,18 +41,12 @@ public:
 	uint8_t mapper;
 
 	uint8_t prg_rom[2024*1024]; // 2MB
-	uint8_t prg_lowpage;
-	uint8_t prg_highpage;
+	uint8_t prg_lowpage, prg_highpage;
 	uint8_t prg_pages;
 	uint8_t memory[0xffff]; // Not sure if this is good idea 
 	bool memoryLock[2048];
-
 	std::vector<uint8_t> SRAM;
 
-	uint8_t ZERO;
-	uint8_t RET;
-
-	uint8_t bit;
 
 	PPU* ppu;
 	APU* apu;
@@ -60,6 +56,6 @@ public:
 	void Load( uint16_t dst, const void* source, size_t num );
 
 	void Write(uint16_t n, uint8_t data);
-	uint8_t& operator[](size_t n);
+	uint8_t operator[](size_t n);
 
 };

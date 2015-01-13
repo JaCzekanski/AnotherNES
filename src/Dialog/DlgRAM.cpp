@@ -180,9 +180,9 @@ void DlgRAM::Click(int x, int y, int button)
 	{
 		int prevval = cpu->memory[ptr];
 		if (button == 0x01) // Left
-			cpu->memory[ptr]++;
+			cpu->memory.Write(ptr, cpu->memory[ptr]+1);
 		else if (button == 0x03) // Right
-			cpu->memory[ptr]--;
+			cpu->memory.Write(ptr, cpu->memory[ptr]-1);
 		else if (button == 0x02) // Middle / lock byte
 			cpu->memory.memoryLock[ptr] = !cpu->memory.memoryLock[ptr];
 		Log->Info("DlgRAM [0x%x] 0x%x -> 0x%x", ptr, prevval, cpu->memory[ptr]);
@@ -217,7 +217,7 @@ void DlgRAM::Key(SDL_Keycode k)
 
 			int ptr = selectedY * 32 + selectedX;
 			int prevval = cpu->memory[ptr];
-			cpu->memory[ptr] = editValue;
+			cpu->memory.Write(ptr, editValue);
 
 			cpu->memory.memoryLock[ptr] = true;
 

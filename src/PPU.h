@@ -1,6 +1,7 @@
 #pragma once
 #include "headers.h"
 #include <SDL.h>
+#include <vector>
 
 #define HORIZONTAL 0
 #define VERTICAL 1
@@ -74,6 +75,7 @@ public:
 	uint8_t Mirroring;
 	uint8_t OAMADDR;
 	uint8_t memory[0x4000]; // 16KB
+	std::vector<uint8_t> CHR_ROM;
 	SPRITE OAM[64]; // 64B*4
 	PPU(void);
 	~PPU(void);

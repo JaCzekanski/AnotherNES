@@ -100,14 +100,12 @@ bool LoadGame( const char* path )
 
 	Log->Success("%dB PRG_ROM copied", rom->PRG_ROM_pages*16*1024);
 
-
-	if (rom->CHR_ROM_pages>1)
-	{
-		Log->Error("CHR_ROM pages > 1 will cause crash (no mappers supported). Breaking.");
-		return 1;
+	if (rom->CHR_ROM_pages > 0) {
+		cpu->ppu.CHR_ROM.resize(rom->CHR_ROM_pages * 8 * 1024);
+		memcpy(&cpu->ppu.CHR_ROM[0], rom->CHR_ROM, rom->CHR_ROM_pages * 8 * 1024);
+		memcpy(cpu->ppu.memory, &cpu->ppu.CHR_ROM[0], 1 * 8 * 1024);
+		Log->Success("%dB CHR_ROM copied", rom->CHR_ROM_pages * 8 * 1024);
 	}
-	memcpy( cpu->ppu.memory, rom->CHR_ROM, rom->CHR_ROM_pages*8*1024 );
-	Log->Success("%dB CHR_ROM copied", rom->CHR_ROM_pages*8*1024 );
 
 	cpu->memory.ppu = &cpu->ppu;
 	cpu->memory.apu = &cpu->apu;
@@ -827,7 +825,7 @@ int main( int argc, char *argv[] )
 			ticks = SDL_GetTicks();
 			if (FrameLimit)
 			{
-				int ticksPerFrame = 16; // NTSC, 1/60 == 16.6666ms
+				Uint32 ticksPerFrame = 16; // NTSC, 1/60 == 16.6666ms
 				if (rom->Pal) ticksPerFrame = 20; // Pal, 1/50 == 20ms
 					
 				while (ticks - oldticks < ticksPerFrame)

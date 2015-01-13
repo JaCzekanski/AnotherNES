@@ -2,7 +2,6 @@
 
 CPU_ram::CPU_ram(void)
 {
-	ZERO =  0;
 	mapper = 0;
 	prg_highpage = 0;
 	prg_lowpage = 0;
@@ -47,13 +46,34 @@ void CPU_ram::MMC1_write(uint16_t n, uint8_t data)
 		int mirroring = reg & 3;
 		if (mirroring == 2) ppu->Mirroring = VERTICAL;
 		else if (mirroring == 3) ppu->Mirroring = HORIZONTAL;
+		else Log->Error("MMC1: Unsupported mirroring");
 
 		slotSelect = (reg & 0x4) ? true : false;
 		PRG_mode = (reg & 0x8) ? true : false;
 		CHR_mode = (reg & 0x10) ? true : false;
 	}
-	else if (addr == 1) CHR_reg0 = reg & 0x1f;
-	else if (addr == 2) CHR_reg1 = reg & 0x1f;
+	else if (addr == 1) {
+		if (CHR_reg0 != (reg & 0x1f)) {
+			CHR_reg0 = reg & 0x1f;
+			if (!CHR_mode) { //8kb -- WRAP CHR_reg0 IF BIGGER THAN CHR_ROM 
+				int page = (CHR_reg0 & 0x1e) % (ppu->CHR_ROM.size() / 0x2000);
+				memcpy(ppu->memory, &ppu->CHR_ROM[page * 0x2000], 0x2000);
+			}
+			else {
+				int page = CHR_reg0 % (ppu->CHR_ROM.size() / 0x1000);
+				memcpy(ppu->memory, &ppu->CHR_ROM[page * 0x1000], 0x1000);
+			}
+		}
+	}
+	else if (addr == 2) {
+		if (CHR_reg1 != (reg & 0x1f)) {
+			CHR_reg1 = reg & 0x1f;
+			if (CHR_mode) {// Only in 4kB mode
+				int page = CHR_reg1 % (ppu->CHR_ROM.size() / 0x1000);
+				memcpy(ppu->memory + 0x1000, &ppu->CHR_ROM[page * 0x1000], 0x1000);
+			}
+		}
+	}
 	else if (addr == 3) {
 		PRG_reg = reg & 0xf;
 		//WRAM_disable = (data & 0x10) ? true : false;
@@ -81,8 +101,7 @@ void CPU_ram::Write(uint16_t n, uint8_t data)
 	switch ((n & 0xE000) >> 13)
 	{
 	case 0: // 0x0000 - 0x1FFF: Zero page, stack, ram, Mirrors
-		if (!memoryLock[n % 2048])
-			memory[n % 2048] = data; // Mirror
+		if (!memoryLock[n % 2048])	memory[n % 2048] = data; // Mirror
 		return;
 
 	case 1: // 0x2000 - 0x3FFF: PPU ports
@@ -112,17 +131,11 @@ void CPU_ram::Write(uint16_t n, uint8_t data)
 				if (++oamptr>0xff) oamptr = 0;
 			}
 		}
-		else if (n == 0x4016) // JOY1
+		else if (n == 0x4016 || n == 0x4017) // JOY1
 		{
 			bit = 7; // Strobe
 			return;
 		}
-		else if (n == 0x4017) // JOY2 and Frame counter control
-		{
-			bit = 7; // Strobe
-			return;
-		}
-		memory[n] = data;
 		return;
 
 	case 3: // 0x6000 - 0x7FFF: SRAM
@@ -133,41 +146,32 @@ void CPU_ram::Write(uint16_t n, uint8_t data)
 	case 5: // 0xA000 - 0xBFFF
 	case 6: // 0xC000 - 0xDFFF: High rom
 	case 7: // 0xE000 - 0xFFFF
-		// Mapper 2
-		// $8000-$FFFF [PPPP PPPP]
 		if (mapper == 2 || mapper == 71 || mapper == 104)
 			prg_lowpage = data;
 		else if (mapper == 0) {}
 		else if (mapper == 1) MMC1_write(n, data);
-		else
-		{
-			Log->Fatal("Unsupported mapper.");
-			return;
-		}
 		return;
 	}
 }
 
 
-uint8_t& CPU_ram::operator[](size_t n)
+uint8_t CPU_ram::operator[](size_t n)
 {
 	switch ((n & 0xE000) >> 13)
 	{
 	case 0: // 0x0000 - 0x1FFF: Zero page, stack, ram, Mirrors
 		return memory[n & 0x7FF];
 	case 1: // 0x2000 - 0x3FFF: PPU ports
-		RET = ppu->Read((n - 0x2000) & 0x07);
-		return RET;
+		return ppu->Read((n - 0x2000) & 0x07);
 	case 2: // 0x4000 - 0x5FFF: APU and IO registers
 		if (n == 0x4016) // JOY1 
 		{
 			//A, B, Select, Start, Up, Down, Left, Right.
-			if (buttonState & (1 << bit)) RET = 1; //Strobe
-			else RET = 0;
 			bit--;
-			return RET;
+			if (buttonState & (1 << (bit + 1))) return 1;
+			else return 0;
 		}
-		return ZERO;
+		return 0;
 
 	case 3: // 0x6000 - 0x7FFF:
 		return SRAM[n - 0x6000];
@@ -210,4 +214,5 @@ uint8_t& CPU_ram::operator[](size_t n)
 		}
 		return prg_rom[(prg_lowpage * 0x4000) + n - 0x8000]; // Return PRG-ROM
 	}
+	return 0;
 }
