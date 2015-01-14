@@ -209,6 +209,10 @@ void CPU_ram::Write(uint16_t n, uint8_t data)
 		if (mapper == 2 || mapper == 71 || mapper == 104) prg_lowpage = data;
 		else if (mapper == 0) {}
 		else if (mapper == 1) MMC1_write(n, data);
+		else if (mapper == 3) {
+			CHR_reg0 = data % chr_pages;
+			memcpy(ppu->memory, &ppu->CHR_ROM[CHR_reg0 * 0x2000], 0x2000);
+		}
 		else if (mapper == 4) MMC3_write(n, data);
 		return;
 	}

@@ -84,6 +84,7 @@ bool LoadGame( const char* path )
 	if (rom->Mapper != 0 &&
 		rom->Mapper != 1 &&
 		rom->Mapper != 2 &&
+		rom->Mapper != 3 &&
 		rom->Mapper != 4 &&
 		rom->Mapper != 71 &&
 		rom->Mapper != 104) return 1;
