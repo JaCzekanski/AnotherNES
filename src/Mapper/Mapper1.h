@@ -2,8 +2,7 @@
 /* Mapper 1
    MMC1
  
-   PRG ROM remapping only
-   CHR RAM used
+   PRG ROM (16kB or 32kB pages) and CHR ROM (4kB or 8kB) remapping
 */
 #include "Mapper.h"
 

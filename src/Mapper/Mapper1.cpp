@@ -58,17 +58,15 @@ void Mapper1::MMC1_write(uint16_t n, uint8_t data)
 
 		prgSize = (prgMode) ? (16 * 1024) : (32 * 1024);
 		chrSize = (chrMode) ? (4 * 1024) : (8 * 1024);
-		chrPages = (chr.size() / chrSize) | 1; // ? Not sure about this...
 	}
 	if (addr == 1 && chrPages > 0) {
-		chrReg0 = reg % chrPages;
-		int page = chrReg0;
-		if (!chrMode) page = (chrReg0 & 0x1e);
-		memcpy(ppu.memory, &ppu.CHR_ROM[page * 0x1000], chrSize);
+		chrReg0 = (reg % (chrPages * 2)) & 0x1e;
+		memcpy(ppu.memory, &chr[chrReg0 * 0x1000], 0x1000);
+		if (!chrMode) memcpy(ppu.memory + 0x1000, &chr[(chrReg0 | 1) * 0x1000], 0x1000);
 	}
 	if (addr == 2 && chrPages > 0) {
-		chrReg1 = reg % chrPages;
-		if (chrMode) memcpy(ppu.memory + chrSize, &ppu.CHR_ROM[chrReg1 * 0x1000], chrSize);
+		chrReg1 = reg % (chrPages * 2);
+		if (chrMode) memcpy(ppu.memory + 0x1000, &chr[chrReg1 * 0x1000], 0x1000);
 	}
 	if (addr == 3) {
 		prgReg = (reg & 0xf) % prgPages;

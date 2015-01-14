@@ -30,6 +30,7 @@ int buttonState = 0;
 #include"Mapper\Mapper1.h"
 #include"Mapper\Mapper2.h"
 #include"Mapper\Mapper3.h"
+#include"Mapper\Mapper4.h"
 #include"Mapper\Mapper71.h"
 
 #pragma comment(linker,"/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
@@ -79,53 +80,42 @@ bool LoadGame( const char* path )
 	}
 	Log->Success("%s opened", path);
 
-
-
 	Log->Info("Creating CPU interpreter");
 	cpu = new CPU_interpreter();
 
 	Log->Info("Mapper: %d", rom->Mapper);
-	cpu->memory.mapper = rom->Mapper;
 	cpu->memory.ppu = &cpu->ppu;
 	cpu->memory.apu = &cpu->apu;
 	cpu->ppu.Mirroring = rom->Mirroring;
 
-	if      (rom->Mapper == 0)  cpu->memory.mapper_ = new Mapper0(cpu->ppu);
-	else if (rom->Mapper == 1)  cpu->memory.mapper_ = new Mapper1(cpu->ppu);
-	else if (rom->Mapper == 2)  cpu->memory.mapper_ = new Mapper2(cpu->ppu);
-	else if (rom->Mapper == 3)  cpu->memory.mapper_ = new Mapper3(cpu->ppu);
-	else if (rom->Mapper == 71) cpu->memory.mapper_ = new Mapper71(cpu->ppu);
+	if      (rom->Mapper == 0)  cpu->memory.mapper = new Mapper0(cpu->ppu);
+	else if (rom->Mapper == 1)  cpu->memory.mapper = new Mapper1(cpu->ppu);
+	else if (rom->Mapper == 2)  cpu->memory.mapper = new Mapper2(cpu->ppu);
+	else if (rom->Mapper == 3)  cpu->memory.mapper = new Mapper3(cpu->ppu);
+	else if (rom->Mapper == 4)  cpu->memory.mapper = new Mapper4(cpu->ppu);
+	else if (rom->Mapper == 71) cpu->memory.mapper = new Mapper71(cpu->ppu);
 	else {
 		Log->Error("Unsupported mapper");
 		return 1;
 	}
 
-	if (rom->PRG_ROM_pages>128)
-	{
-		Log->Error("PRG_ROM pages > 128 (more than 2MB, unsupported)");
-		return 1;
+	std::vector<uint8_t> prg, chr;
+	prg.resize(rom->PRG_ROM_pages * 16384);
+	chr.resize(rom->CHR_ROM_pages * 8192);
+	if (rom->PRG_ROM_pages > 0) {
+		memcpy(&prg[0], rom->PRG_ROM, rom->PRG_ROM_pages * 16384);
+		cpu->memory.mapper->setPrg(prg);
+
+		Log->Success("%dB PRG_ROM copied", rom->PRG_ROM_pages * 16384);
 	}
-	memcpy( cpu->memory.prg_rom, rom->PRG_ROM, rom->PRG_ROM_pages*16*1024 );
-	cpu->memory.prg_pages = rom->PRG_ROM_pages;
-	cpu->memory.prg_lowpage = 0;
-	cpu->memory.prg_highpage = rom->PRG_ROM_pages-1;
-	if (rom->Mapper == 104) cpu->memory.prg_highpage = 15; // Golden five fix  http://mamedev.org/source/src/mess/machine/nes_pcb.c
-
-	std::vector<uint8_t> prg;
-	prg.resize(rom->PRG_ROM_pages * 16 * 1024);
-	memcpy(&prg[0], rom->PRG_ROM, rom->PRG_ROM_pages * 16 * 1024);
-
-	cpu->memory.mapper_->setPrg(prg);
-	Log->Success("%dB PRG_ROM copied", rom->PRG_ROM_pages*16*1024);
 
 	if (rom->CHR_ROM_pages > 0) {
-		cpu->ppu.CHR_ROM.resize(rom->CHR_ROM_pages * 8 * 1024);
-		memcpy(&cpu->ppu.CHR_ROM[0], rom->CHR_ROM, rom->CHR_ROM_pages * 8 * 1024);
-		memcpy(cpu->ppu.memory, &cpu->ppu.CHR_ROM[0], 1 * 8 * 1024);
-		Log->Success("%dB CHR_ROM copied", rom->CHR_ROM_pages * 8 * 1024);
-		cpu->memory.mapper_->setChr(cpu->ppu.CHR_ROM);
+		memcpy(&chr[0], rom->CHR_ROM, rom->CHR_ROM_pages * 8192);
+		cpu->memory.mapper->setChr(chr);
+		memcpy(cpu->ppu.memory, &chr[0], 8192);
+
+		Log->Success("%dB CHR_ROM copied", rom->CHR_ROM_pages * 8192);
 	}
-	cpu->memory.chr_pages = rom->CHR_ROM_pages;
 
 	cpu->Power();
 
@@ -136,6 +126,8 @@ bool LoadGame( const char* path )
 // Loads nsf with path as argument
 bool LoadNSF( const char* path )
 {
+	Log->Fatal("NSF not working right now (mapper)");
+	return false;
 	Log->Info("Opening %s", path);
 	NSF* nsf = new NSF();
 	if (nsf->Load( (const char*)path ))
@@ -153,13 +145,9 @@ bool LoadNSF( const char* path )
 
 	cpu->memory.mapper = 0;
 
-	memcpy( cpu->memory.prg_rom+(nsf->load_address-0x8000), nsf->data, nsf->size );
-	cpu->memory.prg_pages = 2;
-	cpu->memory.prg_lowpage = 0;
-	cpu->memory.prg_highpage = 1;
+	//memcpy( cpu->memory.prg_rom+(nsf->load_address-0x8000), nsf->data, nsf->size );
 
 	Log->Success("%dB bytes of NSF data copid", nsf->size);
-
 
 	cpu->memory.ppu = &cpu->ppu;
 	cpu->memory.apu = &cpu->apu;
@@ -835,7 +823,7 @@ int main( int argc, char *argv[] )
 							i += 7 * 3;
 						}
 					}
-					if (cpu->ppu.scanline == cpu->memory.MMC3_irqCounter + 1 && cpu->ppu.cycles == 260 && cpu->memory.MMC3_irqEnabled) cpu->IRQ();
+					//if (cpu->ppu.scanline == cpu->memory.MMC3_irqCounter + 1 && cpu->ppu.cycles == 260 && cpu->memory.MMC3_irqEnabled) cpu->IRQ();
 				}
 				cycles += cpu->Step();
 				if (cpu->isJammed())

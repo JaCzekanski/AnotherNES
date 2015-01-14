@@ -32,34 +32,16 @@ $00FF - $0000 - Zero Page
 class CPU_ram
 {
 	uint8_t bit;
-
-	uint8_t PRG_mode, CHR_mode;
-
-	uint8_t MMC3_reg[8];
-	void MMC3_write(uint16_t n, uint8_t data);
-	void MMC3_chrCopy();
-
-public:
-	Mapper *mapper_;
-	uint8_t MMC3_irqCounter = 0;
-	bool MMC3_irqEnabled = false;
-
-	uint8_t mapper;
-
-	uint8_t prg_rom[2024*1024]; // 2MB
-	uint8_t prg_lowpage, prg_highpage;
-	uint8_t prg_pages;
-	uint8_t chr_pages;
-	uint8_t memory[0xffff]; // Not sure if this is good idea 
-	bool memoryLock[2048];
+	uint8_t memory[2048];
 	std::vector<uint8_t> SRAM;
-
+public:
+	bool memoryLock[2048];
+	Mapper *mapper;
 	PPU* ppu;
 	APU* apu;
 
 	CPU_ram(void);
 	~CPU_ram(void);
-	void Load( uint16_t dst, const void* source, size_t num );
 
 	void Write(uint16_t n, uint8_t data);
 	uint8_t operator[](size_t n);
