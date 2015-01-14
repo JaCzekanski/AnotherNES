@@ -35,18 +35,21 @@ class CPU_ram
 	bool PRG_mode = true;
 	bool CHR_mode = false;
 	uint8_t CHR_reg0 = 0, CHR_reg1 = 0, PRG_reg = 0;
-
 	void MMC1_write(uint16_t n, uint8_t data);
+
+	uint8_t MMC3_reg[8];
+	void MMC3_write(uint16_t n, uint8_t data);
+	void MMC3_chrCopy();
 public:
 	uint8_t mapper;
 
 	uint8_t prg_rom[2024*1024]; // 2MB
 	uint8_t prg_lowpage, prg_highpage;
 	uint8_t prg_pages;
+	uint8_t chr_pages;
 	uint8_t memory[0xffff]; // Not sure if this is good idea 
 	bool memoryLock[2048];
 	std::vector<uint8_t> SRAM;
-
 
 	PPU* ppu;
 	APU* apu;
@@ -57,5 +60,4 @@ public:
 
 	void Write(uint16_t n, uint8_t data);
 	uint8_t operator[](size_t n);
-
 };

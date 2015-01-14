@@ -84,6 +84,7 @@ bool LoadGame( const char* path )
 	if (rom->Mapper != 0 &&
 		rom->Mapper != 1 &&
 		rom->Mapper != 2 &&
+		rom->Mapper != 4 &&
 		rom->Mapper != 71 &&
 		rom->Mapper != 104) return 1;
 
@@ -106,6 +107,7 @@ bool LoadGame( const char* path )
 		memcpy(cpu->ppu.memory, &cpu->ppu.CHR_ROM[0], 1 * 8 * 1024);
 		Log->Success("%dB CHR_ROM copied", rom->CHR_ROM_pages * 8 * 1024);
 	}
+	cpu->memory.chr_pages = rom->CHR_ROM_pages;
 
 	cpu->memory.ppu = &cpu->ppu;
 	cpu->memory.apu = &cpu->apu;

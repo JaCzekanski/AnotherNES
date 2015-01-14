@@ -87,15 +87,23 @@ int iNES::Load( const char* name )
 		Log->Info("iNes.cpp: NTSC");
 	}
 
-	if (flags6&0x01) 
+	if (flags6 & 0x08)
 	{
-		Log->Info("iNes.cpp: Vertical mirroring");
-		Mirroring = 1;
-	}
-	else 
-	{
-		Log->Info("iNes.cpp: Horizontal mirroring");
+		Log->Info("iNes.cpp: 4 screen mirroring");
 		Mirroring = 0;
+	}
+	else
+	{
+		if (flags6 & 0x01)
+		{
+			Log->Info("iNes.cpp: Vertical mirroring");
+			Mirroring = 1;
+		}
+		else
+		{
+			Log->Info("iNes.cpp: Horizontal mirroring");
+			Mirroring = 0;
+		}
 	}
 
 	Mapper = ((flags6&0xf0)>>4) | (flags7&0xf0);
