@@ -4,6 +4,8 @@
 #include "APU.h"
 #include <vector>
 
+#include "Mapper\Mapper.h"
+
 extern int buttonState;
 /* Memory map
 
@@ -31,16 +33,14 @@ class CPU_ram
 {
 	uint8_t bit;
 
-	bool slotSelect = true;
-	bool PRG_mode = true;
-	bool CHR_mode = false;
-	uint8_t CHR_reg0 = 0, CHR_reg1 = 0, PRG_reg = 0;
-	void MMC1_write(uint16_t n, uint8_t data);
+	uint8_t PRG_mode, CHR_mode;
 
 	uint8_t MMC3_reg[8];
 	void MMC3_write(uint16_t n, uint8_t data);
 	void MMC3_chrCopy();
+
 public:
+	Mapper *mapper_;
 	uint8_t MMC3_irqCounter = 0;
 	bool MMC3_irqEnabled = false;
 

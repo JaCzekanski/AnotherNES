@@ -2,7 +2,7 @@
 
 CPU::CPU(void)
 {
-	this->Power();
+	//this->Power();
 	Log->Debug("CPU created");
 }
 

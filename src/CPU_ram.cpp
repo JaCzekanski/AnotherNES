@@ -17,7 +17,7 @@ CPU_ram::CPU_ram(void)
 	SRAM.resize(0x2000);
 
 	for (int i = 0; i < 8; i++) MMC3_reg[i] = 0;
-
+	
 	ppu = NULL;
 	Log->Debug("CPU_ram: created");
 }
@@ -26,63 +26,6 @@ CPU_ram::~CPU_ram(void)
 {
 	Log->Debug("CPU_ram: destroyed");
 }
-
-void CPU_ram::MMC1_write(uint16_t n, uint8_t data)
-{
-	static int counter = 0;
-	static int reg = 0;
-
-	if (data & 0x80)
-	{
-		counter = reg = 0;
-		return;
-	}
-
-	reg |= (data & 1) << 5;
-	reg >>= 1;
-
-	if (++counter < 5) return;
-
-	int addr = (n - 0x8000) / 0x2000;
-	if (addr == 0) {
-		int mirroring = reg & 3;
-		if (mirroring == 2) ppu->Mirroring = VERTICAL;
-		else if (mirroring == 3) ppu->Mirroring = HORIZONTAL;
-		else Log->Error("MMC1: Unsupported mirroring");
-
-		slotSelect = (reg & 0x4) ? true : false;
-		PRG_mode = (reg & 0x8) ? true : false;
-		CHR_mode = (reg & 0x10) ? true : false;
-	}
-	else if (addr == 1) {
-		if (CHR_reg0 != (reg & 0x1f)) {
-			CHR_reg0 = reg & 0x1f;
-			if (!CHR_mode) { //8kb -- WRAP CHR_reg0 IF BIGGER THAN CHR_ROM 
-				int page = (CHR_reg0 & 0x1e) % (ppu->CHR_ROM.size() / 0x2000);
-				memcpy(ppu->memory, &ppu->CHR_ROM[page * 0x2000], 0x2000);
-			}
-			else {
-				int page = CHR_reg0 % (ppu->CHR_ROM.size() / 0x1000);
-				memcpy(ppu->memory, &ppu->CHR_ROM[page * 0x1000], 0x1000);
-			}
-		}
-	}
-	else if (addr == 2) {
-		if (CHR_reg1 != (reg & 0x1f)) {
-			CHR_reg1 = reg & 0x1f;
-			if (CHR_mode) {// Only in 4kB mode
-				int page = CHR_reg1 % (ppu->CHR_ROM.size() / 0x1000);
-				memcpy(ppu->memory + 0x1000, &ppu->CHR_ROM[page * 0x1000], 0x1000);
-			}
-		}
-	}
-	else if (addr == 3) {
-		PRG_reg = reg & 0xf;
-		//WRAM_disable = (data & 0x10) ? true : false;
-	}
-	counter = reg = 0;
-}
-
 void CPU_ram::MMC3_chrCopy()
 {
 	/* $0000  $0400 $0800  $0C00 $1000  $1400  $1800  $1C00
@@ -207,14 +150,7 @@ void CPU_ram::Write(uint16_t n, uint8_t data)
 	case 5: // 0xA000 - 0xBFFF
 	case 6: // 0xC000 - 0xDFFF: High rom
 	case 7: // 0xE000 - 0xFFFF
-		if (mapper == 2 || mapper == 71 || mapper == 104) prg_lowpage = data;
-		else if (mapper == 0) {}
-		else if (mapper == 1) MMC1_write(n, data);
-		else if (mapper == 3) {
-			CHR_reg0 = data % chr_pages;
-			memcpy(ppu->memory, &ppu->CHR_ROM[CHR_reg0 * 0x2000], 0x2000);
-		}
-		else if (mapper == 4) MMC3_write(n, data);
+		mapper_->Write(n-0x8000, data);
 		return;
 	}
 }
@@ -241,57 +177,62 @@ uint8_t CPU_ram::operator[](size_t n)
 	case 3: // 0x6000 - 0x7FFF:
 		return SRAM[n - 0x6000];
 
-	case 4: // 0x8000 - 0x9FFF: Low rom
-		if (mapper == 4) // MMC3
-		{
-			if (!PRG_mode) return prg_rom[8192 * MMC3_reg[6] + (n - 0x8000)];
-			else return prg_rom[8192 * ((2 * prg_pages) - 2) + (n - 0x8000)];
-		}
-	case 5: // 0xA000 - 0xBFFF
-		if (prg_pages == 1) return prg_rom[(n - 0x8000) % 0x4000]; // Return PRG-ROM
-		if (mapper == 2 || mapper == 71 || mapper == 104)
-		{
-			n -= 0x8000;
-			return prg_rom[(prg_lowpage%prg_pages) * 0x4000 + n % 0x4000];
-		}
-		else if (mapper == 1) // MMC1
-		{
-			if (PRG_mode == 1)
-			{
-				if (slotSelect) return prg_rom[16 * 1024 * (PRG_reg%prg_pages) + (n - 0x8000)];
-				else return prg_rom[16 * 1024 * 0x00 + (n - 0x8000)];
-			}
-			else return prg_rom[32 * 1024 * (PRG_reg%prg_pages) + (n - 0x8000)];
-		}
-		else if (mapper == 4) return prg_rom[8192 * MMC3_reg[7] + (n - 0xA000)]; // MMC3
+	case 4:
+	case 5:
+	case 6:
+	case 7:
+		return mapper_->Read(n-0x8000);
+	//case 4: // 0x8000 - 0x9FFF: Low rom
+	//	if (mapper == 4) // MMC3
+	//	{
+	//		if (!PRG_mode) return prg_rom[8192 * MMC3_reg[6] + (n - 0x8000)];
+	//		else return prg_rom[8192 * ((2 * prg_pages) - 2) + (n - 0x8000)];
+	//	}
+	//case 5: // 0xA000 - 0xBFFF
+	//	if (prg_pages == 1) return prg_rom[(n - 0x8000) % 0x4000]; // Return PRG-ROM
+	//	if (mapper == 2 || mapper == 71 || mapper == 104)
+	//	{
+	//		n -= 0x8000;
+	//		return prg_rom[(prg_lowpage%prg_pages) * 0x4000 + n % 0x4000];
+	//	}
+	//	else if (mapper == 1) // MMC1
+	//	{
+	//		if (PRG_mode == 1)
+	//		{
+	//			if (slotSelect) return prg_rom[16 * 1024 * (PRG_reg%prg_pages) + (n - 0x8000)];
+	//			else return prg_rom[16 * 1024 * 0x00 + (n - 0x8000)];
+	//		}
+	//		else return prg_rom[32 * 1024 * (PRG_reg%prg_pages) + (n - 0x8000)];
+	//	}
+	//	else if (mapper == 4) return prg_rom[8192 * MMC3_reg[7] + (n - 0xA000)]; // MMC3
 
-		return prg_rom[(prg_lowpage * 0x4000) + n - 0x8000]; // Return PRG-ROM
+	//	return prg_rom[(prg_lowpage * 0x4000) + n - 0x8000]; // Return PRG-ROM
 
-	case 6: // 0xC000 - 0xDFFF: High rom
-		if (mapper == 4) // MMC3
-		{
-			if (!PRG_mode) return prg_rom[8192 * ((2 * prg_pages) - 2) + (n - 0xC000)];
-			else return prg_rom[8192 * MMC3_reg[6] + (n - 0xC000)];
-		}
-	case 7: // 0xE000 - 0xFFFF
-		if (prg_pages == 1) return prg_rom[(n - 0x8000) % 0x4000]; // Return PRG-ROM
-		if (mapper == 2 || mapper == 71 || mapper == 104)
-		{
-			n -= 0x8000;
-			return prg_rom[(prg_highpage%prg_pages) * 0x4000 + (n - 0x4000)];
-		}
-		else if (mapper == 1) // MMC1
-		{
-			if (PRG_mode == 1)
-			{
-				if (slotSelect) return prg_rom[16 * 1024 * (0x0f % prg_pages) + (n - 0xc000)];
-				else return prg_rom[16 * 1024 * (PRG_reg%prg_pages) + (n - 0xC000)];
-			}
-			else return prg_rom[32 * 1024 * (PRG_reg%prg_pages) + (n - 0xC000)];
-		}
-		else if (mapper == 4) return prg_rom[8192 * ((2 * prg_pages) - 1) + (n - 0xE000)]; // MMC3
+	//case 6: // 0xC000 - 0xDFFF: High rom
+	//	if (mapper == 4) // MMC3
+	//	{
+	//		if (!PRG_mode) return prg_rom[8192 * ((2 * prg_pages) - 2) + (n - 0xC000)];
+	//		else return prg_rom[8192 * MMC3_reg[6] + (n - 0xC000)];
+	//	}
+	//case 7: // 0xE000 - 0xFFFF
+	//	if (prg_pages == 1) return prg_rom[(n - 0x8000) % 0x4000]; // Return PRG-ROM
+	//	if (mapper == 2 || mapper == 71 || mapper == 104)
+	//	{
+	//		n -= 0x8000;
+	//		return prg_rom[(prg_highpage%prg_pages) * 0x4000 + (n - 0x4000)];
+	//	}
+	//	else if (mapper == 1) // MMC1
+	//	{
+	//		if (PRG_mode == 1)
+	//		{
+	//			if (slotSelect) return prg_rom[16 * 1024 * (0x0f % prg_pages) + (n - 0xc000)];
+	//			else return prg_rom[16 * 1024 * (PRG_reg%prg_pages) + (n - 0xC000)];
+	//		}
+	//		else return prg_rom[32 * 1024 * (PRG_reg%prg_pages) + (n - 0xC000)];
+	//	}
+	//	else if (mapper == 4) return prg_rom[8192 * ((2 * prg_pages) - 1) + (n - 0xE000)]; // MMC3
 
-		return prg_rom[(prg_lowpage * 0x4000) + n - 0x8000]; // Return PRG-ROM
+	//	return prg_rom[(prg_lowpage * 0x4000) + n - 0x8000]; // Return PRG-ROM
 	}
 	return 0;
 }

@@ -17,7 +17,6 @@ CPU_interpreter::CPU_interpreter()
 	}
 
 	Log->Debug("Opcode table filled");
-	this->Power();
 	Log->Debug("CPU_interpreter created");
 }
 

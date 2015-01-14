@@ -19,6 +19,12 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav</Extensions>
     </Filter>
+    <Filter Include="Header Files\Mapper">
+      <UniqueIdentifier>{f7f3f2d3-cf77-4e17-a186-434a7d4f9d47}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Mapper">
+      <UniqueIdentifier>{b4993e80-fd22-444b-bd9a-31427d934daa}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\APU.cpp">
@@ -42,9 +48,6 @@
     <ClCompile Include="src\NSF.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\PPU.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\Dialog\DlgAbout.cpp">
       <Filter>Source Files\Dialog</Filter>
     </ClCompile>
@@ -62,6 +65,27 @@
     </ClCompile>
     <ClCompile Include="src\Dialog\DlgPatterntable.cpp">
       <Filter>Source Files\Dialog</Filter>
+    </ClCompile>
+    <ClCompile Include="src\PPU.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Mapper\Mapper0.cpp">
+      <Filter>Source Files\Mapper</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Mapper\Mapper.cpp">
+      <Filter>Source Files\Mapper</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Mapper\Mapper2.cpp">
+      <Filter>Source Files\Mapper</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Mapper\Mapper71.cpp">
+      <Filter>Source Files\Mapper</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Mapper\Mapper3.cpp">
+      <Filter>Source Files\Mapper</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Mapper\Mapper1.cpp">
+      <Filter>Source Files\Mapper</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -118,6 +142,24 @@
     </ClInclude>
     <ClInclude Include="src\Dialog\DlgPatterntable.h">
       <Filter>Header Files\Dialog</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Mapper\Mapper.h">
+      <Filter>Header Files\Mapper</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Mapper\Mapper0.h">
+      <Filter>Header Files\Mapper</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Mapper\Mapper2.h">
+      <Filter>Header Files\Mapper</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Mapper\Mapper71.h">
+      <Filter>Header Files\Mapper</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Mapper\Mapper3.h">
+      <Filter>Header Files\Mapper</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Mapper\Mapper1.h">
+      <Filter>Header Files\Mapper</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

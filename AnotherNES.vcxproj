@@ -97,12 +97,18 @@
     <ClCompile Include="src\Dialog\DlgRAM.cpp" />
     <ClCompile Include="src\iNES.cpp" />
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\Mapper\Mapper.cpp" />
+    <ClCompile Include="src\Mapper\Mapper0.cpp" />
+    <ClCompile Include="src\Mapper\Mapper1.cpp" />
+    <ClCompile Include="src\Mapper\Mapper2.cpp" />
+    <ClCompile Include="src\Mapper\Mapper3.cpp" />
+    <ClCompile Include="src\Mapper\Mapper71.cpp" />
     <ClCompile Include="src\NSF.cpp" />
-    <ClCompile Include="src\PPU.cpp" />
     <ClCompile Include="src\Dialog\DlgAbout.cpp" />
     <ClCompile Include="src\Dialog\DlgNametable.cpp" />
     <ClCompile Include="src\Dialog\DlgOAM.cpp" />
     <ClCompile Include="src\Dialog\DlgPalette.cpp" />
+    <ClCompile Include="src\PPU.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\APU.h" />
@@ -114,6 +120,12 @@
     <ClInclude Include="src\headers.h" />
     <ClInclude Include="src\iNES.h" />
     <ClInclude Include="src\logger.h" />
+    <ClInclude Include="src\Mapper\Mapper.h" />
+    <ClInclude Include="src\Mapper\Mapper0.h" />
+    <ClInclude Include="src\Mapper\Mapper1.h" />
+    <ClInclude Include="src\Mapper\Mapper2.h" />
+    <ClInclude Include="src\Mapper\Mapper3.h" />
+    <ClInclude Include="src\Mapper\Mapper71.h" />
     <ClInclude Include="src\NSF.h" />
     <ClInclude Include="src\PPU.h" />
     <ClInclude Include="src\resource.h" />

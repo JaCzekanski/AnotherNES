@@ -26,6 +26,12 @@ int buttonState = 0;
 
 #include "version.h"
 
+#include"Mapper\Mapper0.h"
+#include"Mapper\Mapper1.h"
+#include"Mapper\Mapper2.h"
+#include"Mapper\Mapper3.h"
+#include"Mapper\Mapper71.h"
+
 #pragma comment(linker,"/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
 Logger* Log;
@@ -80,14 +86,19 @@ bool LoadGame( const char* path )
 
 	Log->Info("Mapper: %d", rom->Mapper);
 	cpu->memory.mapper = rom->Mapper;
+	cpu->memory.ppu = &cpu->ppu;
+	cpu->memory.apu = &cpu->apu;
+	cpu->ppu.Mirroring = rom->Mirroring;
 
-	if (rom->Mapper != 0 &&
-		rom->Mapper != 1 &&
-		rom->Mapper != 2 &&
-		rom->Mapper != 3 &&
-		rom->Mapper != 4 &&
-		rom->Mapper != 71 &&
-		rom->Mapper != 104) return 1;
+	if      (rom->Mapper == 0)  cpu->memory.mapper_ = new Mapper0(cpu->ppu);
+	else if (rom->Mapper == 1)  cpu->memory.mapper_ = new Mapper1(cpu->ppu);
+	else if (rom->Mapper == 2)  cpu->memory.mapper_ = new Mapper2(cpu->ppu);
+	else if (rom->Mapper == 3)  cpu->memory.mapper_ = new Mapper3(cpu->ppu);
+	else if (rom->Mapper == 71) cpu->memory.mapper_ = new Mapper71(cpu->ppu);
+	else {
+		Log->Error("Unsupported mapper");
+		return 1;
+	}
 
 	if (rom->PRG_ROM_pages>128)
 	{
@@ -100,6 +111,11 @@ bool LoadGame( const char* path )
 	cpu->memory.prg_highpage = rom->PRG_ROM_pages-1;
 	if (rom->Mapper == 104) cpu->memory.prg_highpage = 15; // Golden five fix  http://mamedev.org/source/src/mess/machine/nes_pcb.c
 
+	std::vector<uint8_t> prg;
+	prg.resize(rom->PRG_ROM_pages * 16 * 1024);
+	memcpy(&prg[0], rom->PRG_ROM, rom->PRG_ROM_pages * 16 * 1024);
+
+	cpu->memory.mapper_->setPrg(prg);
 	Log->Success("%dB PRG_ROM copied", rom->PRG_ROM_pages*16*1024);
 
 	if (rom->CHR_ROM_pages > 0) {
@@ -107,13 +123,11 @@ bool LoadGame( const char* path )
 		memcpy(&cpu->ppu.CHR_ROM[0], rom->CHR_ROM, rom->CHR_ROM_pages * 8 * 1024);
 		memcpy(cpu->ppu.memory, &cpu->ppu.CHR_ROM[0], 1 * 8 * 1024);
 		Log->Success("%dB CHR_ROM copied", rom->CHR_ROM_pages * 8 * 1024);
+		cpu->memory.mapper_->setChr(cpu->ppu.CHR_ROM);
 	}
 	cpu->memory.chr_pages = rom->CHR_ROM_pages;
 
-	cpu->memory.ppu = &cpu->ppu;
-	cpu->memory.apu = &cpu->apu;
-	cpu->ppu.Mirroring = rom->Mirroring;
-	cpu->Reset();
+	cpu->Power();
 
 	SDL_PauseAudio(0);
 	return 0;
