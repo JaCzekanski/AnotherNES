@@ -41,6 +41,9 @@ class CPU_ram
 	void MMC3_write(uint16_t n, uint8_t data);
 	void MMC3_chrCopy();
 public:
+	uint8_t MMC3_irqCounter = 0;
+	bool MMC3_irqEnabled = false;
+
 	uint8_t mapper;
 
 	uint8_t prg_rom[2024*1024]; // 2MB

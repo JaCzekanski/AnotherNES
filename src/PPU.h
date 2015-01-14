@@ -45,8 +45,6 @@ struct SPRITE
 class PPU
 {
 private:
-	uint32_t cycles;
-	int16_t scanline;
 	bool VBLANK;
 	bool NMI_enabled;
 	uint8_t VRAMaddressIncrement;
@@ -82,6 +80,8 @@ private:
 	inline void loopyCopyHorizontal();
 
 public:
+	uint32_t cycles;
+	int16_t scanline;
 	bool SpriteSize; // false - 8x8, true - 8x16
 	uint16_t BaseNametable;
 	uint16_t BackgroundPattenTable;

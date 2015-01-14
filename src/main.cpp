@@ -821,6 +821,7 @@ int main( int argc, char *argv[] )
 							i += 7 * 3;
 						}
 					}
+					if (cpu->ppu.scanline == cpu->memory.MMC3_irqCounter + 1 && cpu->ppu.cycles == 260 && cpu->memory.MMC3_irqEnabled) cpu->IRQ();
 				}
 				cycles += cpu->Step();
 				if (cpu->isJammed())
