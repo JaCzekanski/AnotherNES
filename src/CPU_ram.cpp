@@ -243,7 +243,7 @@ uint8_t CPU_ram::operator[](size_t n)
 	case 4: // 0x8000 - 0x9FFF: Low rom
 		if (mapper == 4) // MMC3
 		{
-			if (PRG_mode == 0) return prg_rom[8192 * MMC3_reg[6] + (n - 0x8000)];
+			if (!PRG_mode) return prg_rom[8192 * MMC3_reg[6] + (n - 0x8000)];
 			else return prg_rom[8192 * ((2 * prg_pages) - 2) + (n - 0x8000)];
 		}
 	case 5: // 0xA000 - 0xBFFF
@@ -262,14 +262,14 @@ uint8_t CPU_ram::operator[](size_t n)
 			}
 			else return prg_rom[32 * 1024 * (PRG_reg%prg_pages) + (n - 0x8000)];
 		}
-		if (mapper == 4) return prg_rom[8192 * (MMC3_reg[7] % (2 * prg_pages)) + (n - 0xA000)]; // MMC3
+		else if (mapper == 4) return prg_rom[8192 * MMC3_reg[7] + (n - 0xA000)]; // MMC3
 
 		return prg_rom[(prg_lowpage * 0x4000) + n - 0x8000]; // Return PRG-ROM
 
 	case 6: // 0xC000 - 0xDFFF: High rom
 		if (mapper == 4) // MMC3
 		{
-			if (PRG_mode == 0) return prg_rom[8192 * ((2 * prg_pages) - 2) + (n - 0xC000)];
+			if (!PRG_mode) return prg_rom[8192 * ((2 * prg_pages) - 2) + (n - 0xC000)];
 			else return prg_rom[8192 * MMC3_reg[6] + (n - 0xC000)];
 		}
 	case 7: // 0xE000 - 0xFFFF
@@ -288,7 +288,7 @@ uint8_t CPU_ram::operator[](size_t n)
 			}
 			else return prg_rom[32 * 1024 * (PRG_reg%prg_pages) + (n - 0xC000)];
 		}
-		if (mapper == 4) return prg_rom[8192 * ((2 * prg_pages) - 1) + (n - 0xE000)]; // MMC3
+		else if (mapper == 4) return prg_rom[8192 * ((2 * prg_pages) - 1) + (n - 0xE000)]; // MMC3
 
 		return prg_rom[(prg_lowpage * 0x4000) + n - 0x8000]; // Return PRG-ROM
 	}
