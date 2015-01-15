@@ -12,6 +12,7 @@ struct Palette_entry
 	uint8_t r;
 	uint8_t g;
 	uint8_t b;
+	uint8_t dummy;
 };
 //http://nesdev.parodius.com/nespal.txt
 static struct Palette_entry nes_palette[64] =
@@ -65,11 +66,8 @@ private:
 	uint8_t PPUDATAbuffer;
 
 	uint8_t screen[256][256]; // raw screen data, no palette lookup, [y][x]
-	void PaletteLookup(SDL_Surface *s);
-
-	void RenderSprite(SDL_Surface* s);
-	void RenderBackground(SDL_Surface* s, uint8_t nametable);
-
+	void PaletteLookup(Uint8 *PIXEL);
+	
 	// Loopy
 	//__forceinline  bool renderingIsEnabled();
 	// Unfortunately define macro is far mor faster than inline funcion (even if called only once)
@@ -89,7 +87,6 @@ public:
 	uint8_t Mirroring;
 	uint8_t OAMADDR;
 	uint8_t memory[0x4000]; // 16KB
-	std::vector<uint8_t> CHR_ROM;
 	SPRITE OAM[64]; // 64B*4
 	PPU(void);
 	~PPU(void);
@@ -99,6 +96,6 @@ public:
 	uint8_t Read( uint8_t reg);
 	uint8_t Step();
 	
-	void Render(SDL_Surface* s);
+	void Render(SDL_Texture* s);
 
 };

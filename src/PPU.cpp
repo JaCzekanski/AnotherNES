@@ -459,27 +459,34 @@ uint8_t PPU::Step( )
 	return ret;
 }
 
-void PPU::Render(SDL_Surface* s)
+void PPU::Render(SDL_Texture* s)
 {
-	PaletteLookup(s);
-	//memset(screen, memory[0x3f00], 256 * 256);
+	uint8_t *pixels = nullptr;
+	int pitch = 0;
+	SDL_LockTexture(s, nullptr, (void**)&pixels, &pitch);
+	if (pitch != 0x400 || pixels == nullptr) {
+		Log->Error("Cannot lock texture for rendering");
+		return;
+	}
+	PaletteLookup(pixels);
+	SDL_UnlockTexture(s);
+
 	memset(screen, 63, 256 * 256); // Not the best solution?
 }
 
 
-void PPU::PaletteLookup(SDL_Surface *s)
+void PPU::PaletteLookup(Uint8 *PIXEL)
 {
-	uint8_t *PIXEL = (uint8_t*)s->pixels;
 	for (int y = 0; y < 240; y++)
 	{
-		for (int x = 0; x < 256; x++)
+		for (int x = 0; x < 256; x++, PIXEL+=4)
 		{
 			Palette_entry e = nes_palette[screen[y][x]];
 
-			*(PIXEL++) = e.b;
-			*(PIXEL++) = e.g;
-			*(PIXEL++) = e.r;
-			PIXEL++;
+			*(PIXEL + 0) = e.b;
+			*(PIXEL + 1) = e.g;
+			*(PIXEL + 2) = e.r;
+			*(PIXEL + 3) = 0xff;
 		}
 	}
 }

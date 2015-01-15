@@ -303,6 +303,9 @@ int main( int argc, char *argv[] )
 	}
 	Log->Success("SDL initialized");
 
+	// Texture filtering
+	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "2");
+
 	MainWindow = SDL_CreateWindow( "AnotherNES", 
 		542, 20,
 		256 * 2, 240 * 2 + 20, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
@@ -312,9 +315,18 @@ int main( int argc, char *argv[] )
 		Log->Fatal("Cannot create main window");
 		return 1;
 	}
-	Log->Success("Main window created");
 	ClearMainWindow();
-	
+
+	SDL_Renderer *renderer = SDL_CreateRenderer(MainWindow, -1, SDL_RENDERER_ACCELERATED);
+	if (renderer == NULL)
+	{
+		Log->Fatal("Cannot create renderer");
+		return 1;
+	}
+
+	SDL_Texture* canvas = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 256, 240);
+	if (!canvas) Log->Fatal("Cannot create canvas texture!");
+
 	SDL_SysWMinfo WindowInfo;
 	SDL_VERSION(&WindowInfo.version);
 	SDL_GetWindowWMInfo( MainWindow, &WindowInfo);
@@ -339,26 +351,7 @@ int main( int argc, char *argv[] )
 		return 1;
 	}
 	SDL_EventState( SDL_SYSWMEVENT, SDL_ENABLE );
-
-	SDL_DisplayMode mode;
-	mode.format = SDL_PIXELFORMAT_RGBA8888;
-	mode.w = 256*2;
-	mode.h = 240*2;
-	mode.refresh_rate = 0;
-	mode.driverdata = 0;
-
-
-	if ( SDL_SetWindowDisplayMode( MainWindow, &mode ) < 0 )
-	{
-		Log->Fatal("SDL_SetWindowDisplayMode error");
-		return 1;
-	}
-
-	SDL_Surface* screen = SDL_GetWindowSurface( MainWindow );
-
-	SDL_Surface* canvas = SDL_CreateRGBSurface( 0, 256, 240, 32, 0, 0, 0, 0xff000000 );
-	if (!canvas) Log->Fatal("Cannot create canvas surface!");
-
+	
 	SDL_AudioSpec requested, obtained;
 	requested.channels = 1;
 	requested.format = AUDIO_U8;
@@ -496,7 +489,7 @@ int main( int argc, char *argv[] )
 			}
 			else if (event.window.event == SDL_WINDOWEVENT_RESIZED)
 			{
-				screen = SDL_GetWindowSurface(MainWindow);
+				//screen = SDL_GetWindowSurface(MainWindow);
 				ClearMainWindow();
 			}
 		}
@@ -800,17 +793,14 @@ int main( int argc, char *argv[] )
 							if (ToolboxOAM) ToolboxOAM->Update();
 							if (ToolboxPalette) ToolboxPalette->Update();
 							if (ToolboxNametable) ToolboxNametable->Update();
-								if (ToolboxPatterntable) ToolboxPatterntable->Update();
+							if (ToolboxPatterntable) ToolboxPatterntable->Update();
 						}
 						ToolboxDelay++;
 
 						framerefresh = true;
-						SDL_LockSurface( canvas );
-						cpu->ppu.Render( canvas );
-						SDL_UnlockSurface( canvas );
 
-						SDL_SoftStretch( canvas, NULL, screen, NULL );
-						SDL_UpdateWindowSurface( MainWindow );
+						cpu->ppu.Render( canvas );
+						SDL_RenderCopy(renderer, canvas, NULL, NULL);
 							
 						if (ppuresult == 2)
 						{
@@ -839,6 +829,7 @@ int main( int argc, char *argv[] )
 
 			if (ToolboxRAM) ToolboxRAM->Update();
 
+			SDL_RenderPresent(renderer);
 			ticks = SDL_GetTicks();
 			if (FrameLimit)
 			{
@@ -858,16 +849,17 @@ int main( int argc, char *argv[] )
 
 	SDL_PauseAudio(1);
 	SDL_CloseAudio();
-	delete rom; rom = NULL;
-	delete cpu; cpu = NULL;
+	delete rom;
+	delete cpu;
 
-	delete ToolboxOAM; ToolboxOAM = NULL;
-	delete ToolboxPalette; ToolboxPalette = NULL;
-	delete ToolboxNametable; ToolboxNametable = NULL;
-	delete ToolboxPatterntable; ToolboxPatterntable = NULL;
+	delete ToolboxOAM;
+	delete ToolboxPalette;
+	delete ToolboxNametable;
+	delete ToolboxPatterntable;
 	
-	SDL_FreeSurface( canvas ); canvas = NULL;
-	SDL_DestroyWindow( MainWindow ); MainWindow = NULL;
+	SDL_DestroyTexture(canvas);
+	SDL_DestroyRenderer(renderer);
+	SDL_DestroyWindow(MainWindow);
 	SDL_Quit();
 	delete Log; Log = NULL;
 	return 0;
