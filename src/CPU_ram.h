@@ -6,7 +6,6 @@
 
 #include "Mapper\Mapper.h"
 
-extern int buttonState;
 /* Memory map
 
 $FFFA - $FFFB - NMI vector
@@ -31,6 +30,7 @@ $00FF - $0000 - Zero Page
 */
 class CPU_ram
 {
+	int buttonState;
 	uint8_t bit;
 	uint8_t memory[2048];
 	std::vector<uint8_t> SRAM;
@@ -45,4 +45,5 @@ public:
 
 	void Write(uint16_t n, uint8_t data);
 	uint8_t operator[](size_t n);
+	void input(int keys) { buttonState = keys;  }
 };

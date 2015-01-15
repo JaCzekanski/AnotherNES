@@ -1,8 +1,3 @@
-#ifdef _DEBUG
-//#include <vld.h>
-#endif
-bool debug = false;
-int buttonState = 0;
 #include <windows.h>
 #include <xinput.h>
 #include <iostream>
@@ -761,7 +756,7 @@ int main( int argc, char *argv[] )
 		ticks = SDL_GetTicks();
 		if ( EmulatorState == EmuState::Running )
 		{
-			buttonState = 0;
+			int buttonState = 0;
 			if ( XboxPresent )
 			{
 				XInputGetState(0, &xstate);
@@ -774,7 +769,6 @@ int main( int argc, char *argv[] )
 				if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_LEFT) buttonState |= 1<<1;
 				if (xstate.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_RIGHT) buttonState |= 1<<0;
 			}
-
 			Uint8 *keys = (Uint8*) SDL_GetKeyboardState(NULL);
 			if ( keys[SDL_SCANCODE_ESCAPE] ) break;
 			//A, B, Select, Start, Up, Down, Left, Right.
@@ -785,9 +779,11 @@ int main( int argc, char *argv[] )
 			if ( keys[SDL_SCANCODE_UP] ) buttonState |= 1<<3;
 			if ( keys[SDL_SCANCODE_DOWN] ) buttonState |= 1<<2;
 			if ( keys[SDL_SCANCODE_LEFT] ) buttonState |= 1<<1;
-			if (keys[SDL_SCANCODE_RIGHT]) buttonState |= 1 << 0;
-			if (keys[SDL_SCANCODE_SPACE]) FrameLimit = false;
+			if ( keys[SDL_SCANCODE_RIGHT] ) buttonState |= 1 << 0;
+			if ( keys[SDL_SCANCODE_SPACE] ) FrameLimit = false;
 			else FrameLimit = true;
+
+			cpu->memory.input(buttonState);
 
 			bool framerefresh = false;
 			while ( !framerefresh )
@@ -823,7 +819,11 @@ int main( int argc, char *argv[] )
 							i += 7 * 3;
 						}
 					}
-					//if (cpu->ppu.scanline == cpu->memory.MMC3_irqCounter + 1 && cpu->ppu.cycles == 260 && cpu->memory.MMC3_irqEnabled) cpu->IRQ();
+					if (cpu->ppu.cycles == 260) {
+						Mapper4 *MMC3 = dynamic_cast<Mapper4*>(cpu->memory.mapper);
+						if (MMC3 && MMC3->MMC3_irqEnabled && MMC3->MMC3_irqCounter == cpu->ppu.scanline)
+								cpu->IRQ();
+					}
 				}
 				cycles += cpu->Step();
 				if (cpu->isJammed())

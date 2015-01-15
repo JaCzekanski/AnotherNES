@@ -16,13 +16,14 @@ class Mapper4 : public Mapper
 	int chrSize = 1 * 1024;
 
 	uint8_t prgMode, chrMode;
-	uint8_t MMC3_irqCounter = 0;
 	uint8_t MMC3_reg[8];
 
 	void MMC3_write(uint16_t n, uint8_t data);
 	void MMC3_chrCopy();
-	bool MMC3_irqEnabled = false;
 public:
+	uint8_t MMC3_irqCounter = 0;
+	bool MMC3_irqEnabled = false;
+
 	Mapper4(PPU& ppu);
 	~Mapper4();
 	uint8_t Read(uint16_t n);

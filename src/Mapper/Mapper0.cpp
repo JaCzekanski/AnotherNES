@@ -3,7 +3,7 @@
 Mapper0::Mapper0(PPU& ppu) : Mapper(ppu)
 {
 
-};
+}
 
 uint8_t Mapper0::Read(uint16_t n)
 {

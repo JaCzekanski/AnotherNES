@@ -4,7 +4,8 @@ CPU_ram::CPU_ram(void)
 {
 	mapper = NULL;
 	ppu = NULL;
-	memset( this->memory, 0, 0xffff );
+	buttonState = 0;
+	memset( this->memory, 0, 2048 );
 	this->memory[0x0008] = 0xf7;
 	this->memory[0x0009] = 0xef;
 	this->memory[0x000a] = 0xdf;

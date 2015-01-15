@@ -60,7 +60,7 @@ void Mapper1::MMC1_write(uint16_t n, uint8_t data)
 		chrSize = (chrMode) ? (4 * 1024) : (8 * 1024);
 	}
 	if (addr == 1 && chrPages > 0) {
-		chrReg0 = (reg % (chrPages * 2)) & 0x1e;
+		chrReg0 = (reg % (chrPages * 2));// &0x1e;
 		memcpy(ppu.memory, &chr[chrReg0 * 0x1000], 0x1000);
 		if (!chrMode) memcpy(ppu.memory + 0x1000, &chr[(chrReg0 | 1) * 0x1000], 0x1000);
 	}

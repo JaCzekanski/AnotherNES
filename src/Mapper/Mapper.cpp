@@ -4,6 +4,9 @@
 Mapper::Mapper(PPU &ppu) : ppu(ppu), prgPages(0), chrPages(0)
 {
 }
+Mapper::~Mapper()
+{
+}
 
 void Mapper::setPrg(const std::vector<uint8_t> &prg)
 {
