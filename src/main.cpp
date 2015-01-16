@@ -125,8 +125,6 @@ bool LoadGame( const char* path )
 // Loads nsf with path as argument
 bool LoadNSF( const char* path )
 {
-	Log->Fatal("NSF not working right now (mapper)");
-	return false;
 	Log->Info("Opening %s", path);
 	NSF* nsf = new NSF();
 	if (nsf->Load( (const char*)path ))
@@ -138,16 +136,17 @@ bool LoadNSF( const char* path )
 	Log->Info("Press escape to exit player");
 
 
-
 	Log->Info("Creating CPU interpreter");
 	cpu = new CPU_interpreter();
 
-	cpu->memory.mapper = 0;
+	std::vector<uint8_t> prg;
+	int pages = ((nsf->load_address - 0x8000) + nsf->size + 16384 + 1) / 16384;
+	prg.resize(16384 * pages);
+	memcpy(&prg[nsf->load_address - 0x8000], nsf->data, nsf->size);
 
-	//memcpy( cpu->memory.prg_rom+(nsf->load_address-0x8000), nsf->data, nsf->size );
-
-	Log->Success("%dB bytes of NSF data copid", nsf->size);
-
+	cpu->memory.mapper = new Mapper0(cpu->ppu);
+	cpu->memory.mapper->setPrg(prg);
+		
 	cpu->memory.ppu = &cpu->ppu;
 	cpu->memory.apu = &cpu->apu;
 	cpu->Reset();
@@ -190,10 +189,11 @@ new_song:
 		Uint32 ticks = SDL_GetTicks();
 		Uint32 newticks =0;
 		Uint32 delta = 0;
+		int apu_cycles = 0;
 		while ( !returned )
 		{
 			cpu->Step();
-			if (cpu->PC == 0xfff0+1) returned = true;
+			if (cpu->PC == 0xfff0 + 1) returned = true;
 		}
 		cpu->apu.activeTimer++;
 
@@ -219,6 +219,10 @@ new_song:
 			if (!PendingEvents) break;
 		}
 
+		cpu->apu.frameStep();
+		cpu->apu.frameStep();
+		cpu->apu.frameStep();
+		cpu->apu.frameStep();
 		int ticksPerFrame = 16; // NTSC, 1/60 == 16.6666ms
 		//if (nsf->pal_ntsc_bits) ticksPerFrame = 20; // Pal, 1/50 == 20ms
 
@@ -359,8 +363,8 @@ int main( int argc, char *argv[] )
 	SDL_AudioSpec requested, obtained;
 	requested.channels = 1;
 	requested.format = AUDIO_U8;
-	requested.freq = 44100 ;
-	requested.samples = 2048;
+	requested.freq = 22050 ;
+	requested.samples = 512;
 	requested.callback = audiocallback;
 	if ( SDL_OpenAudio( &requested, &obtained ) == -1 )
 	{
@@ -389,6 +393,7 @@ int main( int argc, char *argv[] )
 	Uint32 prevtimestamp = 0;
 	bool mouseUp = true;
 	int cycles = 0;
+	int apu_cycles = 0;
 	while( EmulatorState != EmuState::Quited )
 	{
 		int PendingEvents = false;
@@ -820,13 +825,18 @@ int main( int argc, char *argv[] )
 					}
 				}
 				cycles += cpu->Step();
+				apu_cycles += cycles;
 				if (cpu->isJammed())
 				{
 					Log->Error("CPU Jammed.");
 					framerefresh = true;
 					EmulatorState = EmuState::Paused;
 				}
-				//cpu->apu.Step();
+				if (apu_cycles >= 7457)
+				{
+					cpu->apu.frameStep();
+					apu_cycles = 0;
+				}
 				Mapper65 *mapper65 = dynamic_cast<Mapper65*>(cpu->memory.mapper);
 				if (mapper65 && mapper65->irqEnabled) {
 					if (mapper65->irqCounter <= cycles) cpu->IRQ();
