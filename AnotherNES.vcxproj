@@ -103,6 +103,8 @@
     <ClCompile Include="src\Mapper\Mapper2.cpp" />
     <ClCompile Include="src\Mapper\Mapper3.cpp" />
     <ClCompile Include="src\Mapper\Mapper4.cpp" />
+    <ClCompile Include="src\Mapper\Mapper65.cpp" />
+    <ClCompile Include="src\Mapper\Mapper7.cpp" />
     <ClCompile Include="src\Mapper\Mapper71.cpp" />
     <ClCompile Include="src\NSF.cpp" />
     <ClCompile Include="src\Dialog\DlgAbout.cpp" />
@@ -127,6 +129,8 @@
     <ClInclude Include="src\Mapper\Mapper2.h" />
     <ClInclude Include="src\Mapper\Mapper3.h" />
     <ClInclude Include="src\Mapper\Mapper4.h" />
+    <ClInclude Include="src\Mapper\Mapper65.h" />
+    <ClInclude Include="src\Mapper\Mapper7.h" />
     <ClInclude Include="src\Mapper\Mapper71.h" />
     <ClInclude Include="src\NSF.h" />
     <ClInclude Include="src\PPU.h" />

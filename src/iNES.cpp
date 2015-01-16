@@ -32,22 +32,26 @@ int iNES::Load( const char* name )
 		return 1;
 	}
 	
-	char magic[4];
-	fread( magic, 1, 4, rom );
-	if (memcmp( magic, "NES\x1A", 4))
+	char buffer[16];
+	fread(buffer, 1, 16, rom);
+	if (memcmp(buffer, "NES\x1A", 4))
 	{
 		Log->Error("iNES.cpp: Wrong magic: expected NES\\x1a");
 		return 2; // Wrong MAGIC
 	}
+	if (!memcmp(buffer + 7, "DiskDude!", 9))
+	{
+		Log->Error("iNes.cpp: Garbage header, please use another ROM, will try to boot");
+		memset(buffer + 7, 0, 9);
+	}
 
-	PRG_ROM_pages = fgetc( rom ); // Size of PRG ROM in 16KB units
-	CHR_ROM_pages = fgetc( rom ); // Size of PRG ROM in 8KB units (0 - uses CHR RAM)
-	uint8_t flags6 = fgetc( rom );
-	uint8_t flags7 = fgetc( rom );
-	PRG_RAM_pages = fgetc( rom ); // Size of PRG RAM in 8KB units
-	uint8_t flags9 = fgetc( rom );
-	fseek( rom, 6, SEEK_CUR );
-
+	PRG_ROM_pages  = buffer[4]; // Size of PRG ROM in 16KB units
+	CHR_ROM_pages  = buffer[5]; // Size of PRG ROM in 8KB units (0 - uses CHR RAM)
+	uint8_t flags6 = buffer[6];
+	uint8_t flags7 = buffer[7];
+	PRG_RAM_pages  = buffer[8]; // Size of PRG RAM in 8KB units
+	uint8_t flags9 = buffer[9];
+	
 	/* 
 	Flags 6
 	76543210
@@ -90,19 +94,19 @@ int iNES::Load( const char* name )
 	if (flags6 & 0x08)
 	{
 		Log->Info("iNes.cpp: 4 screen mirroring");
-		Mirroring = 0;
+		mirroring = Mirroring::FourScreen;
 	}
 	else
 	{
 		if (flags6 & 0x01)
 		{
 			Log->Info("iNes.cpp: Vertical mirroring");
-			Mirroring = 1;
+			mirroring = Mirroring::Vertical;
 		}
 		else
 		{
 			Log->Info("iNes.cpp: Horizontal mirroring");
-			Mirroring = 0;
+			mirroring = Mirroring::Horizontal;
 		}
 	}
 

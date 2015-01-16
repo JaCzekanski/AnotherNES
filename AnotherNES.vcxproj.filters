@@ -90,6 +90,12 @@
     <ClCompile Include="src\Mapper\Mapper4.cpp">
       <Filter>Source Files\Mapper</Filter>
     </ClCompile>
+    <ClCompile Include="src\Mapper\Mapper65.cpp">
+      <Filter>Source Files\Mapper</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Mapper\Mapper7.cpp">
+      <Filter>Source Files\Mapper</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\APU.h">
@@ -165,6 +171,12 @@
       <Filter>Header Files\Mapper</Filter>
     </ClInclude>
     <ClInclude Include="src\Mapper\Mapper4.h">
+      <Filter>Header Files\Mapper</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Mapper\Mapper65.h">
+      <Filter>Header Files\Mapper</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Mapper\Mapper7.h">
       <Filter>Header Files\Mapper</Filter>
     </ClInclude>
   </ItemGroup>

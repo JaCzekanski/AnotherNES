@@ -37,7 +37,7 @@ void DlgNametable::Update()
 		if (!Sspr) Log->Fatal("PPU: Cannot create Sspr surface!");
 		SDL_LockSurface( Sspr );
 
-		if (cpu->ppu.Mirroring == VERTICAL) // Vertical
+		if (cpu->ppu.Mirroring == Mirroring::Vertical) // Vertical
 		{
 			if (i%2 == 0) __DrawNametable(Sspr, cnx);
 			else __DrawNametable(Sspr, !cnx);

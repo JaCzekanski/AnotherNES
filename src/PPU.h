@@ -3,9 +3,19 @@
 #include <SDL.h>
 #include <vector>
 
-
-#define HORIZONTAL 0
-#define VERTICAL 1
+namespace Mirroring
+{
+	enum Mirroring
+	{
+		Horizontal = 0,
+		Vertical,
+		FourScreen,
+		ScreenA,
+		ScreenB
+	};
+};
+//#define HORIZONTAL 0
+//#define VERTICAL 1
 
 struct Palette_entry
 {
@@ -46,6 +56,10 @@ struct SPRITE
 class PPU
 {
 private:
+	bool writeIgnored; // Some games writes to PPU $2000 enabling NMI and get stuck waiting for VBLANK, but it's cleared by NMI
+					  // PPU must wait 29658 (little more than one frame) ticks before it start accepts writes 
+	int frameCounter;
+
 	bool VBLANK;
 	bool NMI_enabled;
 	uint8_t VRAMaddressIncrement;

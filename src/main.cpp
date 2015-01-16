@@ -26,6 +26,8 @@
 #include"Mapper\Mapper2.h"
 #include"Mapper\Mapper3.h"
 #include"Mapper\Mapper4.h"
+#include"Mapper\Mapper7.h"
+#include"Mapper\Mapper65.h"
 #include"Mapper\Mapper71.h"
 
 #pragma comment(linker,"/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
@@ -71,7 +73,7 @@ bool LoadGame( const char* path )
 	if (rom->Load( (const char*)path ))
 	{
 		Log->Error("Cannot load %s", path);
-		return 0;
+		return 1;
 	}
 	Log->Success("%s opened", path);
 
@@ -81,13 +83,15 @@ bool LoadGame( const char* path )
 	Log->Info("Mapper: %d", rom->Mapper);
 	cpu->memory.ppu = &cpu->ppu;
 	cpu->memory.apu = &cpu->apu;
-	cpu->ppu.Mirroring = rom->Mirroring;
+	cpu->ppu.Mirroring = rom->mirroring;
 
 	if      (rom->Mapper == 0)  cpu->memory.mapper = new Mapper0(cpu->ppu);
 	else if (rom->Mapper == 1)  cpu->memory.mapper = new Mapper1(cpu->ppu);
 	else if (rom->Mapper == 2)  cpu->memory.mapper = new Mapper2(cpu->ppu);
 	else if (rom->Mapper == 3)  cpu->memory.mapper = new Mapper3(cpu->ppu);
 	else if (rom->Mapper == 4)  cpu->memory.mapper = new Mapper4(cpu->ppu);
+	else if (rom->Mapper == 7)  cpu->memory.mapper = new Mapper7(cpu->ppu);
+	else if (rom->Mapper == 65) cpu->memory.mapper = new Mapper65(cpu->ppu);
 	else if (rom->Mapper == 71) cpu->memory.mapper = new Mapper71(cpu->ppu);
 	else {
 		Log->Error("Unsupported mapper");
@@ -304,11 +308,11 @@ int main( int argc, char *argv[] )
 	Log->Success("SDL initialized");
 
 	// Texture filtering
-	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "2");
+	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
 
 	MainWindow = SDL_CreateWindow( "AnotherNES", 
 		542, 20,
-		256 * 2, 240 * 2 + 20, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+		256 * 2, 240 * 2 + 20 , SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
 
 	if ( MainWindow == NULL )
 	{
@@ -823,6 +827,11 @@ int main( int argc, char *argv[] )
 					EmulatorState = EmuState::Paused;
 				}
 				//cpu->apu.Step();
+				Mapper65 *mapper65 = dynamic_cast<Mapper65*>(cpu->memory.mapper);
+				if (mapper65 && mapper65->irqEnabled) {
+					if (mapper65->irqCounter <= cycles) cpu->IRQ();
+					mapper65->irqCounter -= cycles;
+				}
 				++tick;
 				cpu->apu.activeTimer++;
 			}

@@ -48,8 +48,10 @@ void Mapper1::MMC1_write(uint16_t n, uint8_t data)
 	int addr = n / 0x2000;
 	if (addr == 0) {
 		int mirroring = reg & 3;
-		if (mirroring == 2) ppu.Mirroring = VERTICAL;
-		else if (mirroring == 3) ppu.Mirroring = HORIZONTAL;
+		if (mirroring == 0) ppu.Mirroring = Mirroring::ScreenA;
+		else if (mirroring == 1) ppu.Mirroring = Mirroring::ScreenB;
+		else if (mirroring == 2) ppu.Mirroring = Mirroring::Vertical;
+		else if (mirroring == 3) ppu.Mirroring = Mirroring::Horizontal;
 		else Log->Error("MMC1: Unsupported mirroring");
 
 		slotSelect = (reg & 0x4) ? true : false;

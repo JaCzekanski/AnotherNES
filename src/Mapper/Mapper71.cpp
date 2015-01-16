@@ -17,6 +17,8 @@ uint8_t Mapper71::Read(uint16_t n)
 
 void Mapper71::Write(uint16_t n, uint8_t data)
 {
-	if (n < 0x4000) {} // Mirroring 1ScA, 1ScB
-	if (n >= 0x4000) prgReg = data % prgPages;
+	//Log->Debug("n: %x", n+0x8000);
+	// Only in Firehawk
+	/*if (n < 0x4000) ppu.Mirroring = (data & 0x10) ? Mirroring::ScreenB : Mirroring::ScreenA;
+	else */if (n >= 0x4000) prgReg = data % prgPages;
 }

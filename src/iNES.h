@@ -1,6 +1,6 @@
 #pragma once
 #include "headers.h"
-
+#include "PPU.h"
 class iNES
 {
 public:
@@ -11,7 +11,7 @@ public:
 	uint8_t* PRG_ROM;
 	uint8_t* CHR_ROM;
 
-	uint8_t Mirroring;
+	Mirroring::Mirroring mirroring;
 	uint8_t Mapper;
 
 	bool Pal; // false - ntsc, true - pal

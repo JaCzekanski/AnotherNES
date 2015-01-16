@@ -11,10 +11,13 @@ PPU::PPU(void)
 	
     memcpy( this->memory+0x3f00, "\x09,\x01,\x00,\x01,\x00,\x02,\x02,\x0D,\x08,\x10,\x08,\x24,\x00,\x00,\x04,\x2C,\x09,\x01,\x34,\x03,\x00,\x04,\x00,\x14,\x08,\x3A,\x00,\x02,\x00,\x20,\x2C,\x08", 32 );
 
+	writeIgnored = true;
+	frameCounter = 0;
+
 	cycles = 0;
 	scanline = -1;
 	NMI_enabled = false;
-	VBLANK = true;
+	VBLANK = false;
 	SpriteSize = false;
 	
 	ShowBackground = false;
@@ -48,6 +51,7 @@ void PPU::Write( uint8_t reg, uint8_t data )
 	switch (reg+0x2000)
 	{
 		case 0x2000: //PPUCTRL
+			if (writeIgnored) break;
 			// 7 - NMI on VBLANK
 			if (data&0x80) NMI_enabled = true;
 			else NMI_enabled = false;
@@ -106,10 +110,12 @@ void PPU::Write( uint8_t reg, uint8_t data )
 			break;
 			
 		case 0x2003: //OAMADDR
+			if (writeIgnored) break;
 			OAMADDR = data;
 			break;
 			
 		case 0x2004: //OAMDATA
+			if (writeIgnored) break;
 			*((uint8_t *)OAM+OAMADDR) = data;
 			OAMADDR++;
 			break;
@@ -146,6 +152,7 @@ void PPU::Write( uint8_t reg, uint8_t data )
 			break;
 			
 		case 0x2007: //PPUDATA
+			if (writeIgnored) break;
 			// Access to PPU memory from CPU
 			addr = loopy_v;// (PPUADDRhi << 8) | PPUADDRlo;
 			addr = addr%0x4000;
@@ -277,8 +284,17 @@ uint8_t PPU::Step( )
 			uint8_t step = ((cycles - 1) % 8) + 1;
 
 			uint16_t v = loopy_v;
-			if (Mirroring == VERTICAL) v &= ~0x0800; // Clear second bit (y)
-			else v &= ~0x0400; //  Clear first bit (x), Horizontal
+			if (Mirroring == Mirroring::Vertical) v &= ~0x0800; // Clear second bit (y)
+			else if (Mirroring == Mirroring::Horizontal) v &= ~0x0400; //  Clear first bit (x), Horizontal
+			//else if (Mirroring == Mirroring::FourScreen) 
+			else if (Mirroring == Mirroring::ScreenA)
+			{
+				v = (loopy_v & ~0x0C00);// | 0x0400;
+			}
+			else if (Mirroring == Mirroring::ScreenB)
+			{
+				v = (loopy_v & ~0x0C00) | 0x0400;
+			}
 
 			if (step == 1) // Cycle 1 and 2, NT byte
 			{
@@ -453,8 +469,12 @@ uint8_t PPU::Step( )
 	if (++cycles > 340)
 	{
 		cycles = 0;
-		if (++scanline>260)
+		if (++scanline > 260) {
 			scanline = -1;
+			frameCounter++;
+			if (frameCounter == 1) 
+				writeIgnored = false;
+		}
 	}
 	return ret;
 }

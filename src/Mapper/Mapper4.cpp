@@ -79,8 +79,8 @@ void Mapper4::MMC3_write(uint16_t n, uint8_t data)
 		MMC3_chrCopy();
 	}
 	else if (n == 0xA000) {
-		if (data & 1 == 0) ppu.Mirroring = VERTICAL;
-		else ppu.Mirroring = HORIZONTAL;
+		if (data & 1 == 0) ppu.Mirroring = Mirroring::Vertical;
+		else ppu.Mirroring = Mirroring::Horizontal;
 	}
 	else if (n == 0xA001) return; // Enable WRAM / WP
 	else if (n == 0xC000) MMC3_irqCounter = data; // IRQ Reload value
