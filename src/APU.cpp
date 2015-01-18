@@ -5,14 +5,14 @@ APU::APU(void)
 	activeTimer = 0;
 
 	osc[0].waveform = 0; // Pulse 1
-	osc[0].enabled = true;
+	osc[0].enabled = false;
 	osc[1].waveform = 0; // Pulse 2
-	osc[1].enabled = true;
+	osc[1].enabled = false;
 	osc[2].waveform = 1; // Triangle
-	osc[2].enabled = true;
+	osc[2].enabled = false;
 	osc[2].volume = 0xff;
 	osc[3].waveform = 2; // Noise
-	osc[3].enabled = true;
+	osc[3].enabled = false;
 
 	Log->Debug("APU created");
 }
@@ -51,7 +51,7 @@ uint8_t APU::Step()
 			break;
 		case 2: // Noise
 			uint8_t xor_bit = 0;
-			if (osc[i].mode) xor_bit = (osc[i].phase & 0x01) ^ ((osc[i].phase & 0x40) >> 6);
+			if (osc[i].noiseLoop) xor_bit = (osc[i].phase & 0x01) ^ ((osc[i].phase & 0x40) >> 6);
 			else xor_bit = (osc[i].phase & 0x01) ^ ((osc[i].phase & 0x02) >> 1);
 
 			osc[i].phase >>= 1;
@@ -99,7 +99,7 @@ bool APU::frameStep()
 	// Length counter and sweep
 	if (!frameCounterMode && (frameCounterStep == 1 || frameCounterStep == 3) ||
 		 frameCounterMode && (frameCounterStep == 0 || frameCounterStep == 2)) {
-		for (int i : {0, 1, 3}) {
+		for (int i : {0, 1, 2, 3}) {
 			if (osc[i].envelopeLoop) continue;
 			if (osc[i].length > 0) {
 				if (--osc[i].length == 0) osc[i].volume = 0;
@@ -173,8 +173,8 @@ void APU::Write( uint8_t reg, uint8_t data )
 	case 2:
 		if (n == 3)
 		{
-			osc[n].frequency &= 0x0f; // Noise
-			osc[n].mode = (data & 0x80) ? true : false;
+			osc[n].phase = noiseLookup[data & 0xf];
+			osc[n].noiseLoop = (data & 0x80) ? true : false;
 			break;
 		}
 

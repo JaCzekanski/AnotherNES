@@ -19,6 +19,6 @@ void Mapper71::Write(uint16_t n, uint8_t data)
 {
 	//Log->Debug("n: %x", n+0x8000);
 	// Only in Firehawk
-	/*if (n < 0x4000) ppu.Mirroring = (data & 0x10) ? Mirroring::ScreenB : Mirroring::ScreenA;
-	else */if (n >= 0x4000) prgReg = data % prgPages;
+	if (n < 0x4000) ppu.Mirroring = (data & 0x10) ? Mirroring::ScreenB : Mirroring::ScreenA;
+	else if (n >= 0x4000) prgReg = data % prgPages;
 }

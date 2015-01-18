@@ -154,21 +154,28 @@ void PPU::Write( uint8_t reg, uint8_t data )
 		case 0x2007: //PPUDATA
 			if (writeIgnored) break;
 			// Access to PPU memory from CPU
-			addr = loopy_v;// (PPUADDRhi << 8) | PPUADDRlo;
-			addr = addr%0x4000;
+			addr = loopy_v;
 
 			if (addr >= 0x3000 && addr <= 0x3eff) addr -= 0x1000;
-			if (addr>=0x3f00 && addr<=0x3fff) //Palette
+			if (addr >= 0x3f00 && addr <= 0x3fff) //Palette
 			{
 				uint16_t tmpaddr = (addr - 0x3f00) % 0x20;
 
-				if (tmpaddr == 0x10 || tmpaddr == 0x14 || tmpaddr == 0x18 || tmpaddr == 0x1c)
-				{
+				if (tmpaddr == 0x10 || tmpaddr == 0x14 || tmpaddr == 0x18 || tmpaddr == 0x1c) 
 					memory[0x3f00 + tmpaddr - 0x10] = data;
-				}
 				else memory[0x3f00 + tmpaddr] = data;
 			}
-			else memory[ addr ] = data;
+			else {
+				if (addr >= 0x2000)
+				{
+					// Rad racer fix, Single screen game fix
+					if (Mirroring == Mirroring::Vertical) addr &= ~0x0800;
+					else if (Mirroring == Mirroring::Horizontal) addr &= ~0x0400;
+					else if (Mirroring == Mirroring::ScreenA) addr &= ~0x0C00;
+					else if (Mirroring == Mirroring::ScreenB) addr = (addr & ~0x0C00) | 0x0400;
+				}
+				memory[addr] = data;
+			}
 
 			if (scanline < 240 && (ShowBackground || ShowSprites)) Log->Info("Update of loopy_v during rendering");
 			loopy_v += VRAMaddressIncrement;
@@ -286,15 +293,8 @@ uint8_t PPU::Step( )
 			uint16_t v = loopy_v;
 			if (Mirroring == Mirroring::Vertical) v &= ~0x0800; // Clear second bit (y)
 			else if (Mirroring == Mirroring::Horizontal) v &= ~0x0400; //  Clear first bit (x), Horizontal
-			//else if (Mirroring == Mirroring::FourScreen) 
-			else if (Mirroring == Mirroring::ScreenA)
-			{
-				v = (loopy_v & ~0x0C00);// | 0x0400;
-			}
-			else if (Mirroring == Mirroring::ScreenB)
-			{
-				v = (loopy_v & ~0x0C00) | 0x0400;
-			}
+			else if (Mirroring == Mirroring::ScreenA) v = (loopy_v & ~0x0C00);// | 0x0400;
+			else if (Mirroring == Mirroring::ScreenB) v = (loopy_v & ~0x0C00) | 0x0400;
 
 			if (step == 1) // Cycle 1 and 2, NT byte
 			{
