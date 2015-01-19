@@ -17,8 +17,9 @@ uint8_t Mapper71::Read(uint16_t n)
 
 void Mapper71::Write(uint16_t n, uint8_t data)
 {
-	//Log->Debug("n: %x", n+0x8000);
-	// Only in Firehawk
-	if (n < 0x4000) ppu.Mirroring = (data & 0x10) ? Mirroring::ScreenB : Mirroring::ScreenA;
+	// Firehawk writes to 0x1000, Ultimate stundman write to 0 at start, masked out to prevent other games from changing mirroring
+	if (n < 0x4000) {
+		if (n == 0x1000) ppu.Mirroring = (data & 0x10) ? Mirroring::ScreenB : Mirroring::ScreenA;
+	}
 	else if (n >= 0x4000) prgReg = data % prgPages;
 }
