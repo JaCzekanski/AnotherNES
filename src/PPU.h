@@ -48,9 +48,16 @@ struct SPRITE
 	uint8_t x;
 };
 
+class DlgOAM;
+class DlgNametable;
+class DlgPatterntable;
+
 class PPU
 {
-private:
+	friend DlgOAM;
+	friend DlgNametable;
+	friend DlgPatterntable;
+	
 	bool writeIgnored; // Some games writes to PPU $2000 enabling NMI and get stuck waiting for VBLANK, but it's cleared by NMI
 					  // PPU must wait 29658 (little more than one frame) ticks before it start accepts writes 
 	int frameCounter;
@@ -63,9 +70,14 @@ private:
 	bool ShowSprites;
 	bool Sprite0Hit;
 	bool spriteOverflow;
+	bool SpriteSize; // false - 8x8, true - 8x16
 	
 	bool showLeftSprites;
 	bool showLeftBackground;
+
+	uint16_t BaseNametable;
+	uint16_t BackgroundPattenTable;
+	uint16_t SpritePattenTable;
 
 	uint16_t loopy_v; // 15bits, current VRAM address
 	uint16_t loopy_t; // 15bits, temporary VRAM address
@@ -89,14 +101,11 @@ private:
 public:
 	uint32_t cycles;
 	int16_t scanline;
-	bool SpriteSize; // false - 8x8, true - 8x16
-	uint16_t BaseNametable;
-	uint16_t BackgroundPattenTable;
-	uint16_t SpritePattenTable;
 	Mirroring Mirroring;
 	uint8_t OAMADDR;
-	uint8_t memory[0x4000]; // 16KB
 	SPRITE OAM[64]; // 64B*4
+	uint8_t memory[0x4000]; // 16KB
+
 	PPU(void);
 	~PPU(void);
 

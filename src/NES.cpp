@@ -32,7 +32,6 @@ bool NES::loadGame(const char* path)
 
 	cpu = new CPU_interpreter();
 
-	Log->Info("Mapper: %d", rom.getMapper());
 	cpu->memory.ppu = &cpu->ppu;
 	cpu->memory.apu = &cpu->apu;
 	cpu->ppu.Mirroring = rom.getMirroring();

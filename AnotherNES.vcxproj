@@ -90,6 +90,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\App.cpp" />
     <ClCompile Include="src\APU.cpp" />
     <ClCompile Include="src\CPU.cpp" />
     <ClCompile Include="src\CPU_interpreter.cpp" />
@@ -117,6 +118,7 @@
     <ClCompile Include="src\Utils.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\App.h" />
     <ClInclude Include="src\APU.h" />
     <ClInclude Include="src\CPU.h" />
     <ClInclude Include="src\CPU_interpreter.h" />

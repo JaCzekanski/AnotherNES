@@ -172,7 +172,7 @@ void PPU::Write( uint8_t reg, uint8_t data )
 					else if (Mirroring == Mirroring::ScreenA) addr &= ~0x0C00;
 					else if (Mirroring == Mirroring::ScreenB) addr = (addr & ~0x0C00) | 0x0400;
 				}
-				memory[addr] = data;
+				memory[addr%0x4000] = data;
 			}
 
 			if (scanline < 240 && (ShowBackground || ShowSprites)) Log->Info("Update of loopy_v during rendering");
