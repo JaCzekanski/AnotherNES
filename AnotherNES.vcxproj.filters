@@ -105,6 +105,9 @@
     <ClCompile Include="src\Utils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\Dialog\DlgCPU.cpp">
+      <Filter>Source Files\Dialog</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\APU.h">
@@ -196,6 +199,9 @@
     </ClInclude>
     <ClInclude Include="src\App.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Dialog\DlgCPU.h">
+      <Filter>Header Files\Dialog</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

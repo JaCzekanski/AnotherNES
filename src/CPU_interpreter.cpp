@@ -1,5 +1,6 @@
 #include "CPU_interpreter.h"
 
+OPCODE OpcodeTableOptimized[256];
 CPU_interpreter::CPU_interpreter()
 {
 	OPCODE op = {0x00, CPU_interpreter::UNK, "UNK"};

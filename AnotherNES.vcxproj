@@ -95,6 +95,7 @@
     <ClCompile Include="src\CPU.cpp" />
     <ClCompile Include="src\CPU_interpreter.cpp" />
     <ClCompile Include="src\CPU_ram.cpp" />
+    <ClCompile Include="src\Dialog\DlgCPU.cpp" />
     <ClCompile Include="src\Dialog\DlgPatterntable.cpp" />
     <ClCompile Include="src\Dialog\DlgRAM.cpp" />
     <ClCompile Include="src\iNES.cpp" />
@@ -123,6 +124,7 @@
     <ClInclude Include="src\CPU.h" />
     <ClInclude Include="src\CPU_interpreter.h" />
     <ClInclude Include="src\CPU_ram.h" />
+    <ClInclude Include="src\Dialog\DlgCPU.h" />
     <ClInclude Include="src\Dialog\DlgPatterntable.h" />
     <ClInclude Include="src\Dialog\DlgRAM.h" />
     <ClInclude Include="src\headers.h" />

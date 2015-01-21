@@ -17,6 +17,7 @@ App::App() :emulatorState(EmulatorState::Idle),
 			ToolboxNametable(nullptr),
 			ToolboxPatterntable(nullptr),
 			ToolboxRAM(nullptr),
+			ToolboxCPU(nullptr),
 			mouseUp(true),
 			frameLimit(true)
 {
@@ -139,6 +140,13 @@ bool App::loadGame(std::string path)
 	EnableMenuItem(Menu, EMULATION_RESET_SOFT, MF_BYCOMMAND | MF_ENABLED);
 	EnableMenuItem(Menu, EMULATION_RESET_HARD, MF_BYCOMMAND | MF_ENABLED);
 
+	if (ToolboxNametable) ToolboxNametable = shared_ptr<DlgNametable>(new DlgNametable(nes.getCPU()));
+	if (ToolboxPatterntable) ToolboxPatterntable = shared_ptr<DlgPatterntable>(new DlgPatterntable(nes.getCPU()));
+	if (ToolboxOAM) ToolboxOAM = shared_ptr<DlgOAM>(new DlgOAM(nes.getCPU()));
+	if (ToolboxPalette) ToolboxPalette = shared_ptr<DlgPalette>(new DlgPalette(nes.getCPU()));
+	if (ToolboxRAM) ToolboxRAM = shared_ptr<DlgRAM>(new DlgRAM(nes.getCPU()));
+	if (ToolboxCPU) ToolboxCPU = shared_ptr<DlgCPU>(new DlgCPU(nes.getCPU()));
+
 	clearWindow();
 	emulatorState = EmulatorState::Running;
 	return true;
@@ -167,6 +175,10 @@ void App::closeGame()
 	if (ToolboxRAM)	{
 		ToolboxRAM.reset();
 		CheckMenuItem(Menu, DEBUG_WINDOWS_RAM, MF_BYCOMMAND | MF_UNCHECKED);
+	}
+	if (ToolboxCPU)	{
+		ToolboxCPU.reset();
+		CheckMenuItem(Menu, DEBUG_WINDOWS_CPU, MF_BYCOMMAND | MF_UNCHECKED);
 	}
 	EnableMenuItem(Menu, FILE_CLOSE, MF_BYCOMMAND | MF_GRAYED);
 
@@ -243,6 +255,10 @@ void App::onWindow(SDL_WindowEvent e)
 	if (ToolboxRAM && ID == ToolboxRAM->WindowID) {
 		ToolboxRAM.reset();
 		CheckMenuItem(Menu, DEBUG_WINDOWS_RAM, MF_BYCOMMAND | MF_UNCHECKED);
+	}
+	if (ToolboxCPU && ID == ToolboxCPU->WindowID) {
+		ToolboxCPU.reset();
+		CheckMenuItem(Menu, DEBUG_WINDOWS_CPU, MF_BYCOMMAND | MF_UNCHECKED);
 	}
 }
 void App::onKeyDown(SDL_KeyboardEvent e)
@@ -432,6 +448,19 @@ void App::onSystem(SDL_SysWMEvent e)
 		}
 		break;
 
+	case DEBUG_WINDOWS_CPU:
+		if (CheckMenuItem(Menu, DEBUG_WINDOWS_CPU, MF_BYCOMMAND) == MF_UNCHECKED)
+		{
+			CheckMenuItem(Menu, DEBUG_WINDOWS_CPU, MF_BYCOMMAND | MF_CHECKED);
+			ToolboxCPU = shared_ptr<DlgCPU>(new DlgCPU(nes.getCPU()));
+		}
+		else
+		{
+			CheckMenuItem(Menu, DEBUG_WINDOWS_CPU, MF_BYCOMMAND | MF_UNCHECKED);
+			ToolboxCPU.reset();
+		}
+		break;
+
 	case HELP_ABOUT:
 		DlgAbout DialogAbout(mainWindowHwnd);
 		break;
@@ -445,6 +474,7 @@ void App::updateToolboxes()
 	if (ToolboxPalette) ToolboxPalette->Update();
 	if (ToolboxPatterntable) ToolboxPatterntable->Update();
 	if (ToolboxRAM) ToolboxRAM->Update();
+	if (ToolboxCPU) ToolboxCPU->Update();
 }
 
 uint8_t App::getInput()

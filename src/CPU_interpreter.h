@@ -566,4 +566,4 @@ static OPCODE OpcodeTable[] =
 
 };
 
-static OPCODE OpcodeTableOptimized[256];
+extern OPCODE OpcodeTableOptimized[256];

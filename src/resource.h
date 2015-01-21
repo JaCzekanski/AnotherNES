@@ -18,6 +18,7 @@
 #define DEBUG_WINDOWS_NAMETABLE                 40007
 #define DEBUG_WINDOWS_PATTERNTABLE              40008
 #define DEBUG_WINDOWS_RAM                       40009
-#define EMULATION_RESET_HARD                    40010
-#define EMULATION_PAUSE                         40011
-#define OPTIONS_SOUND_ENABLED                   40012
+#define DEBUG_WINDOWS_CPU                       40010
+#define EMULATION_RESET_HARD                    40011
+#define EMULATION_PAUSE                         40012
+#define OPTIONS_SOUND_ENABLED                   40013

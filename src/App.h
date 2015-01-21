@@ -10,6 +10,7 @@
 #include "dialog/DlgPatterntable.h"
 #include "dialog/DlgAbout.h"
 #include "dialog/DlgRAM.h"
+#include "dialog/DlgCPU.h"
 
 enum class EmulatorState
 {
@@ -36,6 +37,7 @@ class App
 	shared_ptr<DlgNametable> ToolboxNametable;
 	shared_ptr<DlgPatterntable> ToolboxPatterntable;
 	shared_ptr<DlgRAM> ToolboxRAM;
+	shared_ptr<DlgCPU> ToolboxCPU;
 
 	bool mouseUp;
 	bool frameLimit;
