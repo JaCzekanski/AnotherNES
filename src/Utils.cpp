@@ -4,7 +4,7 @@ std::string getFilename(std::string name)
 {
 	int begin = 0, end = name.length() - 1;
 
-	std::size_t slash = name.find_last_of('/\\');
+	std::size_t slash = name.find_last_of("/\\");
 	if (slash != std::string::npos) begin = slash + 1;
 
 	std::size_t dot = name.find_last_of('.');

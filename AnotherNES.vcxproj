@@ -135,6 +135,7 @@
     <ClInclude Include="src\Mapper\Mapper65.h" />
     <ClInclude Include="src\Mapper\Mapper7.h" />
     <ClInclude Include="src\Mapper\Mapper71.h" />
+    <ClInclude Include="src\NES.h" />
     <ClInclude Include="src\NSF.h" />
     <ClInclude Include="src\PPU.h" />
     <ClInclude Include="src\resource.h" />

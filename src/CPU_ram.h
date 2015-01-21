@@ -29,14 +29,18 @@ $01FF - $0100 - Stack
 $00FF - $0000 - Zero Page
 
 */
+class DlgRAM;
+
 class CPU_ram
 {
-	int buttonState;
-	uint8_t bit;
+	friend DlgRAM;
+
+	uint8_t buttonState, buttonBit;
 	uint8_t memory[2048];
-	std::vector<uint8_t> SRAM;
-public:
 	bool memoryLock[2048];
+	std::vector<uint8_t> SRAM;
+
+public:
 	Mapper *mapper;
 	PPU* ppu;
 	APU* apu;
@@ -46,5 +50,5 @@ public:
 
 	void Write(uint16_t n, uint8_t data);
 	uint8_t operator[](size_t n);
-	void setInput(int keys) { buttonState = keys;  }
+	void setInput(int keys) { buttonState = keys; }
 };

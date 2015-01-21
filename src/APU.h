@@ -106,6 +106,6 @@ public:
 
 	void Write( uint8_t reg, uint8_t data );
 
-	void audiocallback(void *userdata, Uint8 *stream, int len);
+	//void audiocallback(void *userdata, Uint8 *stream, int len);
 };
-
+void audiocallback(void *userdata, Uint8 *stream, int len);

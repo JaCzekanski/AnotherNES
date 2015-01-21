@@ -5,6 +5,7 @@ CPU_ram::CPU_ram(void)
 	mapper = NULL;
 	ppu = NULL;
 	buttonState = 0;
+	buttonBit = 0;
 	memset( this->memory, 0, 2048 );
 	memory[0x0008] = 0xf7;
 	memory[0x0009] = 0xef;
@@ -57,7 +58,7 @@ void CPU_ram::Write(uint16_t n, uint8_t data)
 		}
 		else if (n == 0x4016 || n == 0x4017) // JOY1
 		{
-			bit = 7; // Strobe
+			buttonBit = 7; // Strobe
 			return;
 		}
 		return;
@@ -88,8 +89,8 @@ uint8_t CPU_ram::operator[](size_t n)
 		if (n == 0x4016) // JOY1 
 		{
 			//A, B, Select, Start, Up, Down, Left, Right.
-			bit--;
-			if (buttonState & (1 << (bit + 1))) return 1;
+			buttonBit--;
+			if (buttonState & (1 << (buttonBit + 1))) return 1;
 			else return 0;
 		}
 		return 0;

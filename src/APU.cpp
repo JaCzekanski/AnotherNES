@@ -26,7 +26,6 @@ uint8_t APU::Step()
 {
 	int16_t acc = 0;
 	uint8_t value = 0;
-	float pulse[2], triangle = 0, noise = 0;
 	for (int i = 0; i <4; i++)
 	{
 		if (!osc[i].enabled) continue;
@@ -38,13 +37,13 @@ uint8_t APU::Step()
 			{
 			int step = osc[i].phase / 8192;
 			value = (DutyCycle[osc[i].duty][step]) ? 31 : -32;
-			osc[i].phase += (CPU_frequency / (8 * osc[i].frequency)) - 1;
+			osc[i].phase += (uint16_t)((CPU_frequency / (8 * osc[i].frequency)) - 1);
 			break;
 			}
 		case 1: // Triagnle
 			if (osc[i].phase < 0x8000) value = -32 + (osc[i].phase >> 9);
 			else value = 31 - ((osc[i].phase - 0x8000) >> 9);
-			osc[i].phase += (CPU_frequency / 2 / (8 * osc[i].frequency)) - 1;
+			osc[i].phase += (uint16_t)((CPU_frequency / 2 / (8 * osc[i].frequency)) - 1);
 			break;
 		case 2: // Noise
 			uint8_t xor_bit = 0;
@@ -88,7 +87,7 @@ bool APU::frameStep()
 			}
 			if (!osc[i].constantVolume) {
 				if (!osc[i].envelopeLoop && osc[i].length == 0) continue;
-				osc[i].volume = osc[i].envelopeCounter;
+				osc[i].volume = (uint8_t)osc[i].envelopeCounter;
 			}
 		}
 	}
@@ -172,6 +171,7 @@ void APU::Write( uint8_t reg, uint8_t data )
 		{
 			osc[n].phase = noiseLookup[data & 0xf];
 			osc[n].noiseLoop = (data & 0x80) ? true : false;
+			osc[n].frequency = 1;
 			break;
 		}
 
@@ -189,14 +189,19 @@ void APU::Write( uint8_t reg, uint8_t data )
 	}
 }
 
-void APU::audiocallback(void *userdata, Uint8 *stream, int len)
+void audiocallback(void *userdata, Uint8 *stream, int len)
 {
-	static int _activeTimer = 0;
+	static int timer = 0;
+	APU* apu = (APU*)userdata;
+	if (apu == NULL) return;
 
-	if (activeTimer == _activeTimer) return;
-	_activeTimer = activeTimer;
+	if (timer == apu->activeTimer) {
+		memset(stream, 0x7f, len);
+		return;
+	}
+	timer = apu->activeTimer;
 
 	for (int i = 0; i < len; i++) {
-		stream[i] = Step();
+		stream[i] = apu->Step();
 	}
 }

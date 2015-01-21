@@ -24,5 +24,7 @@ public:
 
 	bool emulateFrame();
 	void render(SDL_Texture *canvas);
+
+	CPU* getCPU() const { return cpu; };
 };
 

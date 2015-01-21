@@ -272,7 +272,7 @@ uint8_t PPU::Step( )
 	static SPRITE secondOAM[8], oldSecondOAM[8];
 	static int secondOAMsprites, oldSecondOAMsprites;
 	static uint8_t paletteDatal, paletteDatah;
-	static bool paletteDataLatchl, paletteDataLatchh;
+	static uint8_t paletteDataLatchl, paletteDataLatchh;
 
 	if (renderingIsEnabled() && scanline < 240)
 	{
@@ -363,7 +363,7 @@ uint8_t PPU::Step( )
 		if (scanline >= 0 && cycles >= 1 && cycles <= 256)
 		{
 			uint8_t renderX = cycles - 1;
-			uint8_t renderY = scanline;
+			uint8_t renderY = (uint8_t)scanline;
 			uint8_t BackgroundByte = memory[0x3F00];
 			uint8_t backgroundColor = 0;
 			uint8_t SpriteByte = 0;

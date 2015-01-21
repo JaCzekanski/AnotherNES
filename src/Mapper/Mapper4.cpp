@@ -80,7 +80,7 @@ void Mapper4::MMC3_write(uint16_t n, uint8_t data)
 	}
 	else if (n == 0xA000 ) {
 		if (ppu.Mirroring != Mirroring::FourScreen) {
-			if (data & 1 == 0) ppu.Mirroring = Mirroring::Vertical;
+			if ((data & 1) == 0) ppu.Mirroring = Mirroring::Vertical;
 			else ppu.Mirroring = Mirroring::Horizontal;
 		}
 	}

@@ -102,7 +102,7 @@ bool NES::emulateFrame()
 					i += 7 * 3;
 				}
 			}
-			if (cpu->ppu.cycles == 20) {
+			if (cpu->ppu.cycles == 260) {
 				Mapper4 *MMC3 = dynamic_cast<Mapper4*>(cpu->memory.mapper);
 				if (MMC3 && MMC3->MMC3_irqEnabled && MMC3->MMC3_irqCounter == cpu->ppu.scanline+1)
 				{
