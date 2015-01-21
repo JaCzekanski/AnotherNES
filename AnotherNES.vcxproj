@@ -62,7 +62,7 @@
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>sdl2.lib;XInput9_1_0.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>sdl2.lib;sdl2_ttf.lib;XInput9_1_0.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EntryPointSymbol>
       </EntryPointSymbol>
@@ -82,7 +82,7 @@
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>sdl2.lib;XInput9_1_0.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>SDL2_ttf.lib;sdl2.lib;XInput9_1_0.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -98,6 +98,12 @@
     <ClCompile Include="src\Dialog\DlgCPU.cpp" />
     <ClCompile Include="src\Dialog\DlgPatterntable.cpp" />
     <ClCompile Include="src\Dialog\DlgRAM.cpp" />
+    <ClCompile Include="src\GUI\Button.cpp" />
+    <ClCompile Include="src\GUI\Canvas.cpp" />
+    <ClCompile Include="src\GUI\Editbox.cpp" />
+    <ClCompile Include="src\GUI\Font.cpp" />
+    <ClCompile Include="src\GUI\Widget.cpp" />
+    <ClCompile Include="src\GUI\Window.cpp" />
     <ClCompile Include="src\iNES.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\NES.cpp" />
@@ -127,6 +133,12 @@
     <ClInclude Include="src\Dialog\DlgCPU.h" />
     <ClInclude Include="src\Dialog\DlgPatterntable.h" />
     <ClInclude Include="src\Dialog\DlgRAM.h" />
+    <ClInclude Include="src\GUI\Button.h" />
+    <ClInclude Include="src\GUI\Canvas.h" />
+    <ClInclude Include="src\GUI\Editbox.h" />
+    <ClInclude Include="src\GUI\Font.h" />
+    <ClInclude Include="src\GUI\Widget.h" />
+    <ClInclude Include="src\GUI\Window.h" />
     <ClInclude Include="src\headers.h" />
     <ClInclude Include="src\iNES.h" />
     <ClInclude Include="src\logger.h" />

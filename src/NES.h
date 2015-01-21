@@ -20,6 +20,7 @@ public:
 	void reset();
 	void setInput(uint8_t buttons);
 	bool emulateFrame();
+	bool singleStep();
 	void render(SDL_Texture *canvas);
 	CPU* getCPU() const { return cpu; };
 };

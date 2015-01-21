@@ -1,6 +1,7 @@
 #include "App.h"
 #include <XInput.h>
 #include <SDL_syswm.h>
+#include <SDL_ttf.h>
 #include <algorithm>
 #include "resource.h"
 
@@ -145,7 +146,7 @@ bool App::loadGame(std::string path)
 	if (ToolboxOAM) ToolboxOAM = shared_ptr<DlgOAM>(new DlgOAM(nes.getCPU()));
 	if (ToolboxPalette) ToolboxPalette = shared_ptr<DlgPalette>(new DlgPalette(nes.getCPU()));
 	if (ToolboxRAM) ToolboxRAM = shared_ptr<DlgRAM>(new DlgRAM(nes.getCPU()));
-	if (ToolboxCPU) ToolboxCPU = shared_ptr<DlgCPU>(new DlgCPU(nes.getCPU()));
+	if (ToolboxCPU) ToolboxCPU = shared_ptr<DlgCPU>(new DlgCPU(*this));
 
 	clearWindow();
 	emulatorState = EmulatorState::Running;
@@ -264,7 +265,8 @@ void App::onWindow(SDL_WindowEvent e)
 void App::onKeyDown(SDL_KeyboardEvent e)
 {
 	if (ToolboxRAM && e.windowID == ToolboxRAM->WindowID) ToolboxRAM->Key(e.keysym.sym);
-	else if (e.windowID == SDL_GetWindowID(mainWindow)) {
+	if (ToolboxCPU && e.windowID == ToolboxCPU->WindowID) ToolboxCPU->Key(e.keysym.sym);
+	if (e.windowID == SDL_GetWindowID(mainWindow)) {
 		if (e.keysym.sym == SDLK_ESCAPE) {
 			if (emulatorState == EmulatorState::Running || emulatorState == EmulatorState::Paused) closeGame();
 			else if (emulatorState == EmulatorState::Idle) {
@@ -275,6 +277,7 @@ void App::onKeyDown(SDL_KeyboardEvent e)
 		}
 		else if (e.keysym.sym == SDLK_SPACE) frameLimit = false;
 	}
+	updateToolboxes(true);
 }
 void App::onKeyUp(SDL_KeyboardEvent e)
 {
@@ -285,18 +288,30 @@ void App::onKeyUp(SDL_KeyboardEvent e)
 void App::onMouseMove(SDL_MouseMotionEvent e)
 {
 	if (ToolboxRAM && e.windowID == ToolboxRAM->WindowID) ToolboxRAM->Move(e.x, e.y);
+	if (ToolboxCPU && e.windowID == ToolboxCPU->WindowID) ToolboxCPU->Move(e.x, e.y);
+	updateToolboxes(true);
 }
 void App::onMouseDown(SDL_MouseButtonEvent e)
 {
-	if (mouseUp && ToolboxRAM && e.windowID == ToolboxRAM->WindowID)
+	if (!mouseUp) return;
+	if (ToolboxRAM && e.windowID == ToolboxRAM->WindowID)
 	{
 		ToolboxRAM->Click(e.x, e.y, e.button & 0xff);
 		mouseUp = false;
 	}
+	if (ToolboxCPU && e.windowID == ToolboxCPU->WindowID)
+	{
+		ToolboxCPU->Click(e.x, e.y, e.button & 0xff, false);
+		mouseUp = false;
+	}
+	updateToolboxes(true);
 }
 void App::onMouseUp(SDL_MouseButtonEvent e)
 {
 	mouseUp = true;
+	if (ToolboxCPU && e.windowID == ToolboxCPU->WindowID)
+		ToolboxCPU->Click(e.x, e.y, e.button & 0xff, true);
+	updateToolboxes(true);
 }
 void App::onSystem(SDL_SysWMEvent e)
 {
@@ -452,7 +467,7 @@ void App::onSystem(SDL_SysWMEvent e)
 		if (CheckMenuItem(Menu, DEBUG_WINDOWS_CPU, MF_BYCOMMAND) == MF_UNCHECKED)
 		{
 			CheckMenuItem(Menu, DEBUG_WINDOWS_CPU, MF_BYCOMMAND | MF_CHECKED);
-			ToolboxCPU = shared_ptr<DlgCPU>(new DlgCPU(nes.getCPU()));
+			ToolboxCPU = shared_ptr<DlgCPU>(new DlgCPU(*this));
 		}
 		else
 		{
@@ -467,14 +482,17 @@ void App::onSystem(SDL_SysWMEvent e)
 	}
 }
 
-void App::updateToolboxes()
+void App::updateToolboxes(bool withCPU)
 {
-	if (ToolboxNametable) ToolboxNametable->Update();
-	if (ToolboxOAM) ToolboxOAM->Update();
-	if (ToolboxPalette) ToolboxPalette->Update();
-	if (ToolboxPatterntable) ToolboxPatterntable->Update();
-	if (ToolboxRAM) ToolboxRAM->Update();
-	if (ToolboxCPU) ToolboxCPU->Update();
+	if (newFrame || emulatorState == EmulatorState::Paused) {
+		newFrame = false;
+		if (ToolboxNametable) ToolboxNametable->Update();
+		if (ToolboxOAM) ToolboxOAM->Update();
+		if (ToolboxPalette) ToolboxPalette->Update();
+		if (ToolboxPatterntable) ToolboxPatterntable->Update();
+		if (ToolboxRAM) ToolboxRAM->Update();
+		if (ToolboxCPU && withCPU) ToolboxCPU->Update();
+	}
 }
 
 uint8_t App::getInput()
@@ -531,6 +549,8 @@ bool App::initialize()
 		return false;
 	}
 
+	TTF_Init();
+
 	emulatorState = EmulatorState::Idle;
 	return true;
 }
@@ -576,7 +596,7 @@ void App::loop()
 				SDL_RenderCopy(renderer, canvas, NULL, NULL);
 				SDL_RenderPresent(renderer);
 
-				updateToolboxes();
+				updateToolboxes(false);
 			} 
 			else 
 			{
@@ -595,7 +615,7 @@ void App::loop()
 				ticks = SDL_GetTicks();
 			}	
 			oldticks = ticks;
-
+			newFrame = true;
 		}
 	}
 }

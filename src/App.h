@@ -23,6 +23,8 @@ enum class EmulatorState
 
 class App
 {
+	friend DlgCPU;
+
 	// Main window handles
 	EmulatorState emulatorState;
 	SDL_Window *mainWindow;
@@ -39,6 +41,7 @@ class App
 	shared_ptr<DlgRAM> ToolboxRAM;
 	shared_ptr<DlgCPU> ToolboxCPU;
 
+	bool newFrame;
 	bool mouseUp;
 	bool frameLimit;
 	NES nes;
@@ -66,7 +69,7 @@ class App
 	void onMouseUp(SDL_MouseButtonEvent e);
 	void onSystem(SDL_SysWMEvent e);
 
-	void updateToolboxes();
+	void updateToolboxes(bool withCPU);
 	uint8_t getInput();
 
 	bool initialize();

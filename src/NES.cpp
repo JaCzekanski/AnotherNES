@@ -133,6 +133,51 @@ bool NES::emulateFrame()
 }
 
 
+bool NES::singleStep()
+{
+	int cycles = 1, apu_cycles = 0;
+	for (int i = cycles * 3; i>0; i--)
+	{
+		if (i % 3 == 0) cycles--;
+		uint8_t ppuresult = cpu->ppu.Step();
+		if (ppuresult) // NMI requested
+		{
+			if (ppuresult == 2)
+			{
+				cpu->NMI();
+				cycles += 7;
+				i += 7 * 3;
+			}
+		}
+		if (cpu->ppu.cycles == 260) {
+			Mapper4 *MMC3 = dynamic_cast<Mapper4*>(cpu->memory.mapper);
+			if (MMC3 && MMC3->MMC3_irqEnabled && MMC3->MMC3_irqCounter == cpu->ppu.scanline + 1)
+			{
+				cpu->IRQ();
+			}
+		}
+	}
+	cycles += cpu->Step();
+	apu_cycles += cycles;
+	if (cpu->isJammed())
+	{
+		Log->Error("CPU Jammed.");
+		return false;
+	}
+	if (apu_cycles >= 7457)
+	{
+		cpu->apu.frameStep();
+		apu_cycles = 0;
+	}
+	Mapper65 *mapper65 = dynamic_cast<Mapper65*>(cpu->memory.mapper);
+	if (mapper65 && mapper65->irqEnabled) {
+		if (mapper65->irqCounter <= cycles) cpu->IRQ();
+		mapper65->irqCounter -= cycles;
+	}
+	cpu->apu.activeTimer++;
+	return true;
+}
+
 void NES::render(SDL_Texture *canvas)
 {
 	cpu->ppu.Render(canvas);
