@@ -57,7 +57,6 @@ struct oscillator
 	uint8_t volume;
 
 	uint16_t length;
-	uint16_t lengthTimer;
 	bool constantVolume;
 
 	// Pulse

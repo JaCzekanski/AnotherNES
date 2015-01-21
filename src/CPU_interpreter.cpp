@@ -8,16 +8,16 @@ CPU_interpreter::CPU_interpreter()
 		op.number = i;
 		OpcodeTableOptimized[i] = op;
 	}
-	Log->Debug("Opcode table cleaned");
 
 	for (int i = 0; i< 256; i++)
 	{
 		if (OpcodeTable[i].number == 0x02)	break;
 		OpcodeTableOptimized[ OpcodeTable[i].number ] = OpcodeTable[i];
 	}
+}
 
-	Log->Debug("Opcode table filled");
-	Log->Debug("CPU_interpreter created");
+CPU_interpreter::~CPU_interpreter(void)
+{
 }
 
 int CPU_interpreter::Step()

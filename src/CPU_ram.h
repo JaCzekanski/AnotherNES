@@ -1,5 +1,6 @@
 #pragma once
 #include "headers.h"
+#include <vector>
 #include "PPU.h"
 #include "APU.h"
 #include <vector>
@@ -45,5 +46,5 @@ public:
 
 	void Write(uint16_t n, uint8_t data);
 	uint8_t operator[](size_t n);
-	void input(int keys) { buttonState = keys;  }
+	void setInput(int keys) { buttonState = keys;  }
 };

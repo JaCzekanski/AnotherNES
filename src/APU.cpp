@@ -10,16 +10,14 @@ APU::APU(void)
 	osc[1].enabled = false;
 	osc[2].waveform = 1; // Triangle
 	osc[2].enabled = false;
-	osc[2].volume = 0xff;
+	osc[2].volume = 0x0f;
 	osc[3].waveform = 2; // Noise
 	osc[3].enabled = false;
 
-	Log->Debug("APU created");
 }
 
 APU::~APU(void)
 {
-	Log->Debug("APU destroyed");
 }
 
 const float CPU_frequency = 1789773 *1.5f;
@@ -34,13 +32,12 @@ uint8_t APU::Step()
 		if (!osc[i].enabled) continue;
 		int8_t value;
 
+		if (osc[i].frequency == 0) continue;
 		switch (osc[i].waveform) {
 		case 0: // Pulse
 			{
 			int step = osc[i].phase / 8192;
 			value = (DutyCycle[osc[i].duty][step]) ? 31 : -32;
-			//if (osc[i].phase > osc[i].duty) value = -32;
-			//else value = 31;
 			osc[i].phase += (CPU_frequency / (8 * osc[i].frequency)) - 1;
 			break;
 			}
@@ -102,7 +99,7 @@ bool APU::frameStep()
 		for (int i : {0, 1, 2, 3}) {
 			if (osc[i].envelopeLoop) continue;
 			if (osc[i].length > 0) {
-				if (--osc[i].length == 0) osc[i].volume = 0;
+				if (--osc[i].length == 0)osc[i].frequency = 0;
 			}
 		}
 

@@ -14,6 +14,8 @@ Logger::Error( const char* format, ... );
 Logger::Debug( const char* format, ... );
 */
 
+#define Log Logger::getInstance()
+
 enum LogType
 {
 	LOG_INFO = 0,
@@ -28,64 +30,64 @@ class Logger
 private:
 	std::string programName;
 	FILE* file;
-	bool initialized;
+	bool initialized = false;
+	bool verbose = false;
 
-	void Log( int type, const char* format, va_list list )
+	void log(int type, const char* format, va_list list)
 	{
 		char buffer[2048];
 
-		vsprintf(buffer, format, list );
-
+		vsprintf(buffer, format, list);
 
 		char _logtype[64];
 
-		switch( type )
+		switch (type)
 		{
 		case LOG_INFO:
-			strcpy( _logtype, "INFO" );
+			strcpy(_logtype, "INFO");
 			break;
 
 		case LOG_SUCCESS:
-			strcpy( _logtype, "SUCCESS" );
+			strcpy(_logtype, "SUCCESS");
 			break;
 
 		case LOG_ERROR:
-			strcpy( _logtype, "ERROR" );
+			strcpy(_logtype, "ERROR");
 			break;
 
 		case LOG_FATAL:
-			strcpy( _logtype, "FATAL" );
+			strcpy(_logtype, "FATAL");
 			break;
 
 		case LOG_DEBUG:
-			strcpy( _logtype, "DEBUG" );
+			strcpy(_logtype, "DEBUG");
 			break;
 
 		default:
-			strcpy( _logtype, "UNKNOWN" );
+			strcpy(_logtype, "UNKNOWN");
 			break;
 		}
 
 		char _time[64];
 		time_t secs = time(0);
-		strftime( _time, 64, "%X", localtime( &secs ) );
+		strftime(_time, 64, "%X", localtime(&secs));
 
-		/*if (type != LOG_DEBUG) */fprintf( file, "[%s][%s]\t%s\n", _time, _logtype, buffer );
-		printf( "[%s][%s]\t%s\n", _time, _logtype, buffer );
-		if ( type == LOG_FATAL )
+		/*if (type != LOG_DEBUG) */fprintf(file, "[%s][%s]\t%s\n", _time, _logtype, buffer);
+		printf("[%s][%s]\t%s\n", _time, _logtype, buffer);
+		if (type == LOG_FATAL)
 		{
 			char message_buffer[4096];
-			sprintf( message_buffer, "FATAL ERROR: %s", buffer );
+			sprintf(message_buffer, "FATAL ERROR: %s", buffer);
 			MessageBox(NULL, message_buffer, programName.c_str(), MB_OK);
 		}
 
-		fflush( file );
+		fflush(file);
 
 		char bigbuffer[4096];
-		sprintf(bigbuffer,  "[%s][%s]\t%s\n", _time, _logtype, buffer );
-		OutputDebugString( bigbuffer );
+		sprintf(bigbuffer, "[%s][%s]\t%s\n", _time, _logtype, buffer);
+		OutputDebugString(bigbuffer);
 	}
-	void Open( const char* filename )
+	void Open(const char* filename)
 	{
 		file = fopen(filename, "w");
 		initialized = true;
@@ -102,7 +104,7 @@ public:
 	{
 		Open("log.txt");
 	}
-	Logger( const char* filename )
+	Logger(const char* filename)
 	{
 		Open(filename);
 	}
@@ -111,41 +113,59 @@ public:
 		Close();
 	}
 	void setProgramName(std::string name) { programName = name;  }
-	void Info( const char* format, ... )
+	static Logger* getInstance()
 	{
-		va_list list;
-		va_start( list, format );
-		Log( LOG_INFO, format, list );
-		va_end( list );
+		static Logger instance;
+		return &instance;
 	}
-	void Success( const char* format, ... )
+
+	// Only Errors and fatals are logged
+	void Quiet()
 	{
-		va_list list;
-		va_start( list, format );
-		Log( LOG_SUCCESS, format, list );
-		va_end( list );
+		verbose = false;
 	}
-	void Error( const char* format, ... )
+	// Everyting including success and info are logged
+	void Verbose()
 	{
-		va_list list;
-		va_start( list, format );
-		Log( LOG_ERROR, format, list );
-		va_end( list );
+		verbose = true;
 	}
-	void Fatal( const char* format, ... )
+	void Info(const char* format, ...)
 	{
+		if (!verbose) return;
 		va_list list;
-		va_start( list, format );
-		Log( LOG_FATAL, format, list );
-		va_end( list );
+		va_start(list, format);
+		log(LOG_INFO, format, list);
+		va_end(list);
 	}
-	void Debug( const char* format, ... )
+	void Success(const char* format, ...)
 	{
-//#ifdef _DEBUG
+		if (!verbose) return;
 		va_list list;
-		va_start( list, format );
-		Log( LOG_DEBUG, format, list );
-		va_end( list );
-//#endif
+		va_start(list, format);
+		log(LOG_SUCCESS, format, list);
+		va_end(list);
+	}
+	void Error(const char* format, ...)
+	{
+		va_list list;
+		va_start(list, format);
+		log(LOG_ERROR, format, list);
+		va_end(list);
+	}
+	void Fatal(const char* format, ...)
+	{
+		va_list list;
+		va_start(list, format);
+		log(LOG_FATAL, format, list);
+		va_end(list);
+	}
+	void Debug(const char* format, ...)
+	{
+#ifdef _DEBUG
+		va_list list;
+		va_start(list, format);
+		log(LOG_DEBUG, format, list);
+		va_end(list);
+#endif
 	}
 };

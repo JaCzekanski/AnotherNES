@@ -3,19 +3,14 @@
 #include <SDL.h>
 #include <vector>
 
-namespace Mirroring
+enum class Mirroring
 {
-	enum Mirroring
-	{
-		Horizontal = 0,
-		Vertical,
-		FourScreen,
-		ScreenA,
-		ScreenB
-	};
+	Horizontal = 0,
+	Vertical,
+	FourScreen,
+	ScreenA,
+	ScreenB
 };
-//#define HORIZONTAL 0
-//#define VERTICAL 1
 
 struct Palette_entry
 {
@@ -98,7 +93,7 @@ public:
 	uint16_t BaseNametable;
 	uint16_t BackgroundPattenTable;
 	uint16_t SpritePattenTable;
-	uint8_t Mirroring;
+	Mirroring Mirroring;
 	uint8_t OAMADDR;
 	uint8_t memory[0x4000]; // 16KB
 	SPRITE OAM[64]; // 64B*4

@@ -48,6 +48,9 @@
     <ClCompile Include="src\NSF.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\PPU.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="src\Dialog\DlgAbout.cpp">
       <Filter>Source Files\Dialog</Filter>
     </ClCompile>
@@ -66,7 +69,7 @@
     <ClCompile Include="src\Dialog\DlgPatterntable.cpp">
       <Filter>Source Files\Dialog</Filter>
     </ClCompile>
-    <ClCompile Include="src\PPU.cpp">
+    <ClCompile Include="src\NES.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\Mapper\Mapper0.cpp">
@@ -95,6 +98,9 @@
     </ClCompile>
     <ClCompile Include="src\Mapper\Mapper7.cpp">
       <Filter>Source Files\Mapper</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Utils.cpp">
+      <Filter>Header Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -178,6 +184,9 @@
     </ClInclude>
     <ClInclude Include="src\Mapper\Mapper7.h">
       <Filter>Header Files\Mapper</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Utils.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

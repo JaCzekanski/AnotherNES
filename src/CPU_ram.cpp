@@ -6,20 +6,18 @@ CPU_ram::CPU_ram(void)
 	ppu = NULL;
 	buttonState = 0;
 	memset( this->memory, 0, 2048 );
-	this->memory[0x0008] = 0xf7;
-	this->memory[0x0009] = 0xef;
-	this->memory[0x000a] = 0xdf;
-	this->memory[0x000f] = 0xbf;
+	memory[0x0008] = 0xf7;
+	memory[0x0009] = 0xef;
+	memory[0x000a] = 0xdf;
+	memory[0x000f] = 0xbf;
 
-	memset(this->memoryLock, 0, 2048);
+	memset(memoryLock, 0, 2048);
 	SRAM.resize(0x2000);
 		
-	Log->Debug("CPU_ram: created");
 }
 
 CPU_ram::~CPU_ram(void)
 {
-	Log->Debug("CPU_ram: destroyed");
 }
 
 void CPU_ram::Write(uint16_t n, uint8_t data)

@@ -86,7 +86,7 @@ void Mapper4::MMC3_write(uint16_t n, uint8_t data)
 	}
 	else if (n == 0xA001) return; // Enable WRAM / WP
 	else if (n == 0xC000) MMC3_irqCounter = data; // IRQ Reload value
-	else if (n == 0xC001) return; // IRQ Clear
+	//else if (n == 0xC001) return; // IRQ Clear
 	else if (n == 0xE000) MMC3_irqEnabled = false; // IRQ Acknowledge / Disable
 	else if (n == 0xE001) MMC3_irqEnabled = true; // IRQ Enable
 	else Log->Debug("MMC3 other reg write: %x", n);
