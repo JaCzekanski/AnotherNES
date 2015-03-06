@@ -128,7 +128,7 @@ SDL_Renderer* App::createRenderer(SDL_Window* window)
 bool App::loadGame(std::string path)
 {
 	if (emulatorState != EmulatorState::Idle) closeGame();
-	if (nes.loadGame(path.c_str())) {
+	if (!nes.loadGame(path.c_str())) {
 		Log->Error("File %s opening problem.", getFilename(path).c_str());
 		return false;
 	}

@@ -67,7 +67,7 @@ bool NES::loadGame(const char* path)
 	cpu->Power();
 
 	SDL_PauseAudio(0);
-	return 0;
+	return true;
 }
 
 

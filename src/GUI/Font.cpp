@@ -1,9 +1,13 @@
 #include "Font.h"
-
+#include <sstream>
 
 Font::Font()
 {
-	font = TTF_OpenFont("D:/Kuba/dev/AnotherNES/consolab.ttf", 12);
+	char *base_path = SDL_GetBasePath();
+	std::stringstream s;
+	s << base_path << "consolab.ttf";
+	SDL_free(base_path);
+	font = TTF_OpenFont(s.str().c_str() , 12);
 	color.r = 0xff;
 	color.g = 0xff;
 	color.b = 0xff;
