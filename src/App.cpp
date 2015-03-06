@@ -2,6 +2,7 @@
 #include <XInput.h>
 #include <SDL_syswm.h>
 #include <SDL_ttf.h>
+#include <SDL_image.h>
 #include <algorithm>
 #include "resource.h"
 
@@ -39,6 +40,7 @@ bool App::initializeSDL()
 		Log->Fatal("SDL_Init failed");
 		return false;
 	}
+	IMG_Init(0);
 	return true;
 }
 
@@ -91,9 +93,8 @@ SDL_Window* App::createMainWindow()
 		return false;
 	}
 
-	SDL_Surface *icon = SDL_LoadBMP("icon.bmp");
-	if (!icon)
-		Log->Error("Cannot load icon.bmp");
+	SDL_Surface *icon = IMG_Load("icon.ico");
+	if (!icon) Log->Error("Cannot load icon.ico");
 	else
 	{
 		SDL_SetWindowIcon(mainWindow, icon);
@@ -562,6 +563,7 @@ void App::cleanup()
 	SDL_DestroyTexture(canvas);
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(mainWindow);
+	IMG_Quit();
 	SDL_Quit();
 }
 

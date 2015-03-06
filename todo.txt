@@ -1,0 +1,43 @@
+Klasa Config/Options
+	- Zapis i odczyt INI
+	- Singleton?
+
+Okno input
+	- Niestety musi u¿ywaæ mojego GUI
+	- Obs³uga 2 graczy
+	- Klawiatura
+	- Xinput (domyœlny mapping)
+	- SDL Joystick api
+
+CPU_RAM
+	- Klasa bazowa Mapper (definuje mapper 0?)
+		x Mapper 0 - NROM, no mapping
+		X Mapper 1 - MMC1 (Zelda, Mega Man, Metroid) - quite easy
+		x Mapper 2 (UxROM): ROM remapping, CHR-RAM (Contra, Metal Gear, Duck tales)
+		x Mapper 3 - CNROM - CHR remapping (Arkanoid)
+		/ Mapper 4 - MMC3 (Megaman 3,4,5,6, Kirby's Adventure, SMB2,3)
+		  FIX IRQ / MIRRORING glitch
+		- Mapper 65 - Irem's H3001 (Chip'n'Dales, Antarctic Adventures, Bubble Bobble
+		- Mapper 7 - Rare games, easy, just PRG mapping
+	- Normalny dostêp do PPU i APU
+
+Input
+	- Obs³uga klawiatury, xinput i joystick
+
+
+Debugger
+	- Step, Continue, Pause, Restart
+	- Step til return
+	- Podgl¹d rejestrów
+	- Podgl¹d stosu 
+	- Podgl¹d pamiêci (RAM lub ca³a przestrzeñ adresowa)
+	- Edycja kodu (opcody lub prosty assembler jak bêdzie czas)
+	- Breakpointy
+	- Memory breakpoint
+	- Watches  
+
+Emulator
+	- Save states?
+	- Obs³uga save (.sav)
+	- Hard reset
+	- Skróty klawiszowe

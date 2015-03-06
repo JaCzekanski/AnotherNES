@@ -1,5 +1,7 @@
 ## AnotherNES - NES console  emulator/debugger
 
+![logo](photos/logo.png)
+
 #WARNING
 
 If you're looking for **good** NES emulator check out [PuNES](http://forums.nesdev.com/viewtopic.php?t=6928), [Nestopia](http://nestopia.sourceforge.net/) or [FCEUX](http://www.fceux.com/web/home.html).
@@ -11,7 +13,7 @@ This is an educational project for which purpose was learning how to create an e
 **License: GNU GPLv2**
 
 #Language and libraries
-I am using C++ (occasionally c++11 and c++14 features). The IDE is Visual Studio 2013. For graphics and sound **SDL 2** is used. As for now code is not cross-platform, because Windows libraries such as XInput and Winapi are used (it will change in a future). For GUI I've created simple SDL and **SDL_ttf** based library, but in the future I'll move to Qt.
+I am using C++ (occasionally c++11 and c++14 features). The IDE is Visual Studio 2013. For graphics and sound **SDL 2** and **SDL2\_image** is used. As for now code is not cross-platform, because Windows libraries such as XInput and Winapi are used (it will change in a future). For GUI I've created simple SDL and **SDL_ttf** based library, but in the future I'll move to Qt.
   
 #Details
 - CPU (2A03, 6502 clone) - 90% completed 
@@ -63,7 +65,7 @@ I am using C++ (occasionally c++11 and c++14 features). The IDE is Visual Studio
     Start - S
 
 # Building
-To build this project you need SDL2 and SDL_ttf paths configured in Visual Studio. 
+To build this project you need SDL2, SDL2\_ttf and SDL2\_image paths configured in Visual Studio. 
 
 # Screenshots
   
