@@ -43,6 +43,7 @@ I am using C++ (occasionally c++11 and c++14 features). The IDE is Visual Studio
 	- Simple CPU debugging and disassembly (pause, single step, run, no breakpoints)
 - Mappers (address space extension) - ??% (there are tons of mappers).
 	- I've emulated few the most popular mappers, so that I could run many games for testing. As for now emulated mappers are:  
+
 >	- Mapper 0 (no address space mapping) - example games are Super Mario Bros, Battle City, Excitebike, Galaxian
 >	- Mapper 1 (MMC1 - basic PRG and CHR mapping with WRAM support) - Mega Man 2, Zelda, Metroid, Blaster Master
 >		- WRAM block is ignored
