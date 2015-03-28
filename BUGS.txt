@@ -1,1 +1,0 @@
-- Po klikniêciu na menu program nie zawsze reaguje (wina SDLa?)

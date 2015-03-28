@@ -4,7 +4,7 @@
 
 #WARNING
 
-If you're looking for **good** NES emulator check out [PuNES](http://forums.nesdev.com/viewtopic.php?t=6928), [Nestopia](http://nestopia.sourceforge.net/) or [FCEUX](http://www.fceux.com/web/home.html).
+If you're looking for **good** NES emulator check out [PuNES](http://forums.nesdev.com/viewtopic.php?t=6928), [Nestopia](http://nestopia.sourceforge.net/) or [FCEUX](http://www.fceux.com/web/home.html).  
 
 #Introduction
 
@@ -13,8 +13,8 @@ This is an educational project for which purpose was learning how to create an e
 **License: GNU GPLv2**
 
 #Language and libraries
-I am using C++ (occasionally c++11 and c++14 features). The IDE is Visual Studio 2013. For graphics and sound **SDL 2** and **SDL2\_image** is used. As for now code is not cross-platform, because Windows libraries such as XInput and Winapi are used (it will change in a future). For GUI I've created simple SDL and **SDL_ttf** based library, but in the future I'll move to Qt.
-  
+I am using C++ (occasionally c++11 and c++14 features). The IDE is Visual Studio 2013. For graphics and sound **SDL 2** and **SDL2\_image** is used. As for now code is not cross-platform, because Windows libraries such as XInput and Winapi are used (it will change in future). For GUI I've created simple SDL and **SDL_ttf** based library, but in the future I'll move to Qt.  
+
 #Details
 - CPU (2A03, 6502 clone) - 90% completed 
 	- Some bugs are not emulated properly, but it don't have any affect on games.
@@ -42,19 +42,18 @@ I am using C++ (occasionally c++11 and c++14 features). The IDE is Visual Studio
 	- Live CPU RAM view
 	- Simple CPU debugging and disassembly (pause, single step, run, no breakpoints)
 - Mappers (address space extension) - ??% (there are tons of mappers).
-	- I've emulated few the most popular mappers, so that I could run many games for testing. As for now emulated mappers are:
->
-	- Mapper 0 (no address space mapping) - example games are Super Mario Bros, Battle City, Excitebike, Galaxian
-	- Mapper 1 (MMC1 - basic PRG and CHR mapping with WRAM support) - Mega Man 2, Zelda, Metroid, Blaster Master
-		- WRAM block is ignored
-	- Mapper 2 (UxROM - PRG remapping only, CHR is 8k RAM) - Mega Man, Castlevania, Contra, Duck Tales
-	- Mapper 3 (CNROM - CHR remapping only) - Arkanoid, Paperboy
-	- Mapper 4 (MMC3 - one of the most popular mapper, very versatile) - Mega Man 3, Kirby's Adventure, Super Mario Bros 2 and 3 and many other.
-		- IRQ emulation is inaccurate
-		- Few registers are ignored (such as WRAM block and IRQ clear)
-	- Mapper 7 (AxROM, Rare games, PRG remapping only, CHR is 8k RAM) - Battletoads, Beetlejuice, Wizards and Warriors
-	-  Mapper 65 (Iram H3001, PRG and CHR remapping, IRQ support) - not sure which games uses this mapper, maybe I was using a bad dump?
-	-  Mapper 71 (Same as Mapper 2, used for Camerica games) - The Fantastic Adventures of Dizzy, Firehawk, Micro Machines, Big Nose Freaks Out
+	- I've emulated few the most popular mappers, so that I could run many games for testing. As for now emulated mappers are:  
+>	- Mapper 0 (no address space mapping) - example games are Super Mario Bros, Battle City, Excitebike, Galaxian
+>	- Mapper 1 (MMC1 - basic PRG and CHR mapping with WRAM support) - Mega Man 2, Zelda, Metroid, Blaster Master
+>		- WRAM block is ignored
+>	- Mapper 2 (UxROM - PRG remapping only, CHR is 8k RAM) - Mega Man, Castlevania, Contra, Duck Tales
+>	- Mapper 3 (CNROM - CHR remapping only) - Arkanoid, Paperboy
+>	- Mapper 4 (MMC3 - one of the most popular mapper, very versatile) - Mega Man 3, Kirby's Adventure, Super Mario Bros 2 and 3 and many other.
+>		- IRQ emulation is inaccurate
+>		- Few registers are ignored (such as WRAM block and IRQ clear)
+>	- Mapper 7 (AxROM, Rare games, PRG remapping only, CHR is 8k RAM) - Battletoads, Beetlejuice, Wizards and Warriors
+>	-  Mapper 65 (Iram H3001, PRG and CHR remapping, IRQ support) - not sure which games uses this mapper, maybe I was using a bad dump?
+>	-  Mapper 71 (Same as Mapper 2, used for Camerica games) - The Fantastic Adventures of Dizzy, Firehawk, Micro Machines, Big Nose Freaks Out
 
 # Controls
 	
@@ -67,8 +66,8 @@ I am using C++ (occasionally c++11 and c++14 features). The IDE is Visual Studio
 # Building
 To build this project you need SDL2, SDL2\_ttf and SDL2\_image paths configured in Visual Studio. 
 
-# Screenshots
-  
-[![debugger](photos/debugger.png)](photos/debugger.png)
+# Screenshots  
+
+[![debugger](photos/debugger.png)](photos/debugger.png)  
 
 [![mario](photos/mario.png)](photos/mario.png)
